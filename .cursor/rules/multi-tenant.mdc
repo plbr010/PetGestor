@@ -1,0 +1,31 @@
+---
+description: Banco multiempresa futuro — empresa_id, RLS e isolamento
+globs: **/*.{ts,tsx,sql}
+alwaysApply: false
+---
+
+# Multiempresa (futuro)
+
+## Modelo planejado
+
+- Tabela `empresas` como tenant raiz
+- Coluna `empresa_id` em entidades de negócio (tutores, pets, serviços, etc.)
+- UUIDs como PKs; timestamps `created_at` / `updated_at`
+- Soft delete (`deleted_at`) quando histórico importar
+
+## Row Level Security
+
+- Políticas RLS no Supabase garantindo `empresa_id = auth.jwt() -> empresa_id`
+- Testar isolamento: usuário da empresa A **nunca** lê/escreve dados da empresa B
+
+## Queries e serviços
+
+```typescript
+// ✅ Sempre incluir contexto da empresa
+const tutores = await listTutores({ empresaId: session.empresaId });
+
+// ❌ Nunca listar sem filtro de tenant
+const tutores = await db.from("tutores").select("*");
+```
+
+Consulte `docs/DATABASE.md` antes de criar migrations ou schemas.

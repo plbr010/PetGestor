@@ -1,0 +1,29 @@
+---
+description: Organização por funcionalidades — features, colocation e boundaries
+globs: src/features/**/*
+alwaysApply: false
+---
+
+# Organização por funcionalidades
+
+## Estrutura sugerida por feature
+
+```text
+src/features/<dominio>/
+  components/   # UI específica do domínio
+  hooks/        # Hooks do domínio
+  schemas/      # Zod schemas
+  services/     # Chamadas e regras de negócio
+  types.ts
+```
+
+## Regras
+
+- Código usado por uma única feature fica dentro dela
+- Código usado por 2+ features sobe para `components/shared`, `hooks/` ou `lib/`
+- Páginas em `app/` importam de `features/` — não duplicar lógica nas páginas
+- Nomear pastas em kebab-case; exports em PascalCase (componentes) ou camelCase (funções)
+
+## Domínios previstos
+
+tutores, pets, servicos, agenda, atendimentos, financeiro, empresas, auth

@@ -1,0 +1,29 @@
+---
+description: Arquitetura geral do PetGestor — camadas, Server Components e responsabilidades
+alwaysApply: true
+---
+
+# Arquitetura geral
+
+## Camadas
+
+- `src/app/` — rotas, layouts e composição (sem regra de negócio pesada)
+- `src/features/` — casos de uso e domínio por funcionalidade
+- `src/components/` — UI reutilizável (ui, shared, layout)
+- `src/lib/` — utilitários e clientes de infraestrutura
+- `src/config/` — marca, navegação e constantes de produto
+
+## Server Components por padrão
+
+Use Client Components (`"use client"`) apenas para: estado local, eventos, hooks do navegador ou bibliotecas que exigem cliente.
+
+## Responsabilidade única
+
+- Funções e componentes com propósito claro e nome descritivo
+- Lógica de negócio **não** em componentes visuais — extrair para `features/` ou `lib/`
+- Preferir composição e componentes reutilizáveis
+
+## Escopo
+
+- Não implementar fases futuras (Supabase, auth, cobrança) sem solicitação explícita
+- Manter diffs mínimos e focados na tarefa pedida

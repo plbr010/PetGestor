@@ -1,0 +1,31 @@
+---
+description: Documentação obrigatória — quando e o que atualizar em docs/
+alwaysApply: true
+---
+
+# Documentação
+
+## Arquivos em `docs/`
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| PRODUCT.md | Problema, cliente, escopo |
+| ARCHITECTURE.md | Stack, pastas, decisões |
+| ROADMAP.md | Fases futuras |
+| DATABASE.md | Modelo e RLS planejados |
+| SECURITY.md | Princípios de segurança |
+| CHANGELOG.md | Histórico de versões |
+
+## Quando atualizar
+
+- Mudança de arquitetura ou stack → ARCHITECTURE.md
+- Nova fase ou replanejamento → ROADMAP.md
+- Decisão de schema ou RLS → DATABASE.md
+- Mudança de escopo ou MVP → PRODUCT.md
+- Release ou marco importante → CHANGELOG.md
+- Toda entrega relevante deve refletir o estado real do projeto
+
+## Marca
+
+- Nome e textos de produto centralizados em `src/config/brand.ts`
+- Não espalhar strings de marca hardcoded sem necessidade

@@ -1,0 +1,33 @@
+---
+description: Política de testes — Vitest, cobertura mínima e quando testar
+globs: **/*.{test,spec}.{ts,tsx}
+alwaysApply: false
+---
+
+# Testes
+
+## Stack
+
+- **Vitest** + **Testing Library** para componentes e lógica
+- Setup em `vitest.setup.ts`; config em `vitest.config.ts`
+
+## Quando adicionar testes
+
+- Nova lógica de negócio em `features/` ou `lib/`
+- Schemas Zod e transformações de dados
+- Componentes com comportamento interativo relevante
+- Correções de bugs (regressão)
+
+## Comandos
+
+```bash
+npm run test          # execução única
+npm run test:watch    # modo watch
+npm run test:coverage # cobertura
+```
+
+## Boas práticas
+
+- Testes descritivos em português ou inglês consistente
+- Preferir testes de comportamento a detalhes de implementação
+- Não testar trivialidades (render estático sem lógica)

@@ -1,0 +1,37 @@
+---
+description: Conclusão de tarefas — lint, testes, build e validação antes de finalizar
+alwaysApply: true
+---
+
+# Conclusão de tarefas
+
+Antes de considerar uma etapa **concluída**, executar:
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+Ou o atalho: `npm run validate`
+
+## Checklist
+
+- [ ] Lint sem erros
+- [ ] TypeScript sem erros
+- [ ] Testes passando
+- [ ] Build de produção OK
+- [ ] Documentação atualizada (se aplicável)
+- [ ] Nenhum segredo commitado
+- [ ] Escopo limitado ao pedido — sem features futuras não solicitadas
+
+## Novas funcionalidades
+
+- Incluir validação (Zod) e tratamento de erros
+- Adicionar testes quando houver lógica de negócio
+- Atualizar CHANGELOG.md em marcos relevantes
+
+## Escopo
+
+- Não avançar para Supabase, auth real ou integrações de pagamento sem instrução explícita

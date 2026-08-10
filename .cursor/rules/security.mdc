@@ -1,0 +1,24 @@
+---
+description: Segurança e segredos — nunca expor chaves no cliente
+alwaysApply: true
+---
+
+# Segurança e segredos
+
+## Obrigatório
+
+- **Nunca** commitar `.env.local`, tokens, senhas ou chaves privadas
+- **Nunca** enviar service role keys ou segredos ao navegador
+- Variáveis `NEXT_PUBLIC_*` só para dados públicos (URL anon do Supabase, etc.)
+- Validar entradas com Zod no servidor antes de persistir ou processar
+- Logs sem senhas, tokens completos ou dados pessoais desnecessários
+
+## Rotas
+
+- Dashboard e áreas autenticadas devem ser protegidas quando auth existir
+- Não confiar apenas em ocultação de UI — validar no servidor
+
+## Multiempresa (futuro)
+
+- Toda operação de negócio deve filtrar por `empresa_id` do contexto autenticado
+- Consultar `docs/SECURITY.md` e `docs/DATABASE.md` antes de alterar dados
