@@ -97,11 +97,7 @@ function annotateCheckoutErrorStage(error: unknown, stage: string) {
 }
 
 function logSubscriptionCheckoutFailed(stage: string, error: unknown) {
-  if (!isDev) {
-    return;
-  }
-
-  console.error("[Subscription][DEV] checkout failed", {
+  console.error("[Subscription] checkout failed", {
     stage,
     errorName: error instanceof Error ? error.name : undefined,
     errorMessage: error instanceof Error ? error.message : String(error),

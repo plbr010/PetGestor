@@ -32,8 +32,20 @@ type MercadoPagoSafeErrorBody = {
   error?: string;
   message?: string;
   status?: number | string;
-  causes?: Array<{ code?: string; description?: string }>;
+  causes?: Array<{
+    code?: string;
+    description?: string;
+    data?: string | number | boolean;
+  }>;
 };
+
+function extractSafeCauseData(value: unknown): string | number | boolean | undefined {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+
+  return undefined;
+}
 
 function extractSafeMercadoPagoErrorBody(data: unknown): MercadoPagoSafeErrorBody {
   if (!data || typeof data !== "object") {
@@ -41,7 +53,7 @@ function extractSafeMercadoPagoErrorBody(data: unknown): MercadoPagoSafeErrorBod
   }
 
   const body = data as Record<string, unknown>;
-  const causesRaw = body.cause;
+  const causesRaw = body.cause ?? body.causes;
 
   const causes = Array.isArray(causesRaw)
     ? causesRaw.flatMap((item) => {
@@ -49,13 +61,18 @@ function extractSafeMercadoPagoErrorBody(data: unknown): MercadoPagoSafeErrorBod
           return [];
         }
         const cause = item as Record<string, unknown>;
-        return [
-          {
-            code: typeof cause.code === "string" ? cause.code : undefined,
-            description:
-              typeof cause.description === "string" ? cause.description : undefined,
-          },
-        ];
+        const safeCause = {
+          code: typeof cause.code === "string" ? cause.code : undefined,
+          description:
+            typeof cause.description === "string" ? cause.description : undefined,
+          data: extractSafeCauseData(cause.data),
+        };
+
+        if (safeCause.code || safeCause.description || safeCause.data !== undefined) {
+          return [safeCause];
+        }
+
+        return [];
       })
     : undefined;
 
@@ -70,16 +87,12 @@ function extractSafeMercadoPagoErrorBody(data: unknown): MercadoPagoSafeErrorBod
   };
 }
 
-function logMercadoPagoErrorDev(params: {
+function logMercadoPagoApiError(params: {
   operation: string;
   endpoint: string;
   httpStatus: number;
   body: MercadoPagoSafeErrorBody;
 }) {
-  if (process.env.NODE_ENV !== "development") {
-    return;
-  }
-
   console.error("[MercadoPago] API request failed", {
     operation: params.operation,
     endpoint: params.endpoint,
@@ -135,7 +148,7 @@ async function mercadoPagoRequest<T>(
 
     if (!response.ok) {
       const safeBody = extractSafeMercadoPagoErrorBody(data);
-      logMercadoPagoErrorDev({
+      logMercadoPagoApiError({
         operation: options.operation,
         endpoint: path,
         httpStatus: response.status,
