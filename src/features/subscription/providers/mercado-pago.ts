@@ -1,3 +1,5 @@
+import "server-only";
+
 import { BillingConfigError, getMercadoPagoAccessToken } from "@/lib/env/server-env";
 import type {
   MercadoPagoAuthorizedPayment,

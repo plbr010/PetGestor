@@ -5,8 +5,12 @@ import { getPublicEnv } from "@/lib/env/public-env";
 import type { Database } from "@/types/database.types";
 
 export async function createSupabaseServerClient() {
-  const env = getPublicEnv();
+  // cookies() primeiro: durante `next build`, isso marca a rota como dinâmica
+  // antes de validar env. Se getPublicEnv() rodar antes, o prerender quebra com
+  // PublicEnvError em páginas auth/dashboard quando NEXT_PUBLIC_* ainda não
+  // estão disponíveis no worker de SSG (cenário típico de deploy Vercel).
   const cookieStore = await cookies();
+  const env = getPublicEnv();
 
   return createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
