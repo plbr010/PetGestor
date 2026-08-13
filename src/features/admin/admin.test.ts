@@ -132,7 +132,7 @@ describe("requirePlatformAdmin authorization", () => {
     vi.doUnmock("next/navigation");
   });
 
-  it("permite platform admin autenticado", async () => {
+  it("permite platform admin autenticado via tabela", async () => {
     requireUserMock.mockResolvedValue({ id: "user-admin", email: "owner@petgestor.app" });
     maybeSingleMock.mockResolvedValue({
       data: { user_id: "user-admin" },
@@ -147,6 +147,23 @@ describe("requirePlatformAdmin authorization", () => {
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 
+  it("permite conta allowlisted plbrpc mesmo sem linha em platform_admins", async () => {
+    requireUserMock.mockResolvedValue({ id: "user-owner", email: "plbrpc@gmail.com" });
+    maybeSingleMock.mockResolvedValue({ data: null, error: null });
+
+    const { requirePlatformAdmin, isPlatformAdmin } = await import(
+      "@/lib/auth/require-platform-admin"
+    );
+    await expect(
+      isPlatformAdmin({ id: "user-owner", email: "plbrpc@gmail.com" }),
+    ).resolves.toBe(true);
+    await expect(requirePlatformAdmin()).resolves.toEqual({
+      id: "user-owner",
+      email: "plbrpc@gmail.com",
+    });
+    expect(notFoundMock).not.toHaveBeenCalled();
+  });
+
   it("retorna 404 para cliente comum", async () => {
     requireUserMock.mockResolvedValue({ id: "user-client", email: "cliente@example.com" });
     maybeSingleMock.mockResolvedValue({ data: null, error: null });
@@ -156,10 +173,12 @@ describe("requirePlatformAdmin authorization", () => {
     expect(notFoundMock).toHaveBeenCalledOnce();
   });
 
-  it("isPlatformAdmin é falso para usuário sem registro", async () => {
+  it("isPlatformAdmin é falso para usuário sem registro e fora da allowlist", async () => {
     maybeSingleMock.mockResolvedValue({ data: null, error: null });
     const { isPlatformAdmin } = await import("@/lib/auth/require-platform-admin");
-    await expect(isPlatformAdmin("user-client")).resolves.toBe(false);
+    await expect(
+      isPlatformAdmin({ id: "user-client", email: "cliente@example.com" }),
+    ).resolves.toBe(false);
   });
 });
 

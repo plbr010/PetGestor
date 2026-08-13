@@ -2,24 +2,29 @@ import "server-only";
 
 import { notFound } from "next/navigation";
 
+import { isAllowlistedPlatformAdminEmail } from "@/config/platform-admin";
 import type { AuthUser } from "@/features/auth/types";
 import { requireUser } from "@/lib/auth/require-user";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export async function isPlatformAdmin(userId: string): Promise<boolean> {
+export async function isPlatformAdmin(user: AuthUser): Promise<boolean> {
+  if (isAllowlistedPlatformAdminEmail(user.email)) {
+    return true;
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("platform_admins")
     .select("user_id")
-    .eq("user_id", userId)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (error || !data) {
     return false;
   }
 
-  return data.user_id === userId;
+  return data.user_id === user.id;
 }
 
 /**
@@ -28,7 +33,7 @@ export async function isPlatformAdmin(userId: string): Promise<boolean> {
  */
 export async function requirePlatformAdmin(): Promise<AuthUser> {
   const user = await requireUser();
-  const allowed = await isPlatformAdmin(user.id);
+  const allowed = await isPlatformAdmin(user);
 
   if (!allowed) {
     notFound();

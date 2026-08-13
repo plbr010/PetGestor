@@ -15,13 +15,16 @@ export default async function DashboardLayout({
   const user = await requireUser();
   const dashboardContext = await requireCompany(user.id);
   const entitlement = await getCompanyEntitlement(dashboardContext.membership.company.id);
-  assertOperationalEntitlement(entitlement);
-  const platformAdmin = await isPlatformAdmin(user.id);
+  const platformAdmin = await isPlatformAdmin(user);
+
+  if (!platformAdmin) {
+    assertOperationalEntitlement(entitlement);
+  }
 
   return (
     <DashboardUserProvider value={{ ...dashboardContext, isPlatformAdmin: platformAdmin }}>
       <div className="flex min-h-screen flex-col">
-        <TrialBanner entitlement={entitlement} />
+        {!platformAdmin ? <TrialBanner entitlement={entitlement} /> : null}
         <div className="flex flex-1">
           <DashboardSidebar />
           <div className="flex min-w-0 flex-1 flex-col">{children}</div>
