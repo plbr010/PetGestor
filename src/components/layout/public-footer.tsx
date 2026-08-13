@@ -16,7 +16,6 @@ export function PublicFooter() {
             <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
               {brand.description}
             </p>
-            <p className="text-xs text-muted-foreground">{brand.developmentNotice}</p>
           </div>
 
           <div>

@@ -7,8 +7,6 @@ export const brand = {
   defaultDescription:
     "SaaS de gestão para pet shops: agenda, clientes, pets, serviços e financeiro básico.",
   locale: "pt-BR",
-  developmentNotice:
-    "Este produto está em desenvolvimento. Funcionalidades e dados exibidos são apenas demonstrativos.",
 } as const;
 
 export type Brand = typeof brand;

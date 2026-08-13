@@ -1,4 +1,3 @@
-import { DevBanner } from "@/components/layout/dev-banner";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { DashboardUserProvider } from "@/components/layout/dashboard-user-provider";
 import { TrialBanner } from "@/features/subscription/components/trial-banner";
@@ -20,7 +19,6 @@ export default async function DashboardLayout({
   return (
     <DashboardUserProvider value={dashboardContext}>
       <div className="flex min-h-screen flex-col">
-        <DevBanner />
         <TrialBanner entitlement={entitlement} />
         <div className="flex flex-1">
           <DashboardSidebar />

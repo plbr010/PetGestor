@@ -1,4 +1,3 @@
-import { DevBanner } from "@/components/layout/dev-banner";
 import { PublicHeader } from "@/components/layout/public-header";
 import { PublicFooter } from "@/components/layout/public-footer";
 import { BenefitsSection } from "@/components/marketing/benefits-section";
@@ -10,7 +9,6 @@ import { PricingSection } from "@/components/marketing/pricing-section";
 export default function HomePage() {
   return (
     <>
-      <DevBanner />
       <PublicHeader />
       <main>
         <HeroSection />

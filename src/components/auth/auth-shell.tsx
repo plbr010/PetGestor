@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/shared/brand-logo";
-import { DevBanner } from "@/components/layout/dev-banner";
 import { PublicHeader } from "@/components/layout/public-header";
 import { PublicFooter } from "@/components/layout/public-footer";
 
@@ -13,7 +12,6 @@ type AuthShellProps = {
 export function AuthShell({ children }: AuthShellProps) {
   return (
     <>
-      <DevBanner />
       <PublicHeader />
       <main className="relative flex min-h-[calc(100vh-4rem)] flex-col">
         <div
