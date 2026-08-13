@@ -1,4 +1,22 @@
+## [0.13.0] — 2026-08-13
+
+### Adicionado — Painel administrativo interno
+
+- Tabela `platform_admins` com RLS (SELECT próprio; sem INSERT/UPDATE/DELETE para clientes)
+- Gate server-side `requirePlatformAdmin()` → 404 para não-admins
+- Rotas `/admin` e `/admin/[companyId]` (somente visualização)
+- Cards: total, trial, ativas, inadimplentes, canceladas, bloqueadas, MRR estimado
+- Menu "Admin" apenas para platform admin
+- Queries cross-tenant via `service_role` apenas após gate server-side
+
+### Não incluído
+
+- Edição/cancelamento/impersonação/cobrança manual pelo painel
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260813190000_platform_admins.sql`
+
 ## [0.12.0] — 2026-08-06
+
 
 ### Adicionado — Mercado Pago e assinatura real (Etapa 10B)
 

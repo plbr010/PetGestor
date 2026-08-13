@@ -33,6 +33,7 @@ export type ServiceOrderStatus =
   | "completed"
   | "cancelled";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled";
+export type PlatformAdminRole = "platform_owner";
 export type FinancialEntryType = "income" | "expense";
 export type FinancialEntryStatus = "pending" | "paid" | "cancelled";
 export type FinancialSourceType = "service_order" | "manual";
@@ -821,6 +822,32 @@ export type Database = {
         };
         Relationships: [];
       };
+      platform_admins: {
+        Row: {
+          user_id: string;
+          role: PlatformAdminRole;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          role?: PlatformAdminRole;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          role?: PlatformAdminRole;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "platform_admins_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       financial_entries: {
         Row: {
           id: string;
@@ -1057,4 +1084,5 @@ export type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 export type ServiceOrder = Database["public"]["Tables"]["service_orders"]["Row"];
 export type CompanySubscription = Database["public"]["Tables"]["company_subscriptions"]["Row"];
 export type BillingWebhookEvent = Database["public"]["Tables"]["billing_webhook_events"]["Row"];
+export type PlatformAdmin = Database["public"]["Tables"]["platform_admins"]["Row"];
 export type FinancialEntry = Database["public"]["Tables"]["financial_entries"]["Row"];

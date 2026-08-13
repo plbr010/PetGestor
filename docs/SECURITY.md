@@ -89,8 +89,15 @@ Arquivos: `src/lib/security/uuid.ts`, `src/lib/security/tenant-access.ts`
 ### Service role (Etapa 10B — exceção controlada)
 
 - `SUPABASE_SERVICE_ROLE_KEY` — **somente** `src/lib/supabase/admin.ts`
-- Uso restrito: webhook Mercado Pago e sync billing
+- Uso restrito: webhook Mercado Pago, sync billing e **leituras do painel `/admin`** após `requirePlatformAdmin()`
 - **Nunca** em Client Components, `NEXT_PUBLIC_`, ou CRUD operacional
+
+### Platform admin (painel interno)
+
+- Tabela `platform_admins` — INSERT apenas via SQL privilegiado / service_role
+- RLS: SELECT da própria linha; sem INSERT/UPDATE/DELETE para `authenticated`
+- Gate: `requirePlatformAdmin()` → `notFound()` se não for admin
+- Menu "Admin" só renderiza quando `isPlatformAdmin` é verdadeiro (UI); a autorização real é no layout `/admin`
 
 ## Ferramentas de desenvolvimento
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
+import { Menu, Shield } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BrandLogo } from "@/components/shared/brand-logo";
@@ -24,8 +24,9 @@ import { cn } from "@/lib/utils";
 
 export function DashboardMobileNav() {
   const pathname = usePathname();
-  const { profile, membership } = useDashboardUser();
+  const { profile, membership, isPlatformAdmin } = useDashboardUser();
   const initials = getInitials(profile.fullName);
+  const adminActive = pathname.startsWith("/admin");
 
   return (
     <Sheet>
@@ -67,6 +68,22 @@ export function DashboardMobileNav() {
               </Link>
             );
           })}
+
+          {isPlatformAdmin ? (
+            <Link
+              href="/admin"
+              aria-current={adminActive ? "page" : undefined}
+              className={cn(
+                "mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                adminActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground/80 hover:bg-muted",
+              )}
+            >
+              <Shield className="size-4 shrink-0" aria-hidden="true" />
+              Admin
+            </Link>
+          ) : null}
         </nav>
         <div className="mt-auto space-y-3 border-t p-4">
           <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-3">

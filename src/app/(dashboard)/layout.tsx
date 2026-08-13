@@ -4,6 +4,7 @@ import { TrialBanner } from "@/features/subscription/components/trial-banner";
 import { getCompanyEntitlement } from "@/features/subscription/queries";
 import { assertOperationalEntitlement } from "@/features/subscription/require-entitlement";
 import { requireCompany } from "@/features/companies/queries";
+import { isPlatformAdmin } from "@/lib/auth/require-platform-admin";
 import { requireUser } from "@/lib/auth/require-user";
 
 export default async function DashboardLayout({
@@ -15,9 +16,10 @@ export default async function DashboardLayout({
   const dashboardContext = await requireCompany(user.id);
   const entitlement = await getCompanyEntitlement(dashboardContext.membership.company.id);
   assertOperationalEntitlement(entitlement);
+  const platformAdmin = await isPlatformAdmin(user.id);
 
   return (
-    <DashboardUserProvider value={dashboardContext}>
+    <DashboardUserProvider value={{ ...dashboardContext, isPlatformAdmin: platformAdmin }}>
       <div className="flex min-h-screen flex-col">
         <TrialBanner entitlement={entitlement} />
         <div className="flex flex-1">

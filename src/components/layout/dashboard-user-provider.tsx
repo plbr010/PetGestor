@@ -4,10 +4,14 @@ import { createContext, useContext, type ReactNode } from "react";
 
 import type { DashboardContext } from "@/features/auth/types";
 
-const DashboardUserContext = createContext<DashboardContext | null>(null);
+export type DashboardShellContext = DashboardContext & {
+  isPlatformAdmin: boolean;
+};
+
+const DashboardUserContext = createContext<DashboardShellContext | null>(null);
 
 type DashboardUserProviderProps = {
-  value: DashboardContext;
+  value: DashboardShellContext;
   children: ReactNode;
 };
 
@@ -17,7 +21,7 @@ export function DashboardUserProvider({ value, children }: DashboardUserProvider
   );
 }
 
-export function useDashboardUser(): DashboardContext {
+export function useDashboardUser(): DashboardShellContext {
   const context = useContext(DashboardUserContext);
 
   if (!context) {

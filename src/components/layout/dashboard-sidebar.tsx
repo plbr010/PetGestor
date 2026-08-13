@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Shield } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BrandLogo } from "@/components/shared/brand-logo";
@@ -15,8 +16,9 @@ import { cn } from "@/lib/utils";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
-  const { profile, membership } = useDashboardUser();
+  const { profile, membership, isPlatformAdmin } = useDashboardUser();
   const initials = getInitials(profile.fullName);
+  const adminActive = pathname.startsWith("/admin");
 
   return (
     <aside className="hidden w-72 shrink-0 flex-col border-r bg-sidebar lg:flex">
@@ -53,6 +55,22 @@ export function DashboardSidebar() {
             </Link>
           );
         })}
+
+        {isPlatformAdmin ? (
+          <Link
+            href="/admin"
+            aria-current={adminActive ? "page" : undefined}
+            className={cn(
+              "mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+              adminActive
+                ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            )}
+          >
+            <Shield className="size-4 shrink-0" aria-hidden="true" />
+            Admin
+          </Link>
+        ) : null}
       </nav>
 
       <div className="space-y-3 border-t p-4">
