@@ -9,10 +9,17 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     return null;
   }
 
-  const emailClaim = data.claims.email;
+  let email: string | null =
+    typeof data.claims.email === "string" ? data.claims.email : null;
+
+  // getClaims() nem sempre inclui email no JWT; getUser() resolve via Auth API.
+  if (!email) {
+    const { data: userData } = await supabase.auth.getUser();
+    email = userData.user?.email ?? null;
+  }
 
   return {
     id: data.claims.sub,
-    email: typeof emailClaim === "string" ? emailClaim : null,
+    email,
   };
 }

@@ -92,6 +92,7 @@ describe("buildAdminSummary", () => {
 describe("requirePlatformAdmin authorization", () => {
   const requireUserMock = vi.fn();
   const maybeSingleMock = vi.fn();
+  const getUserMock = vi.fn();
   const notFoundMock = vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   });
@@ -100,6 +101,7 @@ describe("requirePlatformAdmin authorization", () => {
     vi.resetModules();
     requireUserMock.mockReset();
     maybeSingleMock.mockReset();
+    getUserMock.mockReset();
     notFoundMock.mockClear();
 
     vi.doMock("server-only", () => ({}));
@@ -110,6 +112,9 @@ describe("requirePlatformAdmin authorization", () => {
 
     vi.doMock("@/lib/supabase/server", () => ({
       createSupabaseServerClient: vi.fn(async () => ({
+        auth: {
+          getUser: getUserMock,
+        },
         from: vi.fn(() => ({
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
@@ -162,6 +167,19 @@ describe("requirePlatformAdmin authorization", () => {
       email: "plbrpc@gmail.com",
     });
     expect(notFoundMock).not.toHaveBeenCalled();
+  });
+
+  it("resolve email via getUser quando claims não trazem email", async () => {
+    requireUserMock.mockResolvedValue({ id: "user-owner", email: null });
+    getUserMock.mockResolvedValue({
+      data: { user: { email: "plbrpc@gmail.com" } },
+      error: null,
+    });
+    maybeSingleMock.mockResolvedValue({ data: null, error: null });
+
+    const { isPlatformAdmin } = await import("@/lib/auth/require-platform-admin");
+    await expect(isPlatformAdmin({ id: "user-owner", email: null })).resolves.toBe(true);
+    expect(getUserMock).toHaveBeenCalledOnce();
   });
 
   it("retorna 404 para cliente comum", async () => {

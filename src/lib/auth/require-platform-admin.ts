@@ -7,8 +7,20 @@ import type { AuthUser } from "@/features/auth/types";
 import { requireUser } from "@/lib/auth/require-user";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+async function resolveUserEmail(user: AuthUser): Promise<string | null> {
+  if (user.email) {
+    return user.email;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.auth.getUser();
+  return data.user?.email ?? null;
+}
+
 export async function isPlatformAdmin(user: AuthUser): Promise<boolean> {
-  if (isAllowlistedPlatformAdminEmail(user.email)) {
+  const email = await resolveUserEmail(user);
+
+  if (isAllowlistedPlatformAdminEmail(email)) {
     return true;
   }
 
@@ -20,6 +32,7 @@ export async function isPlatformAdmin(user: AuthUser): Promise<boolean> {
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // Tabela ausente / migration ainda não aplicada → não bloqueia allowlist acima.
   if (error || !data) {
     return false;
   }
