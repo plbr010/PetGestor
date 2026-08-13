@@ -17,6 +17,7 @@ import {
 import { computeEntitlement, mapSubscriptionRow } from "@/features/subscription/entitlement";
 import type { CompanySubscriptionRecord } from "@/features/subscription/types";
 import { isValidUuid } from "@/lib/security/uuid";
+import { requirePlatformAdmin } from "@/lib/auth/require-platform-admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionStatus } from "@/types/database.types";
 
@@ -252,6 +253,7 @@ export async function listAdminCompanies(options: {
   status?: AdminAccountStatusFilter;
   serverNow?: Date;
 } = {}): Promise<{ items: AdminCompanyListItem[]; summary: AdminDashboardSummary }> {
+  await requirePlatformAdmin();
   const serverNow = options.serverNow ?? new Date();
   const rows = await fetchCompanyAdminRows();
   const ownerIds = rows
@@ -306,6 +308,8 @@ export async function getAdminCompanyDetail(
   companyId: string,
   serverNow: Date = new Date(),
 ): Promise<AdminCompanyDetail | null> {
+  await requirePlatformAdmin();
+
   if (!isValidUuid(companyId)) {
     return null;
   }

@@ -51,6 +51,7 @@ describe("admin phone display", () => {
   });
 });
 
+describe("admin status mapping", () => {
   it("mapeia entitlement para status visual do painel", () => {
     expect(mapEntitlementToAdminStatus("trialing")).toBe("trial");
     expect(mapEntitlementToAdminStatus("active")).toBe("active");

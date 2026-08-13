@@ -128,11 +128,14 @@ describe("subscriber area security surface", () => {
       "utf8",
     );
 
-    expect(source).toContain(PAYMENT_METHOD_MANAGED_BY_MP);
+    expect(source).toContain("PAYMENT_METHOD_MANAGED_BY_MP");
     expect(source).not.toMatch(/access[_-]?token/i);
     expect(source).not.toMatch(/\bcvv\b/i);
     expect(source).not.toMatch(/card_number|cardNumber/i);
     expect(source).not.toContain("JSON.stringify");
+    expect(PAYMENT_METHOD_MANAGED_BY_MP).toBe(
+      "Forma de pagamento gerenciada pelo Mercado Pago",
+    );
   });
 
   it("página /assinatura deriva empresa do contexto autenticado", () => {
