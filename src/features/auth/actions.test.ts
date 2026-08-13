@@ -30,7 +30,7 @@ describe("runCompleteOnboarding", () => {
     getClaimsMock.mockResolvedValue({ data: { claims: null }, error: null });
 
     const { runCompleteOnboarding } = await import("@/features/auth/actions");
-    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop");
+    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop", "+5532999999999");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -50,7 +50,7 @@ describe("runCompleteOnboarding", () => {
     });
 
     const { runCompleteOnboarding } = await import("@/features/auth/actions");
-    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop");
+    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop", "+5532999999999");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -66,7 +66,7 @@ describe("runCompleteOnboarding", () => {
     rpcMock.mockResolvedValue({ data: null, error: null });
 
     const { runCompleteOnboarding } = await import("@/features/auth/actions");
-    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop");
+    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop", "+5532999999999");
 
     expect(result.ok).toBe(false);
   });
@@ -91,7 +91,7 @@ describe("runCompleteOnboarding", () => {
     });
 
     const { runCompleteOnboarding } = await import("@/features/auth/actions");
-    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop");
+    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop", "+5532999999999");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -119,8 +119,13 @@ describe("runCompleteOnboarding", () => {
     });
 
     const { runCompleteOnboarding } = await import("@/features/auth/actions");
-    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop");
+    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop", "+5532999999999");
 
     expect(result).toEqual({ ok: true, companyId: "company-456" });
+    expect(rpcMock).toHaveBeenCalledWith("complete_onboarding", {
+      p_full_name: "Ana Silva",
+      p_company_name: "Pet Shop",
+      p_phone: "+5532999999999",
+    });
   });
 });

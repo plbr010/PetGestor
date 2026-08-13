@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import {
   completeOnboardingAction,
@@ -17,22 +17,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatPhoneInput } from "@/lib/phone";
 
 const initialState: AuthActionState = {};
 
 type OnboardingFormProps = {
   defaultFullName?: string;
   defaultCompanyName?: string;
+  defaultPhone?: string;
 };
 
 export function OnboardingForm({
   defaultFullName = "",
   defaultCompanyName = "",
+  defaultPhone = "",
 }: OnboardingFormProps) {
   const [state, formAction, isPending] = useActionState(
     completeOnboardingAction,
     initialState,
   );
+  const [phone, setPhone] = useState(defaultPhone ? formatPhoneInput(defaultPhone) : "");
 
   return (
     <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
@@ -66,6 +70,21 @@ export function OnboardingForm({
               defaultValue={defaultCompanyName}
               placeholder="Ex.: Pet Shop Amigo Fiel"
               autoComplete="organization"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">Telefone / WhatsApp</Label>
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              placeholder="(32) 99999-9999"
+              value={phone}
+              onChange={(event) => setPhone(formatPhoneInput(event.target.value))}
               required
             />
           </div>

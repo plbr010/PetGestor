@@ -3,6 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { runCompleteOnboarding } from "@/features/auth/actions";
 import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
+import { isValidBrazilianPhone, toE164Brazil } from "@/lib/phone";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -32,9 +33,12 @@ export async function GET(request: Request) {
     typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
   const companyName =
     typeof metadata.company_name === "string" ? metadata.company_name.trim() : "";
+  const rawPhone = typeof metadata.phone === "string" ? metadata.phone : "";
+  const phone =
+    rawPhone && isValidBrazilianPhone(rawPhone) ? toE164Brazil(rawPhone) : "";
 
-  if (fullName && companyName) {
-    const onboardingResult = await runCompleteOnboarding(fullName, companyName);
+  if (fullName && companyName && phone) {
+    const onboardingResult = await runCompleteOnboarding(fullName, companyName, phone);
 
     if (!onboardingResult.ok) {
       redirect("/onboarding");

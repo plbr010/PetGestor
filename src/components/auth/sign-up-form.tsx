@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 
 import { signUpAction, type AuthActionState } from "@/features/auth/actions";
@@ -16,11 +16,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatPhoneInput } from "@/lib/phone";
 
 const initialState: AuthActionState = {};
 
 export function SignUpForm() {
   const [state, formAction, isPending] = useActionState(signUpAction, initialState);
+  const [phone, setPhone] = useState("");
 
   return (
     <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
@@ -52,6 +54,21 @@ export function SignUpForm() {
               name="companyName"
               placeholder="Ex.: Pet Shop Amigo Fiel"
               autoComplete="organization"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">Telefone / WhatsApp</Label>
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              placeholder="(32) 99999-9999"
+              value={phone}
+              onChange={(event) => setPhone(formatPhoneInput(event.target.value))}
               required
             />
           </div>

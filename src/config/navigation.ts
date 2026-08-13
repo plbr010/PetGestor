@@ -1,6 +1,7 @@
 import {
   Calendar,
   ClipboardList,
+  CreditCard,
   DollarSign,
   Home,
   PawPrint,
@@ -24,6 +25,12 @@ export const dashboardNavItems: DashboardNavItem[] = [
     href: "/dashboard",
     icon: Home,
     description: "Visão geral do pet shop",
+  },
+  {
+    label: "Assinatura",
+    href: "/assinatura",
+    icon: CreditCard,
+    description: "Plano, cobranças e status",
   },
   {
     label: "Agenda",

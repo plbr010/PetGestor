@@ -14,6 +14,7 @@ import {
   formatAdminCurrencyFromCents,
   formatAdminDateTime,
 } from "@/features/admin/utils";
+import { buildWhatsAppUrl, formatPhoneDisplay } from "@/lib/phone";
 import { isValidUuid } from "@/lib/security/uuid";
 
 type AdminCompanyPageProps = {
@@ -35,10 +36,18 @@ export default async function AdminCompanyDetailPage({
     notFound();
   }
 
+  const phoneDisplay = detail.ownerPhone
+    ? formatPhoneDisplay(detail.ownerPhone)
+    : "—";
+  const whatsappUrl = detail.ownerPhone
+    ? buildWhatsAppUrl(detail.ownerPhone)
+    : null;
+
   const fields = [
     { label: "Pet shop", value: detail.companyName },
     { label: "Responsável", value: detail.ownerName ?? "—" },
     { label: "E-mail", value: detail.ownerEmail ?? "—" },
+    { label: "Telefone", value: phoneDisplay },
     { label: "Timezone", value: detail.timezone },
     { label: "Criada em", value: formatAdminDateTime(detail.createdAt) },
     { label: "Plano", value: detail.planCode ?? "—" },
@@ -104,6 +113,16 @@ export default async function AdminCompanyDetailPage({
               </div>
             ))}
           </dl>
+          {whatsappUrl ? (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Abrir WhatsApp do responsável
+            </a>
+          ) : null}
         </CardContent>
       </Card>
 

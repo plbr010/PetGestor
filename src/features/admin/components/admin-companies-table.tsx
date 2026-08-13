@@ -6,10 +6,35 @@ import {
   formatAdminCurrencyFromCents,
   formatAdminDateTime,
 } from "@/features/admin/utils";
+import { buildWhatsAppUrl, formatPhoneDisplay } from "@/lib/phone";
 
 type AdminCompaniesTableProps = {
   items: AdminCompanyListItem[];
 };
+
+function AdminPhoneCell({ phone }: { phone: string | null }) {
+  if (!phone) {
+    return <span>—</span>;
+  }
+
+  const whatsapp = buildWhatsAppUrl(phone);
+
+  return (
+    <div className="space-y-1">
+      <div>{formatPhoneDisplay(phone)}</div>
+      {whatsapp ? (
+        <a
+          href={whatsapp}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Abrir WhatsApp
+        </a>
+      ) : null}
+    </div>
+  );
+}
 
 export function AdminCompaniesTable({ items }: AdminCompaniesTableProps) {
   if (items.length === 0) {
@@ -28,6 +53,7 @@ export function AdminCompaniesTable({ items }: AdminCompaniesTableProps) {
             <th className="px-4 py-3 font-medium">Pet shop</th>
             <th className="px-4 py-3 font-medium">Responsável</th>
             <th className="px-4 py-3 font-medium">E-mail</th>
+            <th className="px-4 py-3 font-medium">Telefone</th>
             <th className="px-4 py-3 font-medium">Criação</th>
             <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium">Trial</th>
@@ -56,6 +82,9 @@ export function AdminCompaniesTable({ items }: AdminCompaniesTableProps) {
               </td>
               <td className="px-4 py-3 text-muted-foreground">
                 {item.ownerEmail ?? "—"}
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">
+                <AdminPhoneCell phone={item.ownerPhone} />
               </td>
               <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
                 {formatAdminDateTime(item.createdAt)}

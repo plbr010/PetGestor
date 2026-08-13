@@ -1,3 +1,19 @@
+## [0.14.0] — 2026-08-13
+
+### Adicionado — Telefone no cadastro e área do assinante
+
+- Campo obrigatório **Telefone / WhatsApp** no cadastro/onboarding (validação BR + E.164)
+- Migration `profiles.phone` (NULL permitido para contas antigas) + `complete_onboarding(..., p_phone)`
+- Telefone do responsável na listagem/detalhe do painel admin + link WhatsApp (`wa.me`)
+- Área do assinante em `/assinatura`: plano, status, trial, cobranças, acesso, regularização e cancelamento
+- Forma de pagamento: texto seguro (sem dados sensíveis do Mercado Pago)
+
+### Não incluído
+
+- Troca de plano, cupons, reembolso, NF, carteira interna
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260813200000_profile_phone.sql`
+
 ## [0.13.0] — 2026-08-13
 
 ### Adicionado — Painel administrativo interno

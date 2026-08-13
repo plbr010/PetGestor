@@ -10,6 +10,11 @@ export function normalizePhone(value: string): string {
   return digits;
 }
 
+/** Converte telefone BR para E.164 (+55…). */
+export function toE164Brazil(value: string): string {
+  return `+55${normalizePhone(value)}`;
+}
+
 export function isValidBrazilianPhone(value: string): boolean {
   const normalized = normalizePhone(value);
 
@@ -56,4 +61,13 @@ export function formatPhoneInput(value: string): string {
   }
 
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+/** Link wa.me a partir de telefone BR (local ou E.164). */
+export function buildWhatsAppUrl(value: string): string | null {
+  if (!isValidBrazilianPhone(value)) {
+    return null;
+  }
+
+  return `https://wa.me/55${normalizePhone(value)}`;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, type FormEvent } from "react";
 
 import {
   cancelSubscriptionAction,
@@ -12,15 +12,18 @@ import type { CompanyEntitlement, CompanySubscriptionRecord } from "@/features/s
 import { resolveSubscriptionPageState } from "@/features/subscription/subscription-ui";
 import {
   formatDateTimeInTimezone,
-  formatTrialBannerMessage,
 } from "@/features/subscription/utils";
-import {
-  PLAN_MONTHLY_PRICE_LABEL,
-  PLAN_CODE,
-} from "@/config/subscription";
+import { formatAdminTrialRemaining } from "@/features/admin/utils";
+import { PLAN_MONTHLY_PRICE_LABEL, PLAN_CODE } from "@/config/subscription";
 import { getPlanMarketingLabel } from "@/features/subscription/providers/mercado-pago-types";
+import {
+  resolveSubscriberBadge,
+  PAYMENT_METHOD_MANAGED_BY_MP,
+  type SubscriberBadge,
+} from "@/features/subscription/subscriber-view";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { FormFeedback } from "@/components/shared/form-feedback";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
@@ -30,6 +33,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 const PLAN_BENEFITS = [
   "Tutores e pets",
@@ -46,12 +50,41 @@ type SubscriptionPageContentProps = {
   timeZone: string;
 };
 
+function resolveBadge(
+  pageState: ReturnType<typeof resolveSubscriptionPageState>,
+): SubscriberBadge {
+  return resolveSubscriberBadge(pageState);
+}
+
+function badgeClass(badge: SubscriberBadge): string {
+  switch (badge) {
+    case "TRIAL":
+      return "border-transparent bg-sky-100 text-sky-900";
+    case "ATIVO":
+      return "border-transparent bg-emerald-100 text-emerald-900";
+    case "PAGAMENTO PENDENTE":
+      return "border-transparent bg-amber-100 text-amber-950";
+    case "INADIMPLENTE":
+      return "border-transparent bg-orange-100 text-orange-950";
+    case "CANCELADO":
+      return "border-transparent bg-zinc-200 text-zinc-800";
+    case "EXPIRADO":
+      return "border-transparent bg-red-100 text-red-900";
+  }
+}
+
+function displayValue(value: string | null | undefined): string {
+  return value && value.trim().length > 0 ? value : "Não disponível";
+}
+
 export function SubscriptionPageContent({
   subscription,
   entitlement,
   timeZone,
 }: SubscriptionPageContentProps) {
   const pageState = resolveSubscriptionPageState(subscription, entitlement);
+  const badge = resolveBadge(pageState);
+  const serverNow = new Date(entitlement.serverNowIso);
   const [checkoutState, checkoutAction, isStartingCheckout] = useActionState(
     createSubscriptionCheckoutFormAction,
     {} as SubscriptionActionState,
@@ -73,54 +106,130 @@ export function SubscriptionPageContent({
     cancelState.error ??
     cancelState.success;
 
+  function confirmCancel(event: FormEvent<HTMLFormElement>) {
+    const confirmed = window.confirm(
+      "Tem certeza que deseja cancelar a assinatura? O acesso pode ser encerrado conforme as regras do plano.",
+    );
+    if (!confirmed) {
+      event.preventDefault();
+    }
+  }
+
+  const infoRows = [
+    { label: "Plano", value: "PetGestor Mensal" },
+    { label: "Preço", value: `${PLAN_MONTHLY_PRICE_LABEL}/mês` },
+    { label: "Código do plano", value: PLAN_CODE },
+    {
+      label: "Status da assinatura",
+      value: badge,
+    },
+    {
+      label: "Status do pagamento",
+      value: displayValue(subscription.lastPaymentStatus),
+    },
+    {
+      label: "Acesso operacional",
+      value: entitlement.hasOperationalAccess ? "Liberado" : "Bloqueado",
+    },
+    {
+      label: "Início do trial",
+      value: formatDateTimeInTimezone(subscription.trialStartedAt, timeZone),
+    },
+    {
+      label: "Fim do trial",
+      value: formatDateTimeInTimezone(subscription.trialEndsAt, timeZone),
+    },
+    {
+      label: "Tempo do trial",
+      value:
+        pageState === "trial_active"
+          ? formatAdminTrialRemaining(subscription.trialEndsAt, serverNow)
+          : displayValue(null),
+    },
+    {
+      label: "Ativação da assinatura",
+      value: subscription.subscribedAt
+        ? formatDateTimeInTimezone(subscription.subscribedAt, timeZone)
+        : "Não disponível",
+    },
+    {
+      label: "Último pagamento",
+      value: subscription.lastPaymentAt
+        ? formatDateTimeInTimezone(subscription.lastPaymentAt, timeZone)
+        : "Não disponível",
+    },
+    {
+      label: "Próxima cobrança",
+      value: subscription.nextPaymentAt
+        ? formatDateTimeInTimezone(subscription.nextPaymentAt, timeZone)
+        : "Não disponível",
+    },
+    {
+      label: "Valor da próxima cobrança",
+      value: subscription.nextPaymentAt ? PLAN_MONTHLY_PRICE_LABEL : "Não disponível",
+    },
+    {
+      label: "Forma de pagamento",
+      value: PAYMENT_METHOD_MANAGED_BY_MP,
+    },
+  ];
+
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
       <Card>
-        <CardHeader>
-          <CardTitle>{getTitle(pageState)}</CardTitle>
+        <CardHeader className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle>{getTitle(pageState)}</CardTitle>
+            <Badge variant="outline" className={cn(badgeClass(badge))}>
+              {badge}
+            </Badge>
+          </div>
           <CardDescription>{getDescription(pageState)}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {feedback ? (
             <FormFeedback
               message={feedback}
-              variant={feedback.includes("sucesso") || feedback.includes("sincronizada") ? "success" : "error"}
+              variant={
+                feedback.includes("sucesso") || feedback.includes("sincronizada")
+                  ? "success"
+                  : "error"
+              }
             />
           ) : null}
 
           {pageState === "trial_active" ? (
             <div className="rounded-lg border bg-primary/5 p-4 text-sm">
-              <p>{formatTrialBannerMessage(subscription.trialEndsAt, new Date(entitlement.serverNowIso))}</p>
+              <p className="font-medium">
+                Seu teste termina em{" "}
+                {formatAdminTrialRemaining(subscription.trialEndsAt, serverNow).replace(
+                  " restantes",
+                  "",
+                )}
+              </p>
               <p className="mt-2 text-muted-foreground">
-                Você poderá assinar após o término das 72 horas.
+                Sem cartão e sem cobrança durante as 72 horas. Você poderá assinar depois.
               </p>
             </div>
           ) : null}
 
           <div className="rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">Plano</p>
+            <p className="text-sm text-muted-foreground">Plano atual</p>
             <p className="text-lg font-semibold">PetGestor Mensal</p>
             <p className="mt-1 text-2xl font-bold">{PLAN_MONTHLY_PRICE_LABEL}/mês</p>
-            <p className="mt-1 text-xs text-muted-foreground">Código: {PLAN_CODE}</p>
           </div>
 
-          {(pageState === "trial_expired" || pageState === "cancelled") && (
-            <TrialDates subscription={subscription} timeZone={timeZone} />
-          )}
-
-          {pageState === "active" ? (
-            <ActiveDetails subscription={subscription} timeZone={timeZone} />
-          ) : null}
-
-          {pageState === "past_due" ? (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
-              <p className="font-medium">Pagamento pendente</p>
-              <p className="mt-1 text-muted-foreground">
-                Último status: {subscription.lastPaymentStatus ?? "pendente"}.
-                O Mercado Pago pode tentar novamente automaticamente.
-              </p>
-            </div>
-          ) : null}
+          <dl className="space-y-3 rounded-lg border bg-muted/20 p-4 text-sm">
+            {infoRows.map((row) => (
+              <div
+                key={row.label}
+                className="flex flex-col gap-1 border-b border-border/60 pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+              >
+                <dt className="text-muted-foreground">{row.label}</dt>
+                <dd className="font-medium sm:text-right">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
 
           <ul className="space-y-2 text-sm">
             {PLAN_BENEFITS.map((benefit) => (
@@ -134,7 +243,7 @@ export function SubscriptionPageContent({
           {pageState === "trial_expired" || pageState === "cancelled" ? (
             <>
               <form action={checkoutAction}>
-                <Button type="submit" className="w-full" disabled={isStartingCheckout}>
+                <Button type="submit" className="h-11 w-full" disabled={isStartingCheckout}>
                   {isStartingCheckout
                     ? "Redirecionando…"
                     : `Assinar por ${getPlanMarketingLabel()}`}
@@ -142,14 +251,13 @@ export function SubscriptionPageContent({
               </form>
               <p className="text-center text-xs text-muted-foreground">
                 Você será redirecionado ao Mercado Pago para escolher o meio de pagamento.
-                Não cobramos nada durante o período de teste.
               </p>
             </>
           ) : null}
 
           {pageState === "checkout_pending" ? (
             <form action={checkoutAction}>
-              <Button type="submit" className="w-full" disabled={isStartingCheckout}>
+              <Button type="submit" className="h-11 w-full" disabled={isStartingCheckout}>
                 {isStartingCheckout ? "Abrindo checkout…" : "Concluir assinatura"}
               </Button>
             </form>
@@ -157,19 +265,19 @@ export function SubscriptionPageContent({
 
           {pageState === "past_due" ? (
             <form action={checkoutAction}>
-              <Button type="submit" className="w-full" disabled={isStartingCheckout}>
-                Regularizar assinatura
+              <Button type="submit" className="h-11 w-full" disabled={isStartingCheckout}>
+                {isStartingCheckout ? "Abrindo checkout…" : "Regularizar pagamento"}
               </Button>
             </form>
           ) : null}
 
           {pageState === "active" ? (
             <div className="flex flex-col gap-2">
-              <ButtonLink href="/dashboard" className="w-full">
+              <ButtonLink href="/dashboard" className="h-11 w-full">
                 Ir para o painel
               </ButtonLink>
-              <form action={cancelAction}>
-                <Button type="submit" variant="outline" className="w-full" disabled={isCancelling}>
+              <form action={cancelAction} onSubmit={confirmCancel}>
+                <Button type="submit" variant="outline" className="h-11 w-full" disabled={isCancelling}>
                   {isCancelling ? "Cancelando…" : "Cancelar assinatura"}
                 </Button>
               </form>
@@ -178,9 +286,10 @@ export function SubscriptionPageContent({
 
           {(pageState === "checkout_pending" ||
             pageState === "trial_expired" ||
-            pageState === "past_due") && (
+            pageState === "past_due" ||
+            pageState === "active") && (
             <form action={refreshAction}>
-              <Button type="submit" variant="outline" className="w-full" disabled={isRefreshing}>
+              <Button type="submit" variant="outline" className="h-11 w-full" disabled={isRefreshing}>
                 {isRefreshing ? "Verificando…" : "Atualizar status da assinatura"}
               </Button>
             </form>
@@ -198,9 +307,9 @@ export function SubscriptionPageContent({
 function getTitle(state: ReturnType<typeof resolveSubscriptionPageState>): string {
   switch (state) {
     case "trial_active":
-      return "Seu teste grátis está ativo";
+      return "Sua assinatura";
     case "active":
-      return "Assinatura ativa";
+      return "Sua assinatura";
     case "past_due":
       return "Pagamento pendente";
     case "cancelled":
@@ -215,9 +324,9 @@ function getTitle(state: ReturnType<typeof resolveSubscriptionPageState>): strin
 function getDescription(state: ReturnType<typeof resolveSubscriptionPageState>): string {
   switch (state) {
     case "trial_active":
-      return "Continue usando o PetGestor durante as 72 horas gratuitas.";
+      return "Acompanhe o teste gratuito e os detalhes do plano.";
     case "active":
-      return "Seu acesso operacional está liberado.";
+      return "Acompanhe cobranças e status da sua assinatura.";
     case "past_due":
       return "Regularize para voltar a usar o PetGestor.";
     case "cancelled":
@@ -227,58 +336,4 @@ function getDescription(state: ReturnType<typeof resolveSubscriptionPageState>):
     default:
       return "Continue usando o PetGestor assinando o plano mensal.";
   }
-}
-
-function TrialDates({
-  subscription,
-  timeZone,
-}: {
-  subscription: CompanySubscriptionRecord;
-  timeZone: string;
-}) {
-  return (
-    <div className="rounded-lg border bg-muted/20 p-4 text-sm">
-      <p className="font-medium">Teste gratuito encerrado</p>
-      <dl className="mt-3 space-y-2">
-        <Row label="Seu teste começou" value={formatDateTimeInTimezone(subscription.trialStartedAt, timeZone)} />
-        <Row label="Seu teste terminou" value={formatDateTimeInTimezone(subscription.trialEndsAt, timeZone)} />
-      </dl>
-      <p className="mt-4 text-muted-foreground">
-        Nenhuma cobrança foi realizada durante o período de teste.
-      </p>
-    </div>
-  );
-}
-
-function ActiveDetails({
-  subscription,
-  timeZone,
-}: {
-  subscription: CompanySubscriptionRecord;
-  timeZone: string;
-}) {
-  return (
-    <div className="rounded-lg border bg-muted/20 p-4 text-sm">
-      <p className="font-medium">Assinatura PetGestor Mensal — {PLAN_MONTHLY_PRICE_LABEL}/mês</p>
-      {subscription.subscribedAt ? (
-        <p className="mt-2 text-muted-foreground">
-          Ativa desde {formatDateTimeInTimezone(subscription.subscribedAt, timeZone)}
-        </p>
-      ) : null}
-      {subscription.nextPaymentAt ? (
-        <p className="mt-1 text-muted-foreground">
-          Próxima cobrança: {formatDateTimeInTimezone(subscription.nextPaymentAt, timeZone)}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
 }

@@ -120,7 +120,12 @@ export function matchesAdminFilters(
     return true;
   }
 
-  const haystack = [item.companyName, item.ownerName ?? "", item.ownerEmail ?? ""]
+  const haystack = [
+    item.companyName,
+    item.ownerName ?? "",
+    item.ownerEmail ?? "",
+    item.ownerPhone ?? "",
+  ]
     .join(" ")
     .toLowerCase();
 

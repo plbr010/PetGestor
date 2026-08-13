@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidBrazilianPhone, toE164Brazil } from "@/lib/phone";
+
 const emailField = z
   .string({ error: "Informe seu e-mail." })
   .trim()
@@ -25,10 +27,20 @@ const companyNameField = z
   .min(2, "O nome do pet shop deve ter pelo menos 2 caracteres.")
   .max(120, "Nome do pet shop muito longo.");
 
+const phoneField = z
+  .string({ error: "Informe o telefone / WhatsApp." })
+  .trim()
+  .min(1, "Informe o telefone / WhatsApp.")
+  .refine(isValidBrazilianPhone, {
+    message: "Informe um telefone brasileiro válido com DDD.",
+  })
+  .transform(toE164Brazil);
+
 export const signUpSchema = z
   .object({
     fullName: personNameField,
     companyName: companyNameField,
+    phone: phoneField,
     email: emailField,
     password: passwordField,
     confirmPassword: z.string({ error: "Confirme sua senha." }),
@@ -63,6 +75,7 @@ export const newPasswordSchema = z
 export const onboardingSchema = z.object({
   fullName: personNameField,
   companyName: companyNameField,
+  phone: phoneField,
 });
 
 export type SignUpInput = z.infer<typeof signUpSchema>;

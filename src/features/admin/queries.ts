@@ -119,6 +119,7 @@ function toListItem(
   row: CompanyAdminRow,
   emailMap: Map<string, string>,
   nameMap: Map<string, string>,
+  phoneMap: Map<string, string>,
   serverNow: Date,
 ): AdminCompanyListItem {
   const subscriptionRow = unwrapSubscription(row.company_subscriptions);
@@ -134,6 +135,7 @@ function toListItem(
     companyName: row.name,
     ownerName: owner ? (nameMap.get(owner.user_id) ?? null) : null,
     ownerEmail: owner ? (emailMap.get(owner.user_id) ?? null) : null,
+    ownerPhone: owner ? (phoneMap.get(owner.user_id) ?? null) : null,
     createdAt: row.created_at,
     accountStatus,
     entitlementState: entitlement.state,
@@ -164,29 +166,35 @@ function matchesFilters(
 
 export { buildAdminSummary } from "@/features/admin/utils";
 
-async function loadProfileNameMap(userIds: string[]): Promise<Map<string, string>> {
+async function loadProfileContactMaps(
+  userIds: string[],
+): Promise<{ nameMap: Map<string, string>; phoneMap: Map<string, string> }> {
   const uniqueIds = [...new Set(userIds.filter(Boolean))];
-  const map = new Map<string, string>();
+  const nameMap = new Map<string, string>();
+  const phoneMap = new Map<string, string>();
 
   if (uniqueIds.length === 0) {
-    return map;
+    return { nameMap, phoneMap };
   }
 
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from("profiles")
-    .select("id, full_name")
+    .select("id, full_name, phone")
     .in("id", uniqueIds);
 
   if (error || !data) {
-    return map;
+    return { nameMap, phoneMap };
   }
 
   for (const profile of data) {
-    map.set(profile.id, profile.full_name);
+    nameMap.set(profile.id, profile.full_name);
+    if (profile.phone) {
+      phoneMap.set(profile.id, profile.phone);
+    }
   }
 
-  return map;
+  return { nameMap, phoneMap };
 }
 
 async function fetchCompanyAdminRows(companyId?: string): Promise<CompanyAdminRow[]> {
@@ -249,12 +257,14 @@ export async function listAdminCompanies(options: {
   const ownerIds = rows
     .map((row) => pickOwner(row.company_members)?.user_id)
     .filter((id): id is string => Boolean(id));
-  const [emailMap, nameMap] = await Promise.all([
+  const [emailMap, contactMaps] = await Promise.all([
     loadUserEmailMap(ownerIds),
-    loadProfileNameMap(ownerIds),
+    loadProfileContactMaps(ownerIds),
   ]);
 
-  const allItems = rows.map((row) => toListItem(row, emailMap, nameMap, serverNow));
+  const allItems = rows.map((row) =>
+    toListItem(row, emailMap, contactMaps.nameMap, contactMaps.phoneMap, serverNow),
+  );
   const summary = buildAdminSummary(allItems);
   const items = allItems.filter((item) =>
     matchesFilters(item, options.query ?? "", options.status ?? "all"),
@@ -309,11 +319,17 @@ export async function getAdminCompanyDetail(
 
   const owner = pickOwner(row.company_members);
   const ownerIds = owner ? [owner.user_id] : [];
-  const [emailMap, nameMap] = await Promise.all([
+  const [emailMap, contactMaps] = await Promise.all([
     loadUserEmailMap(ownerIds),
-    loadProfileNameMap(ownerIds),
+    loadProfileContactMaps(ownerIds),
   ]);
-  const item = toListItem(row, emailMap, nameMap, serverNow);
+  const item = toListItem(
+    row,
+    emailMap,
+    contactMaps.nameMap,
+    contactMaps.phoneMap,
+    serverNow,
+  );
   const subscription = item.subscription;
   const webhookEvents = await listWebhookEventsForSubscription(
     item.providerSubscriptionId,

@@ -8,11 +8,14 @@ import {
   signUpSchema,
 } from "@/features/auth/schemas";
 
+const validPhone = "(32) 99999-9999";
+
 describe("signUpSchema", () => {
-  it("aceita cadastro válido", () => {
+  it("aceita cadastro válido com telefone", () => {
     const result = signUpSchema.safeParse({
       fullName: "Ana Silva",
       companyName: "Pet Shop Amigo",
+      phone: validPhone,
       email: "ANA@EXAMPLE.COM",
       password: "senha1234",
       confirmPassword: "senha1234",
@@ -22,6 +25,49 @@ describe("signUpSchema", () => {
     if (result.success) {
       expect(result.data.email).toBe("ana@example.com");
       expect(result.data.fullName).toBe("Ana Silva");
+      expect(result.data.phone).toBe("+5532999999999");
+    }
+  });
+
+  it("rejeita cadastro sem telefone", () => {
+    const result = signUpSchema.safeParse({
+      fullName: "Ana Silva",
+      companyName: "Pet Shop Amigo",
+      phone: "",
+      email: "ana@example.com",
+      password: "senha1234",
+      confirmPassword: "senha1234",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita telefone inválido", () => {
+    const result = signUpSchema.safeParse({
+      fullName: "Ana Silva",
+      companyName: "Pet Shop Amigo",
+      phone: "123",
+      email: "ana@example.com",
+      password: "senha1234",
+      confirmPassword: "senha1234",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("normaliza telefone para E.164", () => {
+    const result = signUpSchema.safeParse({
+      fullName: "Ana Silva",
+      companyName: "Pet Shop Amigo",
+      phone: "32 99999-9999",
+      email: "ana@example.com",
+      password: "senha1234",
+      confirmPassword: "senha1234",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.phone).toBe("+5532999999999");
     }
   });
 
@@ -29,6 +75,7 @@ describe("signUpSchema", () => {
     const result = signUpSchema.safeParse({
       fullName: "Ana Silva",
       companyName: "Pet Shop Amigo",
+      phone: validPhone,
       email: "ana@example.com",
       password: "senha1234",
       confirmPassword: "outrasenha",
@@ -41,6 +88,7 @@ describe("signUpSchema", () => {
     const result = signUpSchema.safeParse({
       fullName: "Ana Silva",
       companyName: "Pet Shop Amigo",
+      phone: validPhone,
       email: "ana@example.com",
       password: "1234567",
       confirmPassword: "1234567",
@@ -92,12 +140,26 @@ describe("newPasswordSchema", () => {
 });
 
 describe("onboardingSchema", () => {
-  it("aceita onboarding válido", () => {
+  it("aceita onboarding válido com telefone normalizado", () => {
     const result = onboardingSchema.safeParse({
       fullName: "Ana Silva",
       companyName: "Pet Shop Amigo",
+      phone: validPhone,
     });
 
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.phone).toBe("+5532999999999");
+    }
+  });
+
+  it("rejeita onboarding sem telefone", () => {
+    const result = onboardingSchema.safeParse({
+      fullName: "Ana Silva",
+      companyName: "Pet Shop Amigo",
+      phone: "",
+    });
+
+    expect(result.success).toBe(false);
   });
 });

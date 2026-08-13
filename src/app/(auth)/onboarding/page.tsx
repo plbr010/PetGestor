@@ -14,12 +14,14 @@ export default async function OnboardingPage() {
     typeof metadata.full_name === "string" ? metadata.full_name : "";
   const defaultCompanyName =
     typeof metadata.company_name === "string" ? metadata.company_name : "";
+  const defaultPhone = typeof metadata.phone === "string" ? metadata.phone : "";
 
   return (
     <AuthShell>
       <OnboardingForm
         defaultFullName={defaultFullName}
         defaultCompanyName={defaultCompanyName}
+        defaultPhone={defaultPhone}
       />
     </AuthShell>
   );

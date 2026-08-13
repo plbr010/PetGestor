@@ -6,6 +6,7 @@ import {
   buildAdminSummary,
   formatAdminTrialRemaining,
   mapEntitlementToAdminStatus,
+  matchesAdminFilters,
 } from "@/features/admin/utils";
 
 function makeItem(
@@ -16,6 +17,7 @@ function makeItem(
     companyName: "Pet Shop",
     ownerName: "Ana",
     ownerEmail: "ana@example.com",
+    ownerPhone: "+5532999999999",
     createdAt: "2026-08-01T00:00:00.000Z",
     entitlementState: "trialing",
     hasOperationalAccess: true,
@@ -34,7 +36,21 @@ function makeItem(
   };
 }
 
-describe("admin status mapping", () => {
+describe("admin phone display", () => {
+  it("listagem formata telefone e gera link WhatsApp", async () => {
+    const { formatPhoneDisplay, buildWhatsAppUrl } = await import("@/lib/phone");
+    const phone = "+5532999999999";
+    expect(formatPhoneDisplay(phone)).toBe("(32) 99999-9999");
+    expect(buildWhatsAppUrl(phone)).toBe("https://wa.me/5532999999999");
+  });
+
+  it("filtra também por telefone do responsável", () => {
+    const item = makeItem({ accountStatus: "trial" });
+    expect(matchesAdminFilters(item, "32999999999", "all")).toBe(true);
+    expect(matchesAdminFilters(item, "outra", "all")).toBe(false);
+  });
+});
+
   it("mapeia entitlement para status visual do painel", () => {
     expect(mapEntitlementToAdminStatus("trialing")).toBe("trial");
     expect(mapEntitlementToAdminStatus("active")).toBe("active");

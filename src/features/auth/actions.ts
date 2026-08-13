@@ -61,6 +61,7 @@ export async function signUpAction(
   const parsed = signUpSchema.safeParse({
     fullName: formData.get("fullName"),
     companyName: formData.get("companyName"),
+    phone: formData.get("phone"),
     email: formData.get("email"),
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
@@ -81,6 +82,7 @@ export async function signUpAction(
       data: {
         full_name: parsed.data.fullName,
         company_name: parsed.data.companyName,
+        phone: parsed.data.phone,
       },
     },
   });
@@ -99,6 +101,7 @@ export async function signUpAction(
     const onboardingResult = await runCompleteOnboarding(
       parsed.data.fullName,
       parsed.data.companyName,
+      parsed.data.phone,
     );
 
     if (!onboardingResult.ok) {
@@ -207,6 +210,7 @@ export async function completeOnboardingAction(
   const parsed = onboardingSchema.safeParse({
     fullName: formData.get("fullName"),
     companyName: formData.get("companyName"),
+    phone: formData.get("phone"),
   });
 
   if (!parsed.success) {
@@ -216,6 +220,7 @@ export async function completeOnboardingAction(
   const onboardingResult = await runCompleteOnboarding(
     parsed.data.fullName,
     parsed.data.companyName,
+    parsed.data.phone,
   );
 
   if (!onboardingResult.ok) {
@@ -235,6 +240,7 @@ export type OnboardingResult =
 export async function runCompleteOnboarding(
   fullName: string,
   companyName: string,
+  phone: string,
 ): Promise<OnboardingResult> {
   const supabase = await createSupabaseServerClient();
 
@@ -254,6 +260,7 @@ export async function runCompleteOnboarding(
   const { data: companyId, error } = await supabase.rpc("complete_onboarding", {
     p_full_name: fullName,
     p_company_name: companyName,
+    p_phone: phone,
   });
 
   logOnboardingStep("rpc", {

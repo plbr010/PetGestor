@@ -16,6 +16,7 @@ export type AdminCompanyListItem = {
   companyName: string;
   ownerName: string | null;
   ownerEmail: string | null;
+  ownerPhone: string | null;
   createdAt: string;
   accountStatus: AdminAccountStatus;
   entitlementState: EntitlementState;
