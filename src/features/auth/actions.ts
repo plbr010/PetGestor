@@ -86,6 +86,12 @@ export async function signUpAction(
   });
 
   if (error) {
+    console.error("[Auth][SignUp] failed", {
+      message: error.message,
+      status: error.status ?? null,
+      code: "code" in error ? error.code : null,
+      name: error.name ?? null,
+    });
     return mapSignUpError(error.message);
   }
 
