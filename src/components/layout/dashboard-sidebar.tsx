@@ -12,13 +12,16 @@ import {
   getInitials,
   useDashboardUser,
 } from "@/components/layout/dashboard-user-provider";
+import { useOptionalOnboardingTour } from "@/features/onboarding-tour/onboarding-tour-provider";
 import { cn } from "@/lib/utils";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { profile, membership, isPlatformAdmin } = useDashboardUser();
+  const tour = useOptionalOnboardingTour();
   const initials = getInitials(profile.fullName);
   const adminActive = pathname.startsWith("/admin");
+  const activeTourTarget = tour?.isOpen ? tour.step?.targetId : null;
 
   return (
     <aside className="hidden w-72 shrink-0 flex-col border-r bg-sidebar lg:flex">
@@ -37,17 +40,21 @@ export function DashboardSidebar() {
             item.href === "/dashboard"
               ? pathname === "/dashboard"
               : pathname.startsWith(item.href);
+          const isTourTarget = Boolean(item.tourId && item.tourId === activeTourTarget);
 
           return (
             <Link
               key={item.href}
               href={item.href}
+              data-tour-id={item.tourId}
+              data-tour-scope="desktop"
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                 isActive
                   ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                   : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                isTourTarget && "relative z-[63] bg-background text-foreground shadow-md",
               )}
             >
               <item.icon className="size-4 shrink-0" aria-hidden="true" />

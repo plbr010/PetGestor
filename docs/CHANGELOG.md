@@ -1,3 +1,16 @@
+## [0.15.0] — 2026-08-14
+
+### Adicionado — Tutorial inicial guiado
+
+- Tour de 8 etapas no dashboard após onboarding da empresa
+- Estado em `profiles.onboarding_tutorial_completed_at` (por usuário)
+- Pular/concluir marca no servidor via RPC `complete_onboarding_tutorial` (`auth.uid()`)
+- Contas existentes pré-marcadas na migration (não interrompe quem já usa)
+- “Ver tutorial novamente” em Configurações (sem resetar o status)
+- Mobile: card inferior legível (spotlight do menu no desktop)
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260814210000_onboarding_tutorial.sql`
+
 ## [0.14.0] — 2026-08-13
 
 ### Adicionado — Telefone no cadastro e área do assinante

@@ -54,6 +54,7 @@ export type Database = {
           full_name: string;
           phone: string | null;
           avatar_url: string | null;
+          onboarding_tutorial_completed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -62,6 +63,7 @@ export type Database = {
           full_name: string;
           phone?: string | null;
           avatar_url?: string | null;
+          onboarding_tutorial_completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -70,6 +72,7 @@ export type Database = {
           full_name?: string;
           phone?: string | null;
           avatar_url?: string | null;
+          onboarding_tutorial_completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -939,6 +942,10 @@ export type Database = {
           p_phone?: string | null;
         };
         Returns: string;
+      };
+      complete_onboarding_tutorial: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
       create_service_with_prices: {
         Args: {

@@ -1,5 +1,7 @@
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { DashboardUserProvider } from "@/components/layout/dashboard-user-provider";
+import { OnboardingTourOverlay } from "@/features/onboarding-tour/components/onboarding-tour-overlay";
+import { OnboardingTourProvider } from "@/features/onboarding-tour/onboarding-tour-provider";
 import { TrialBanner } from "@/features/subscription/components/trial-banner";
 import { getCompanyEntitlement } from "@/features/subscription/queries";
 import { assertOperationalEntitlement } from "@/features/subscription/require-entitlement";
@@ -23,13 +25,18 @@ export default async function DashboardLayout({
 
   return (
     <DashboardUserProvider value={{ ...dashboardContext, isPlatformAdmin: platformAdmin }}>
-      <div className="flex min-h-screen flex-col">
-        {!platformAdmin ? <TrialBanner entitlement={entitlement} /> : null}
-        <div className="flex flex-1">
-          <DashboardSidebar />
-          <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      <OnboardingTourProvider
+        tutorialCompletedAt={dashboardContext.profile.onboardingTutorialCompletedAt}
+      >
+        <div className="flex min-h-screen flex-col">
+          {!platformAdmin ? <TrialBanner entitlement={entitlement} /> : null}
+          <div className="flex flex-1">
+            <DashboardSidebar />
+            <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+          </div>
         </div>
-      </div>
+        <OnboardingTourOverlay />
+      </OnboardingTourProvider>
     </DashboardUserProvider>
   );
 }

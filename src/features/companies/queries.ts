@@ -10,7 +10,11 @@ import type {
 } from "@/features/auth/types";
 
 function mapProfile(
-  row: { full_name: string; avatar_url: string | null } | null,
+  row: {
+    full_name: string;
+    avatar_url: string | null;
+    onboarding_tutorial_completed_at: string | null;
+  } | null,
 ): UserProfile | null {
   if (!row) {
     return null;
@@ -19,6 +23,7 @@ function mapProfile(
   return {
     fullName: row.full_name,
     avatarUrl: row.avatar_url,
+    onboardingTutorialCompletedAt: row.onboarding_tutorial_completed_at,
   };
 }
 
@@ -85,7 +90,7 @@ export async function getUserContext(userId: string): Promise<Omit<UserContext, 
   const [profileResult, membership] = await Promise.all([
     supabase
       .from("profiles")
-      .select("full_name, avatar_url")
+      .select("full_name, avatar_url, onboarding_tutorial_completed_at")
       .eq("id", userId)
       .maybeSingle(),
     loadMembership(supabase, userId),

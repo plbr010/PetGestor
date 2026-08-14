@@ -8,6 +8,7 @@ export type AuthUser = {
 export type UserProfile = {
   fullName: string;
   avatarUrl: string | null;
+  onboardingTutorialCompletedAt: string | null;
 };
 
 export type CompanySummary = {

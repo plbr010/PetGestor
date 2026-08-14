@@ -17,6 +17,14 @@ export type DashboardNavItem = {
   href: string;
   icon: LucideIcon;
   description?: string;
+  tourId?:
+    | "nav-inicio"
+    | "nav-tutores"
+    | "nav-servicos"
+    | "nav-funcionarios"
+    | "nav-agenda"
+    | "nav-atendimentos"
+    | "nav-financeiro";
 };
 
 export const dashboardNavItems: DashboardNavItem[] = [
@@ -25,6 +33,7 @@ export const dashboardNavItems: DashboardNavItem[] = [
     href: "/dashboard",
     icon: Home,
     description: "Visão geral do pet shop",
+    tourId: "nav-inicio",
   },
   {
     label: "Assinatura",
@@ -37,12 +46,14 @@ export const dashboardNavItems: DashboardNavItem[] = [
     href: "/dashboard/agenda",
     icon: Calendar,
     description: "Horários e compromissos",
+    tourId: "nav-agenda",
   },
   {
     label: "Tutores",
     href: "/dashboard/tutores",
     icon: Users,
     description: "Clientes e responsáveis",
+    tourId: "nav-tutores",
   },
   {
     label: "Pets",
@@ -55,24 +66,28 @@ export const dashboardNavItems: DashboardNavItem[] = [
     href: "/dashboard/servicos",
     icon: Scissors,
     description: "Banho, tosa e outros",
+    tourId: "nav-servicos",
   },
   {
     label: "Funcionários",
     href: "/dashboard/funcionarios",
     icon: UserCog,
     description: "Equipe e profissionais",
+    tourId: "nav-funcionarios",
   },
   {
     label: "Atendimentos",
     href: "/dashboard/atendimentos",
     icon: ClipboardList,
     description: "Ordens de serviço",
+    tourId: "nav-atendimentos",
   },
   {
     label: "Financeiro",
     href: "/dashboard/financeiro",
     icon: DollarSign,
     description: "Receitas e despesas",
+    tourId: "nav-financeiro",
   },
   {
     label: "Configurações",

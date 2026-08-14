@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { RestartOnboardingTourCard } from "@/features/onboarding-tour/components/restart-onboarding-tour-card";
 
 export function ProfileSettingsContent() {
   const { user, profile, membership } = useDashboardUser();
@@ -64,6 +65,8 @@ export function ProfileSettingsContent() {
           />
         </CardContent>
       </Card>
+
+      <RestartOnboardingTourCard />
 
       <p className="text-sm text-muted-foreground">
         Esqueceu a senha atual?{" "}
