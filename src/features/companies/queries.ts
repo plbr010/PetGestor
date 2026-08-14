@@ -9,13 +9,13 @@ import type {
   UserProfile,
 } from "@/features/auth/types";
 
-function mapProfile(
-  row: {
-    full_name: string;
-    avatar_url: string | null;
-    onboarding_tutorial_completed_at: string | null;
-  } | null,
-): UserProfile | null {
+type ProfileRow = {
+  full_name: string;
+  avatar_url: string | null;
+  onboarding_tutorial_completed_at?: string | null;
+};
+
+export function mapProfile(row: ProfileRow | null): UserProfile | null {
   if (!row) {
     return null;
   }
@@ -23,7 +23,11 @@ function mapProfile(
   return {
     fullName: row.full_name,
     avatarUrl: row.avatar_url,
-    onboardingTutorialCompletedAt: row.onboarding_tutorial_completed_at,
+    // Coluna ausente (migration pendente) → trata como concluído para não quebrar o app
+    onboardingTutorialCompletedAt:
+      row.onboarding_tutorial_completed_at === undefined
+        ? "1970-01-01T00:00:00.000Z"
+        : row.onboarding_tutorial_completed_at,
   };
 }
 
@@ -82,26 +86,64 @@ function logMembershipDiagnostic(step: string, code: string, message: string): v
   console.error(`[membership:${step}]`, code, message);
 }
 
+/**
+ * Carrega o profile com fallback se a migration do tutorial ainda não existir.
+ * Evita loop /dashboard ↔ /onboarding quando a coluna nova ainda não está no banco.
+ */
+export async function loadProfileForUser(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+): Promise<UserProfile | null> {
+  const withTutorial = await supabase
+    .from("profiles")
+    .select("full_name, avatar_url, onboarding_tutorial_completed_at")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!withTutorial.error) {
+    return mapProfile(withTutorial.data as ProfileRow | null);
+  }
+
+  logMembershipDiagnostic(
+    "profiles_select_tutorial_column",
+    withTutorial.error.code,
+    withTutorial.error.message,
+  );
+
+  const fallback = await supabase
+    .from("profiles")
+    .select("full_name, avatar_url")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (fallback.error) {
+    logMembershipDiagnostic("profiles_select", fallback.error.code, fallback.error.message);
+    return null;
+  }
+
+  if (!fallback.data) {
+    return null;
+  }
+
+  return mapProfile({
+    full_name: fallback.data.full_name,
+    avatar_url: fallback.data.avatar_url,
+    // undefined → mapProfile marca tutorial como já concluído
+  });
+}
+
 export async function getUserContext(userId: string): Promise<Omit<UserContext, "user">> {
   noStore();
 
   const supabase = await createSupabaseServerClient();
 
-  const [profileResult, membership] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("full_name, avatar_url, onboarding_tutorial_completed_at")
-      .eq("id", userId)
-      .maybeSingle(),
+  const [profile, membership] = await Promise.all([
+    loadProfileForUser(supabase, userId),
     loadMembership(supabase, userId),
   ]);
 
-  if (profileResult.error) {
-    logMembershipDiagnostic("profiles_select", profileResult.error.code, profileResult.error.message);
-  }
-
   return {
-    profile: mapProfile(profileResult.data),
+    profile,
     membership,
   };
 }

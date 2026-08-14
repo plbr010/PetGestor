@@ -1,3 +1,10 @@
+## [0.15.1] — 2026-08-14
+
+### Corrigido — Loop de redirects no dashboard
+
+- Select de `profiles` com fallback se `onboarding_tutorial_completed_at` ainda não existir no banco
+- Evita loop Safari `/dashboard` ↔ `/onboarding` quando a migration do tutorial não foi aplicada
+
 ## [0.15.0] — 2026-08-14
 
 ### Adicionado — Tutorial inicial guiado
