@@ -140,15 +140,18 @@ describe("subscriber area security surface", () => {
 
   it("página /assinatura deriva empresa do contexto autenticado", () => {
     const source = readFileSync(
-      join(process.cwd(), "src/app/(auth)/assinatura/page.tsx"),
+      join(process.cwd(), "src/app/(dashboard)/assinatura/page.tsx"),
       "utf8",
     );
 
     expect(source).toContain("requireUser");
     expect(source).toContain("requireCompany");
     expect(source).toContain("requireCompanySubscription");
+    expect(source).toContain("DashboardHeader");
     expect(source).not.toMatch(/searchParams.*company/i);
     expect(source).not.toContain("createSupabaseAdminClient");
+    expect(source).not.toContain("AuthShell");
+    expect(source).not.toContain("signOut");
   });
 
   it("cliente comum não acessa telefone cross-tenant via admin", () => {

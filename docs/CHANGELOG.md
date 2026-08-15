@@ -1,3 +1,11 @@
+## [0.16.1] — 2026-08-15
+
+### Corrigido — Assinatura dentro do app autenticado
+
+- `/assinatura` e `/assinatura/retorno` movidas para o layout do dashboard (sidebar/header)
+- Gate operacional isolado em `/dashboard/*` (sem loop e sem “logout” visual)
+- Sessão preservada ao abrir Assinatura; trial expirado continua podendo regularizar
+
 ## [0.16.0] — 2026-08-15
 
 ### Adicionado — Recorrência de agendamentos (etapa 1)

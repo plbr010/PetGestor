@@ -1,4 +1,4 @@
-import { AuthShell } from "@/components/auth/auth-shell";
+import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { SubscriptionPageContent } from "@/features/subscription/components/subscription-page-content";
 import { getCompanyEntitlement, requireCompanySubscription } from "@/features/subscription/queries";
 import { requireCompany } from "@/features/companies/queries";
@@ -11,12 +11,18 @@ export default async function AssinaturaPage() {
   const entitlement = await getCompanyEntitlement(context.membership.company.id);
 
   return (
-    <AuthShell>
-      <SubscriptionPageContent
-        subscription={subscription}
-        entitlement={entitlement}
-        timeZone={context.membership.company.timezone}
+    <>
+      <DashboardHeader
+        title="Assinatura"
+        description="Plano, cobranças e status da sua conta"
       />
-    </AuthShell>
+      <main className="flex-1 overflow-x-hidden p-4 sm:p-6">
+        <SubscriptionPageContent
+          subscription={subscription}
+          entitlement={entitlement}
+          timeZone={context.membership.company.timezone}
+        />
+      </main>
+    </>
   );
 }

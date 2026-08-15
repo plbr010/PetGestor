@@ -21,7 +21,6 @@ import {
   PAYMENT_METHOD_MANAGED_BY_MP,
   type SubscriberBadge,
 } from "@/features/subscription/subscriber-view";
-import { LogoutButton } from "@/components/auth/logout-button";
 import { FormFeedback } from "@/components/shared/form-feedback";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -296,10 +295,6 @@ export function SubscriptionPageContent({
           )}
         </CardContent>
       </Card>
-
-      <div className="flex justify-center">
-        <LogoutButton variant="outline" label="Sair da conta" />
-      </div>
     </div>
   );
 }

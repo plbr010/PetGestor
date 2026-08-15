@@ -4,12 +4,17 @@ import { OnboardingTourOverlay } from "@/features/onboarding-tour/components/onb
 import { OnboardingTourProvider } from "@/features/onboarding-tour/onboarding-tour-provider";
 import { TrialBanner } from "@/features/subscription/components/trial-banner";
 import { getCompanyEntitlement } from "@/features/subscription/queries";
-import { assertOperationalEntitlement } from "@/features/subscription/require-entitlement";
 import { requireCompany } from "@/features/companies/queries";
 import { isPlatformAdmin } from "@/lib/auth/require-platform-admin";
 import { requireUser } from "@/lib/auth/require-user";
 
-export default async function DashboardLayout({
+/**
+ * Shell autenticado do app (sidebar/header context).
+ * NÃO bloqueia por entitlement aqui — /assinatura precisa permanecer acessível
+ * quando o trial expira ou a assinatura está inadimplente.
+ * O gate operacional fica em (dashboard)/dashboard/layout.tsx.
+ */
+export default async function AuthenticatedAppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -18,10 +23,6 @@ export default async function DashboardLayout({
   const dashboardContext = await requireCompany(user.id);
   const entitlement = await getCompanyEntitlement(dashboardContext.membership.company.id);
   const platformAdmin = await isPlatformAdmin(user);
-
-  if (!platformAdmin) {
-    assertOperationalEntitlement(entitlement);
-  }
 
   return (
     <DashboardUserProvider value={{ ...dashboardContext, isPlatformAdmin: platformAdmin }}>

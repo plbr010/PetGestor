@@ -1,4 +1,4 @@
-import { AuthShell } from "@/components/auth/auth-shell";
+import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { SubscriptionReturnPanel } from "@/features/subscription/components/subscription-return-panel";
 import { requireCompanySubscription } from "@/features/subscription/queries";
 import { syncSubscriptionFromProvider } from "@/features/subscription/sync";
@@ -30,13 +30,19 @@ export default async function AssinaturaRetornoPage() {
   const refreshed = await requireCompanySubscription(context.membership.company.id);
 
   return (
-    <AuthShell>
-      <SubscriptionReturnPanel
-        subscription={refreshed}
-        synced={synced}
-        syncError={syncError}
-        timeZone={context.membership.company.timezone}
+    <>
+      <DashboardHeader
+        title="Retorno da assinatura"
+        description="Confirmando o pagamento no Mercado Pago"
       />
-    </AuthShell>
+      <main className="flex-1 overflow-x-hidden p-4 sm:p-6">
+        <SubscriptionReturnPanel
+          subscription={refreshed}
+          synced={synced}
+          syncError={syncError}
+          timeZone={context.membership.company.timezone}
+        />
+      </main>
+    </>
   );
 }
