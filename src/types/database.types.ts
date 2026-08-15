@@ -558,6 +558,8 @@ export type Database = {
           duration_minutes_snapshot: number;
           notes: string | null;
           cancellation_reason: string | null;
+          recurrence_id: string | null;
+          recurrence_index: number | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -579,6 +581,8 @@ export type Database = {
           duration_minutes_snapshot: number;
           notes?: string | null;
           cancellation_reason?: string | null;
+          recurrence_id?: string | null;
+          recurrence_index?: number | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -600,6 +604,8 @@ export type Database = {
           duration_minutes_snapshot?: number;
           notes?: string | null;
           cancellation_reason?: string | null;
+          recurrence_id?: string | null;
+          recurrence_index?: number | null;
           created_by?: string;
           created_at?: string;
           updated_at?: string;
@@ -640,6 +646,63 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "employees";
             referencedColumns: ["id", "company_id"];
+          },
+          {
+            foreignKeyName: "appointments_recurrence_id_fkey";
+            columns: ["recurrence_id"];
+            isOneToOne: false;
+            referencedRelation: "appointment_recurrences";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      appointment_recurrences: {
+        Row: {
+          id: string;
+          company_id: string;
+          source_appointment_id: string | null;
+          frequency: "weekly" | "biweekly" | "monthly" | "custom_days";
+          interval_value: number;
+          ends_at: string | null;
+          max_occurrences: number | null;
+          active: boolean;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          source_appointment_id?: string | null;
+          frequency: "weekly" | "biweekly" | "monthly" | "custom_days";
+          interval_value?: number;
+          ends_at?: string | null;
+          max_occurrences?: number | null;
+          active?: boolean;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          source_appointment_id?: string | null;
+          frequency?: "weekly" | "biweekly" | "monthly" | "custom_days";
+          interval_value?: number;
+          ends_at?: string | null;
+          max_occurrences?: number | null;
+          active?: boolean;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "appointment_recurrences_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
           },
         ];
       };

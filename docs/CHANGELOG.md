@@ -1,3 +1,16 @@
+## [0.16.0] — 2026-08-15
+
+### Adicionado — Recorrência de agendamentos (etapa 1)
+
+- Tabela `appointment_recurrences` + `appointments.recurrence_id` / `recurrence_index`
+- Frequências: semanal, quinzenal, mensal, personalizado em dias
+- Término por quantidade (máx. 52) ou data — sem recorrência infinita
+- Conflitos: cada ocorrência passa por `create_appointment`; falhas são reportadas
+- Edição/cancelamento: somente este · este e os próximos
+- Badge “Recorrente” na agenda e no detalhe
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260815020000_appointment_recurrences.sql`
+
 ## [0.15.1] — 2026-08-14
 
 ### Corrigido — Loop de redirects no dashboard

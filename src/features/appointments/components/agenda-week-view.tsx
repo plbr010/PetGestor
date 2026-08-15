@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AppointmentRecurrenceBadge } from "@/features/appointments/components/appointment-recurrence-badge";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
 import type { AppointmentListItem } from "@/features/appointments/types";
 import {
@@ -66,7 +67,12 @@ export function AgendaWeekView({ appointments, weekDates, timeZone }: AgendaWeek
                         {appointment.service_name_snapshot}
                       </p>
                       <div className="mt-1 flex items-center justify-between gap-1">
-                        <AppointmentStatusBadge status={appointment.status} className="text-[10px]" />
+                        <div className="flex items-center gap-1">
+                          <AppointmentStatusBadge status={appointment.status} className="text-[10px]" />
+                          {appointment.recurrence_id ? (
+                            <AppointmentRecurrenceBadge compact />
+                          ) : null}
+                        </div>
                         <span className="font-medium">
                           {formatPriceSnapshot(appointment.price_cents_snapshot)}
                         </span>
@@ -108,7 +114,10 @@ export function AgendaWeekView({ appointments, weekDates, timeZone }: AgendaWeek
                           {appointment.service_name_snapshot} · {appointment.employee.name}
                         </p>
                       </div>
-                      <AppointmentStatusBadge status={appointment.status} />
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <AppointmentStatusBadge status={appointment.status} />
+                        {appointment.recurrence_id ? <AppointmentRecurrenceBadge compact /> : null}
+                      </div>
                     </Link>
                   </li>
                 ))}

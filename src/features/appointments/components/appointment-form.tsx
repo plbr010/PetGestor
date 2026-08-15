@@ -71,6 +71,11 @@ export function AppointmentForm({
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState(defaultTime);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [repeatEnabled, setRepeatEnabled] = useState(false);
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState("weekly");
+  const [recurrenceEndMode, setRecurrenceEndMode] = useState<"count" | "date">("count");
+  const [seriesScope, setSeriesScope] = useState<"this" | "this_and_following">("this");
+  const isRecurringEdit = Boolean(appointment?.recurrence_id);
 
   const pets = options.petsByCustomer[customerId] ?? [];
   const selectedService = options.services.find((service) => service.id === serviceId);
@@ -368,6 +373,127 @@ export function AppointmentForm({
           rows={4}
         />
       </section>
+
+      {mode === "create" ? (
+        <section className="space-y-4 rounded-xl border p-4">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              name="repeatEnabled"
+              checked={repeatEnabled}
+              onChange={(event) => setRepeatEnabled(event.target.checked)}
+              className="mt-1 size-4 rounded border"
+            />
+            <span>
+              <span className="font-medium">Repetir agendamento</span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                Gera ocorrências futuras com o mesmo pet, serviço e profissional.
+              </span>
+            </span>
+          </label>
+
+          {repeatEnabled ? (
+            <div className="space-y-4 border-t pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="recurrenceFrequency">Frequência</Label>
+                <Select
+                  id="recurrenceFrequency"
+                  name="recurrenceFrequency"
+                  value={recurrenceFrequency}
+                  onChange={(event) => setRecurrenceFrequency(event.target.value)}
+                >
+                  <option value="weekly">Toda semana</option>
+                  <option value="biweekly">A cada 15 dias</option>
+                  <option value="monthly">Todo mês</option>
+                  <option value="custom_days">Personalizado em dias</option>
+                </Select>
+              </div>
+
+              {recurrenceFrequency === "custom_days" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="recurrenceIntervalDays">Repetir a cada (dias)</Label>
+                  <Input
+                    id="recurrenceIntervalDays"
+                    name="recurrenceIntervalDays"
+                    type="number"
+                    min={1}
+                    max={365}
+                    defaultValue={7}
+                    required
+                  />
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <Label htmlFor="recurrenceEndMode">Termina</Label>
+                <Select
+                  id="recurrenceEndMode"
+                  name="recurrenceEndMode"
+                  value={recurrenceEndMode}
+                  onChange={(event) =>
+                    setRecurrenceEndMode(event.target.value as "count" | "date")
+                  }
+                >
+                  <option value="count">Após X ocorrências</option>
+                  <option value="date">Em uma data específica</option>
+                </Select>
+              </div>
+
+              {recurrenceEndMode === "count" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="recurrenceMaxOccurrences">Quantidade de ocorrências</Label>
+                  <Input
+                    id="recurrenceMaxOccurrences"
+                    name="recurrenceMaxOccurrences"
+                    type="number"
+                    min={2}
+                    max={52}
+                    defaultValue={8}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">Máximo de 52 ocorrências.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="recurrenceEndsAt">Data final</Label>
+                  <Input
+                    id="recurrenceEndsAt"
+                    name="recurrenceEndsAt"
+                    type="date"
+                    min={date}
+                    required
+                  />
+                </div>
+              )}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {mode === "edit" && isRecurringEdit ? (
+        <section className="space-y-3 rounded-xl border p-4">
+          <div>
+            <h2 className="text-base font-semibold">Escopo da edição</h2>
+            <p className="text-sm text-muted-foreground">
+              Este agendamento faz parte de uma recorrência.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="seriesScope">Aplicar alterações</Label>
+            <Select
+              id="seriesScope"
+              name="seriesScope"
+              value={seriesScope}
+              onChange={(event) =>
+                setSeriesScope(event.target.value as "this" | "this_and_following")
+              }
+            >
+              <option value="this">Somente este</option>
+              <option value="this_and_following">Este e os próximos</option>
+            </Select>
+          </div>
+        </section>
+      ) : null}
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <ButtonLink href={cancelHref} variant="outline">

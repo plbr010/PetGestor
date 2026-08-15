@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AppointmentRecurrenceBadge } from "@/features/appointments/components/appointment-recurrence-badge";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
 import type { AppointmentListItem } from "@/features/appointments/types";
 import {
@@ -100,8 +101,13 @@ export function AgendaDayView({ appointments, date, timeZone }: AgendaDayViewPro
                           {appointment.employee.name}
                         </p>
                       </div>
-                      <div className="shrink-0 text-right">
-                        <AppointmentStatusBadge status={appointment.status} />
+                      <div className="shrink-0 space-y-1 text-right">
+                        <div className="flex flex-col items-end gap-1">
+                          <AppointmentStatusBadge status={appointment.status} />
+                          {appointment.recurrence_id ? (
+                            <AppointmentRecurrenceBadge compact />
+                          ) : null}
+                        </div>
                         <p className="mt-1 text-sm font-medium">
                           {formatPriceSnapshot(appointment.price_cents_snapshot)}
                         </p>
@@ -134,7 +140,10 @@ export function AgendaDayView({ appointments, date, timeZone }: AgendaDayViewPro
                   <p className="text-sm text-muted-foreground">{appointment.employee.name}</p>
                 </div>
                 <div className="text-right">
-                  <AppointmentStatusBadge status={appointment.status} />
+                  <div className="flex flex-col items-end gap-1">
+                    <AppointmentStatusBadge status={appointment.status} />
+                    {appointment.recurrence_id ? <AppointmentRecurrenceBadge compact /> : null}
+                  </div>
                   <p className="mt-2 font-medium">
                     {formatPriceSnapshot(appointment.price_cents_snapshot)}
                   </p>

@@ -30,6 +30,8 @@ type AppointmentRow = {
   duration_minutes_snapshot: number;
   pet_size: PetSize | null;
   notes: string | null;
+  recurrence_id: string | null;
+  recurrence_index: number | null;
   customer_id: string;
   pet_id: string;
   service_id: string;
@@ -61,6 +63,8 @@ function mapAppointmentRow(row: AppointmentRow): AppointmentListItem {
     duration_minutes_snapshot: row.duration_minutes_snapshot,
     pet_size: row.pet_size,
     notes: row.notes,
+    recurrence_id: row.recurrence_id ?? null,
+    recurrence_index: row.recurrence_index ?? null,
     pet: { id: pet.id, name: pet.name },
     customer: { id: customer.id, name: customer.name, phone: customer.phone },
     employee: { id: employee.id, name: employee.name },
@@ -87,7 +91,8 @@ async function queryAppointmentsInRange(
     .from("appointments")
     .select(
       `id, scheduled_start, scheduled_end, status, service_name_snapshot, price_cents_snapshot,
-       duration_minutes_snapshot, pet_size, notes, customer_id, pet_id, service_id, employee_id,
+       duration_minutes_snapshot, pet_size, notes, recurrence_id, recurrence_index,
+       customer_id, pet_id, service_id, employee_id,
        cancellation_reason, created_at, updated_at,
        pets!inner(id, name), customers!inner(id, name, phone), employees!inner(id, name)`,
     )
@@ -152,7 +157,8 @@ export async function getAppointmentById(
     .from("appointments")
     .select(
       `id, scheduled_start, scheduled_end, status, service_name_snapshot, price_cents_snapshot,
-       duration_minutes_snapshot, pet_size, notes, customer_id, pet_id, service_id, employee_id,
+       duration_minutes_snapshot, pet_size, notes, recurrence_id, recurrence_index,
+       customer_id, pet_id, service_id, employee_id,
        cancellation_reason, created_at, updated_at,
        pets!inner(id, name), customers!inner(id, name, phone), employees!inner(id, name)`,
     )
@@ -230,7 +236,8 @@ export async function getUpcomingAppointments(
     .from("appointments")
     .select(
       `id, scheduled_start, scheduled_end, status, service_name_snapshot, price_cents_snapshot,
-       duration_minutes_snapshot, pet_size, notes, customer_id, pet_id, service_id, employee_id,
+       duration_minutes_snapshot, pet_size, notes, recurrence_id, recurrence_index,
+       customer_id, pet_id, service_id, employee_id,
        cancellation_reason, created_at, updated_at,
        pets!inner(id, name), customers!inner(id, name, phone), employees!inner(id, name)`,
     )

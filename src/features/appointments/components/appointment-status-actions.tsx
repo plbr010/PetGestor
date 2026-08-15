@@ -14,16 +14,19 @@ import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import type { AppointmentStatus } from "@/types/database.types";
 
 type AppointmentStatusActionsProps = {
   appointmentId: string;
   status: AppointmentStatus;
+  isRecurring?: boolean;
 };
 
 export function AppointmentStatusActions({
   appointmentId,
   status,
+  isRecurring = false,
 }: AppointmentStatusActionsProps) {
   const [cancelState, cancelAction, isCancelling] = useActionState(
     cancelAppointmentAction.bind(null, appointmentId),
@@ -101,6 +104,17 @@ export function AppointmentStatusActions({
             O horário será liberado na agenda. Esta ação não apaga o registro.
           </p>
         </div>
+        {isRecurring ? (
+          <div className="space-y-2">
+            <Label htmlFor="seriesScope">Escopo do cancelamento</Label>
+            <Select id="seriesScope" name="seriesScope" defaultValue="this">
+              <option value="this">Somente este</option>
+              <option value="this_and_following">Este e os próximos</option>
+            </Select>
+          </div>
+        ) : (
+          <input type="hidden" name="seriesScope" value="this" />
+        )}
         <div className="space-y-2">
           <Label htmlFor="cancellationReason">Motivo (opcional)</Label>
           <Input

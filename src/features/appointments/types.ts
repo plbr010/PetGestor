@@ -10,6 +10,8 @@ export type AppointmentListItem = {
   duration_minutes_snapshot: number;
   pet_size: PetSize | null;
   notes: string | null;
+  recurrence_id: string | null;
+  recurrence_index: number | null;
   pet: { id: string; name: string };
   customer: { id: string; name: string; phone: string };
   employee: { id: string; name: string };

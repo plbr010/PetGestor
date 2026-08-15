@@ -1,4 +1,5 @@
 import { AppointmentStatusActions } from "@/features/appointments/components/appointment-status-actions";
+import { AppointmentRecurrenceBadge } from "@/features/appointments/components/appointment-recurrence-badge";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
 import { requireAppointmentById } from "@/features/appointments/queries";
 import { isAppointmentCheckInEligible } from "@/features/service-orders/status";
@@ -25,7 +26,14 @@ import {
 
 type AppointmentDetailPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ atualizado?: string }>;
+  searchParams: Promise<{
+    atualizado?: string;
+    recorrencia?: string;
+    criados?: string;
+    pulados?: string;
+    serie?: string;
+    ok?: string;
+  }>;
 };
 
 export default async function AppointmentDetailPage({
@@ -45,6 +53,9 @@ export default async function AppointmentDetailPage({
   const showCheckIn =
     existingServiceOrder !== null || isAppointmentCheckInEligible(appointment.status);
 
+  const recurrenceCreated = Number(query.criados ?? 0);
+  const recurrenceSkipped = Number(query.pulados ?? 0);
+
   return (
     <>
       <DashboardHeader title="Agendamento" description={appointment.pet.name} />
@@ -52,9 +63,28 @@ export default async function AppointmentDetailPage({
         {query.atualizado === "1" ? (
           <FormFeedback message="Agendamento atualizado com sucesso." variant="success" />
         ) : null}
+        {query.recorrencia === "1" && recurrenceCreated > 0 ? (
+          <FormFeedback
+            message={`${recurrenceCreated} agendamento${recurrenceCreated === 1 ? "" : "s"} criado${recurrenceCreated === 1 ? "" : "s"} com sucesso.`}
+            variant="success"
+          />
+        ) : null}
+        {query.recorrencia === "parcial" ? (
+          <FormFeedback
+            message={`${recurrenceCreated} de ${recurrenceCreated + recurrenceSkipped} agendamentos foram criados. ${recurrenceSkipped} não puderam ser criados por conflito.`}
+            variant="error"
+          />
+        ) : null}
+        {query.serie === "parcial" ? (
+          <FormFeedback
+            message={`Série parcialmente atualizada. ${query.ok ?? "1"} ok, ${query.pulados ?? "0"} com conflito.`}
+            variant="error"
+          />
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
           <AppointmentStatusBadge status={appointment.status} />
+          {appointment.recurrence_id ? <AppointmentRecurrenceBadge /> : null}
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2">
@@ -94,6 +124,16 @@ export default async function AppointmentDetailPage({
                   timeZone,
                 )}
               />
+              {appointment.recurrence_id ? (
+                <Row
+                  label="Recorrência"
+                  value={
+                    appointment.recurrence_index
+                      ? `Ocorrência ${appointment.recurrence_index}`
+                      : "Série recorrente"
+                  }
+                />
+              ) : null}
               {appointment.notes ? (
                 <div className="rounded-lg bg-muted/30 p-3">
                   <p className="text-muted-foreground">Observações</p>
@@ -117,7 +157,11 @@ export default async function AppointmentDetailPage({
           />
         ) : null}
 
-        <AppointmentStatusActions appointmentId={appointment.id} status={appointment.status} />
+        <AppointmentStatusActions
+          appointmentId={appointment.id}
+          status={appointment.status}
+          isRecurring={Boolean(appointment.recurrence_id)}
+        />
       </main>
     </>
   );
@@ -127,7 +171,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-right">{value}</span>
+      <span className="text-right font-medium">{value}</span>
     </div>
   );
 }
