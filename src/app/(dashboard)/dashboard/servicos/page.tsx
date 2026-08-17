@@ -70,10 +70,15 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
               {result.total === 1 ? "serviço cadastrado" : "serviços cadastrados"}
             </p>
           </div>
-          <ButtonLink href="/dashboard/servicos/novo">
-            <Plus className="size-4" aria-hidden="true" />
-            Novo serviço
-          </ButtonLink>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <ButtonLink href="/dashboard/servicos/pacotes" variant="outline">
+              Pacotes
+            </ButtonLink>
+            <ButtonLink href="/dashboard/servicos/novo">
+              <Plus className="size-4" aria-hidden="true" />
+              Novo serviço
+            </ButtonLink>
+          </div>
         </div>
 
         <Card>

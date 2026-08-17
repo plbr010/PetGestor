@@ -1,3 +1,15 @@
+## [0.18.0] — 2026-08-17
+
+### Adicionado — Pacotes de serviços
+
+- Catálogo de pacotes (`service_packages` + itens) em Serviços → Pacotes
+- Venda de pacote na ficha do pet com receita financeira (`source_type: service_package`)
+- Consumo explícito via "Usar pacote" no atendimento (não automático)
+- Estorno controlado, saldo por serviço, validade e status (ativo/expirado/utilizado/cancelado)
+- `mark_service_order_ready` não gera receita avulsa quando preço = 0 (coberto por pacote)
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260817140000_service_packages.sql`
+
 ## [0.17.0] — 2026-08-17
 
 ### Adicionado — Fila interna de confirmações e lembretes

@@ -36,7 +36,9 @@ export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled
 export type PlatformAdminRole = "platform_owner";
 export type FinancialEntryType = "income" | "expense";
 export type FinancialEntryStatus = "pending" | "paid" | "cancelled";
-export type FinancialSourceType = "service_order" | "manual";
+export type FinancialSourceType = "service_order" | "manual" | "service_package";
+export type CustomerPackageStatus = "active" | "expired" | "fully_used" | "cancelled";
+export type PackageUsageStatus = "consumed" | "reversed";
 export type PaymentMethod =
   | "cash"
   | "pix"
@@ -1045,6 +1047,242 @@ export type Database = {
           },
         ];
       };
+      service_packages: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          description: string | null;
+          price_cents: number;
+          validity_days: number;
+          active: boolean;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          description?: string | null;
+          price_cents: number;
+          validity_days: number;
+          active?: boolean;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          description?: string | null;
+          price_cents?: number;
+          validity_days?: number;
+          active?: boolean;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_packages_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      service_package_items: {
+        Row: {
+          id: string;
+          company_id: string;
+          package_id: string;
+          service_id: string;
+          quantity: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          package_id: string;
+          service_id: string;
+          quantity: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          package_id?: string;
+          service_id?: string;
+          quantity?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_package_items_package_company_fkey";
+            columns: ["package_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "service_packages";
+            referencedColumns: ["id", "company_id"];
+          },
+          {
+            foreignKeyName: "service_package_items_service_company_fkey";
+            columns: ["service_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id", "company_id"];
+          },
+        ];
+      };
+      customer_service_packages: {
+        Row: {
+          id: string;
+          company_id: string;
+          customer_id: string;
+          pet_id: string;
+          package_id: string | null;
+          package_name_snapshot: string;
+          purchased_at: string;
+          starts_at: string;
+          expires_at: string;
+          status: CustomerPackageStatus;
+          price_cents_snapshot: number;
+          financial_entry_id: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          customer_id: string;
+          pet_id: string;
+          package_id?: string | null;
+          package_name_snapshot: string;
+          purchased_at?: string;
+          starts_at: string;
+          expires_at: string;
+          status?: CustomerPackageStatus;
+          price_cents_snapshot: number;
+          financial_entry_id?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          customer_id?: string;
+          pet_id?: string;
+          package_id?: string | null;
+          package_name_snapshot?: string;
+          purchased_at?: string;
+          starts_at?: string;
+          expires_at?: string;
+          status?: CustomerPackageStatus;
+          price_cents_snapshot?: number;
+          financial_entry_id?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      customer_service_package_items: {
+        Row: {
+          id: string;
+          company_id: string;
+          customer_package_id: string;
+          service_id: string;
+          service_name_snapshot: string;
+          quantity_total: number;
+          quantity_used: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          customer_package_id: string;
+          service_id: string;
+          service_name_snapshot: string;
+          quantity_total: number;
+          quantity_used?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          customer_package_id?: string;
+          service_id?: string;
+          service_name_snapshot?: string;
+          quantity_total?: number;
+          quantity_used?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      customer_service_package_usages: {
+        Row: {
+          id: string;
+          company_id: string;
+          customer_package_id: string;
+          customer_package_item_id: string;
+          service_id: string;
+          appointment_id: string;
+          service_order_id: string;
+          quantity: number;
+          status: PackageUsageStatus;
+          original_price_cents_snapshot: number;
+          used_at: string;
+          reversed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          customer_package_id: string;
+          customer_package_item_id: string;
+          service_id: string;
+          appointment_id: string;
+          service_order_id: string;
+          quantity?: number;
+          status?: PackageUsageStatus;
+          original_price_cents_snapshot: number;
+          used_at?: string;
+          reversed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          customer_package_id?: string;
+          customer_package_item_id?: string;
+          service_id?: string;
+          appointment_id?: string;
+          service_order_id?: string;
+          quantity?: number;
+          status?: PackageUsageStatus;
+          original_price_cents_snapshot?: number;
+          used_at?: string;
+          reversed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       financial_entries: {
         Row: {
           id: string;
@@ -1053,6 +1291,7 @@ export type Database = {
           status: FinancialEntryStatus;
           source_type: FinancialSourceType;
           service_order_id: string | null;
+          customer_service_package_id: string | null;
           description: string;
           category: string | null;
           amount_cents: number;
@@ -1073,6 +1312,7 @@ export type Database = {
           status?: FinancialEntryStatus;
           source_type?: FinancialSourceType;
           service_order_id?: string | null;
+          customer_service_package_id?: string | null;
           description: string;
           category?: string | null;
           amount_cents: number;
@@ -1093,6 +1333,7 @@ export type Database = {
           status?: FinancialEntryStatus;
           source_type?: FinancialSourceType;
           service_order_id?: string | null;
+          customer_service_package_id?: string | null;
           description?: string;
           category?: string | null;
           amount_cents?: number;
@@ -1266,6 +1507,55 @@ export type Database = {
         Args: { p_entry_id: string };
         Returns: string;
       };
+      create_service_package_with_items: {
+        Args: {
+          p_name: string;
+          p_description: string | null;
+          p_price_cents: number;
+          p_validity_days: number;
+          p_active?: boolean;
+          p_items?: Json;
+        };
+        Returns: string;
+      };
+      update_service_package_with_items: {
+        Args: {
+          p_package_id: string;
+          p_name: string;
+          p_description: string | null;
+          p_price_cents: number;
+          p_validity_days: number;
+          p_active: boolean;
+          p_items: Json;
+        };
+        Returns: string;
+      };
+      sell_customer_service_package: {
+        Args: {
+          p_package_id: string;
+          p_customer_id: string;
+          p_pet_id: string;
+          p_starts_at: string;
+          p_financial_status?: string;
+          p_payment_method?: string | null;
+        };
+        Returns: string;
+      };
+      consume_customer_service_package: {
+        Args: {
+          p_service_order_id: string;
+          p_customer_package_id: string;
+        };
+        Returns: string;
+      };
+      reverse_customer_service_package_usage: {
+        Args: { p_service_order_id: string };
+        Returns: string;
+      };
+      cancel_customer_service_package: {
+        Args: { p_customer_package_id: string };
+        Returns: string;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
@@ -1288,3 +1578,11 @@ export type CompanySubscription = Database["public"]["Tables"]["company_subscrip
 export type BillingWebhookEvent = Database["public"]["Tables"]["billing_webhook_events"]["Row"];
 export type PlatformAdmin = Database["public"]["Tables"]["platform_admins"]["Row"];
 export type FinancialEntry = Database["public"]["Tables"]["financial_entries"]["Row"];
+export type ServicePackage = Database["public"]["Tables"]["service_packages"]["Row"];
+export type ServicePackageItem = Database["public"]["Tables"]["service_package_items"]["Row"];
+export type CustomerServicePackage =
+  Database["public"]["Tables"]["customer_service_packages"]["Row"];
+export type CustomerServicePackageItem =
+  Database["public"]["Tables"]["customer_service_package_items"]["Row"];
+export type CustomerServicePackageUsage =
+  Database["public"]["Tables"]["customer_service_package_usages"]["Row"];

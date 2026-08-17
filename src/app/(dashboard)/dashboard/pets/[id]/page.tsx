@@ -1,5 +1,11 @@
 import Link from "next/link";
 
+import { PetPackagesPanel } from "@/features/service-packages/components/pet-packages-panel";
+import { SellPackageForm } from "@/features/service-packages/components/sell-package-form";
+import {
+  getCustomerPackagesForPet,
+  getServicePackages,
+} from "@/features/service-packages/queries";
 import { ArchivePetButton } from "@/features/pets/components/archive-pet-button";
 import { requirePetById } from "@/features/pets/queries";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
@@ -23,14 +29,19 @@ import {
 
 type PetDetailPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ atualizado?: string }>;
+  searchParams: Promise<{ atualizado?: string; pacote?: string }>;
 };
 
 export default async function PetDetailPage({ params, searchParams }: PetDetailPageProps) {
   const context = await requireCompanyContext();
   const { id } = await params;
   const query = await searchParams;
+  const timeZone = context.membership.company.timezone;
   const pet = await requirePetById(context.membership.company.id, id);
+  const [packages, catalogPackages] = await Promise.all([
+    getCustomerPackagesForPet(context.membership.company.id, id, timeZone),
+    getServicePackages({ companyId: context.membership.company.id, activeOnly: true }),
+  ]);
 
   return (
     <>
@@ -95,6 +106,21 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Adicionar pacote</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SellPackageForm
+              petId={id}
+              packages={catalogPackages}
+              timeZone={timeZone}
+            />
+          </CardContent>
+        </Card>
+
+        <PetPackagesPanel petId={id} packages={packages} sold={query.pacote === "1"} />
       </main>
     </>
   );

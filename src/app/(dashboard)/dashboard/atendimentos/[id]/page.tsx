@@ -1,3 +1,8 @@
+import { ServiceOrderPackagePanel } from "@/features/service-packages/components/service-order-package-panel";
+import {
+  getPackageCreditsForServiceOrder,
+  getPackageUsageForServiceOrder,
+} from "@/features/service-packages/queries";
 import { ServiceOrderFinancePanel } from "@/features/finance/components/service-order-finance-panel";
 import { getFinancialEntryByServiceOrderId } from "@/features/finance/queries";
 import { ServiceOrderActions } from "@/features/service-orders/components/service-order-actions";
@@ -44,6 +49,10 @@ export default async function ServiceOrderDetailPage({
     context.membership.company.id,
     order.id,
   );
+  const [packageCredits, packageUsage] = await Promise.all([
+    getPackageCreditsForServiceOrder(context.membership.company.id, order.id, timeZone),
+    getPackageUsageForServiceOrder(context.membership.company.id, order.id),
+  ]);
   const localDate = formatUtcDateInTimezone(order.appointment.scheduled_start, timeZone);
 
   return (
@@ -119,6 +128,13 @@ export default async function ServiceOrderDetailPage({
             <ServiceOrderNotesForm order={order} />
           </CardContent>
         </Card>
+
+        <ServiceOrderPackagePanel
+          serviceOrderId={order.id}
+          status={order.status}
+          credits={packageCredits}
+          hasConsumedUsage={Boolean(packageUsage)}
+        />
 
         <ServiceOrderFinancePanel
           entry={financialEntry}

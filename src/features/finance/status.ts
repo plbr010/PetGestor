@@ -19,6 +19,7 @@ export const FINANCIAL_ENTRY_STATUS_LABELS: Record<FinancialEntryStatus, string>
 export const FINANCIAL_SOURCE_TYPE_LABELS: Record<FinancialSourceType, string> = {
   service_order: "Atendimento",
   manual: "Manual",
+  service_package: "Pacote",
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
