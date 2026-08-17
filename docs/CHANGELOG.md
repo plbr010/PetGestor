@@ -1,3 +1,15 @@
+## [0.19.0] — 2026-08-17
+
+### Adicionado — Histórico completo do pet
+
+- Timeline operacional na ficha do pet (agendamentos, atendimentos, financeiro, pacotes, cancelamentos/faltas)
+- Cards de resumo: último atendimento, próximo agendamento, totais, gasto e serviço mais realizado
+- Painel destacado "Informações importantes" (alergias + cuidados/comportamento)
+- Coluna `pets.important_notes` para cuidados operacionais
+- Paginação "Carregar mais" sem duplicar tabelas de histórico
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260817160000_pet_important_notes.sql`
+
 ## [0.18.0] — 2026-08-17
 
 ### Adicionado — Pacotes de serviços

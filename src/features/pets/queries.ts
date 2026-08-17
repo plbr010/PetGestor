@@ -131,6 +131,7 @@ export async function getPetById(
     color: data.color,
     allergies: data.allergies,
     notes: data.notes,
+    important_notes: data.important_notes,
     created_by: data.created_by,
     created_at: data.created_at,
     updated_at: data.updated_at,

@@ -67,6 +67,20 @@ export const petFormSchema = z
 
 export type PetFormInput = z.infer<typeof petFormSchema>;
 
+export const petImportantInfoSchema = z.object({
+  allergies: optionalText(2000, "Alergias muito longas."),
+  importantNotes: optionalText(3000, "Informações importantes muito longas."),
+});
+
+export type PetImportantInfoInput = z.infer<typeof petImportantInfoSchema>;
+
+export function parsePetImportantInfo(formData: FormData) {
+  return petImportantInfoSchema.safeParse({
+    allergies: formData.get("allergies"),
+    importantNotes: formData.get("importantNotes"),
+  });
+}
+
 export function parsePetForm(formData: FormData) {
   return petFormSchema.safeParse({
     name: formData.get("name"),

@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getCustomerById } from "@/features/customers/queries";
-import { parsePetForm, petFormToDbPayload } from "@/features/pets/schemas";
+import {
+  parsePetForm,
+  parsePetImportantInfo,
+  petFormToDbPayload,
+} from "@/features/pets/schemas";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import {
   didMutateAccessibleRow,
@@ -117,6 +121,46 @@ export async function updatePetAction(
   revalidatePath(`/dashboard/pets/${petId}`);
   revalidatePath(`/dashboard/tutores/${mutation.data.customer_id}`);
   redirect(`/dashboard/pets/${petId}?atualizado=1`);
+}
+
+export async function updatePetImportantInfoAction(
+  petId: string,
+  _prevState: PetActionState,
+  formData: FormData,
+): Promise<PetActionState> {
+  if (!isValidUuid(petId)) {
+    return { error: GENERIC_NOT_FOUND_MESSAGE };
+  }
+
+  const context = await requireCompanyContext();
+  const parsed = parsePetImportantInfo(formData);
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("pets")
+    .update({
+      allergies: parsed.data.allergies,
+      important_notes: parsed.data.importantNotes,
+    })
+    .eq("id", petId)
+    .eq("company_id", context.membership.company.id)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
+
+  if (!didMutateAccessibleRow({ data, error })) {
+    return { error: GENERIC_NOT_FOUND_MESSAGE };
+  }
+
+  revalidatePath(`/dashboard/pets/${petId}`);
+  revalidatePath("/dashboard/atendimentos");
+
+  return { success: "Informações importantes salvas." };
 }
 
 export async function archivePetAction(petId: string): Promise<PetActionState> {

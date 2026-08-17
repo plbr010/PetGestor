@@ -1,5 +1,13 @@
 import Link from "next/link";
 
+import { PetImportantInfoPanel } from "@/features/pets/history/components/pet-important-info-panel";
+import { PetHistoryTimeline } from "@/features/pets/history/components/pet-history-timeline";
+import { PetSummaryCards } from "@/features/pets/history/components/pet-summary-cards";
+import {
+  getPetHistoryPage,
+  getPetHistorySummary,
+} from "@/features/pets/history/queries";
+import { parsePetHistoryFilter } from "@/features/pets/history/types";
 import { PetPackagesPanel } from "@/features/service-packages/components/pet-packages-panel";
 import { SellPackageForm } from "@/features/service-packages/components/sell-package-form";
 import {
@@ -17,6 +25,7 @@ import {
   SEX_LABELS,
   SPECIES_LABELS,
 } from "@/lib/pet-display";
+import { parsePageParam } from "@/lib/pagination";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { FormFeedback } from "@/components/shared/form-feedback";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -29,7 +38,13 @@ import {
 
 type PetDetailPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ atualizado?: string; pacote?: string }>;
+  searchParams: Promise<{
+    atualizado?: string;
+    pacote?: string;
+    historico?: string;
+    filtro?: string;
+    info?: string;
+  }>;
 };
 
 export default async function PetDetailPage({ params, searchParams }: PetDetailPageProps) {
@@ -37,10 +52,16 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
   const { id } = await params;
   const query = await searchParams;
   const timeZone = context.membership.company.timezone;
+  const historyPage = parsePageParam(query.historico ?? "1");
+  const historyFilter = parsePetHistoryFilter(query.filtro);
+
   const pet = await requirePetById(context.membership.company.id, id);
-  const [packages, catalogPackages] = await Promise.all([
+
+  const [packages, catalogPackages, summary, history] = await Promise.all([
     getCustomerPackagesForPet(context.membership.company.id, id, timeZone),
     getServicePackages({ companyId: context.membership.company.id, activeOnly: true }),
+    getPetHistorySummary(context.membership.company.id, id),
+    getPetHistoryPage(context.membership.company.id, id, historyPage),
   ]);
 
   return (
@@ -57,6 +78,15 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
           </ButtonLink>
           <ArchivePetButton petId={id} />
         </div>
+
+        <PetImportantInfoPanel
+          petId={id}
+          allergies={pet.allergies}
+          importantNotes={pet.important_notes}
+          saved={query.info === "salvo"}
+        />
+
+        <PetSummaryCards summary={summary} timeZone={timeZone} />
 
         <div className="grid gap-6 xl:grid-cols-2">
           <Card>
@@ -75,15 +105,9 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
               />
               <DetailRow label="Cor" value={pet.color ?? "—"} />
               <DetailRow label="Cadastrado em" value={formatDateTimeDisplay(pet.created_at)} />
-              {pet.allergies ? (
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-muted-foreground">Alergias</p>
-                  <p className="mt-1 whitespace-pre-wrap">{pet.allergies}</p>
-                </div>
-              ) : null}
               {pet.notes ? (
                 <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-muted-foreground">Observações</p>
+                  <p className="text-muted-foreground">Observações gerais</p>
                   <p className="mt-1 whitespace-pre-wrap">{pet.notes}</p>
                 </div>
               ) : null}
@@ -106,6 +130,14 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
             </CardContent>
           </Card>
         </div>
+
+        <PetHistoryTimeline
+          petId={id}
+          events={history.events}
+          page={history.page}
+          hasMore={history.hasMore}
+          initialFilter={historyFilter}
+        />
 
         <Card>
           <CardHeader>

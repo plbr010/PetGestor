@@ -238,6 +238,7 @@ export type Database = {
           color: string | null;
           allergies: string | null;
           notes: string | null;
+          important_notes: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -256,6 +257,7 @@ export type Database = {
           color?: string | null;
           allergies?: string | null;
           notes?: string | null;
+          important_notes?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -274,6 +276,7 @@ export type Database = {
           color?: string | null;
           allergies?: string | null;
           notes?: string | null;
+          important_notes?: string | null;
           created_by?: string;
           created_at?: string;
           updated_at?: string;
