@@ -21,6 +21,7 @@ export type FinancialEntryListItem = {
   created_at: string;
   updated_at: string;
   cancelled_at: string | null;
+  paid_cents?: number;
   service_order?: {
     id: string;
     appointment: {
@@ -33,6 +34,8 @@ export type FinancialEntryListItem = {
 export type FinancialEntryDetail = FinancialEntryListItem;
 
 export type FinancialSummary = {
+  incomeGeneratedCents: number;
+  incomeReceivedCents: number;
   incomePaidCents: number;
   incomePendingCents: number;
   expensePaidCents: number;

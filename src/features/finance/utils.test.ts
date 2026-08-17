@@ -44,20 +44,24 @@ describe("parseAmountToCents", () => {
 });
 
 describe("computeFinancialSummary", () => {
-  it("calcula resultado realizado sem pendentes", () => {
+  it("calcula receita gerada, recebida e pendente", () => {
     const summary = computeFinancialSummary([
       entry({ entry_type: "income", status: "paid", amount_cents: 6000 }),
+      entry({
+        entry_type: "income",
+        status: "partially_paid",
+        amount_cents: 10_000,
+        paid_cents: 6_000,
+      }),
       entry({ entry_type: "expense", status: "paid", amount_cents: 2000 }),
       entry({ entry_type: "income", status: "pending", amount_cents: 5000 }),
-      entry({ entry_type: "expense", status: "pending", amount_cents: 1000 }),
     ]);
 
-    expect(summary.incomePaidCents).toBe(6000);
-    expect(summary.incomePendingCents).toBe(5000);
+    expect(summary.incomeGeneratedCents).toBe(21_000);
+    expect(summary.incomeReceivedCents).toBe(12_000);
+    expect(summary.incomePendingCents).toBe(9_000);
     expect(summary.expensePaidCents).toBe(2000);
-    expect(summary.expensePendingCents).toBe(1000);
-    expect(summary.realizedResultCents).toBe(4000);
-    expect(summary.projectedResultCents).toBe(8000);
+    expect(summary.realizedResultCents).toBe(10_000);
   });
 
   it("ignora cancelados", () => {
@@ -67,6 +71,7 @@ describe("computeFinancialSummary", () => {
     ]);
 
     expect(summary.incomePaidCents).toBe(1000);
+    expect(summary.incomeReceivedCents).toBe(1000);
     expect(summary.realizedResultCents).toBe(1000);
   });
 });

@@ -7,6 +7,7 @@ import type {
   PaymentMethodFilter,
 } from "@/features/finance/status";
 import type { FinancialEntryDetail, FinancialEntryListItem } from "@/features/finance/types";
+import { getDailyCashSummary, getOutstandingReceivablesCents } from "@/features/finance/payments/queries";
 import { computeFinancialSummary } from "@/features/finance/utils";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -112,6 +113,38 @@ function getPeriodBounds(from: string, to: string, timeZone: string) {
   return { start, end };
 }
 
+async function enrichEntriesWithPaidCents(
+  companyId: string,
+  entries: FinancialEntryListItem[],
+): Promise<FinancialEntryListItem[]> {
+  if (entries.length === 0) {
+    return entries;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const entryIds = entries.map((entry) => entry.id);
+
+  const { data: payments } = await supabase
+    .from("financial_payments")
+    .select("financial_entry_id, amount_cents")
+    .eq("company_id", companyId)
+    .in("financial_entry_id", entryIds)
+    .is("cancelled_at", null);
+
+  const paidByEntry = new Map<string, number>();
+  for (const payment of payments ?? []) {
+    paidByEntry.set(
+      payment.financial_entry_id,
+      (paidByEntry.get(payment.financial_entry_id) ?? 0) + payment.amount_cents,
+    );
+  }
+
+  return entries.map((entry) => ({
+    ...entry,
+    paid_cents: paidByEntry.get(entry.id) ?? (entry.status === "paid" ? entry.amount_cents : 0),
+  }));
+}
+
 type GetFinancialEntriesParams = {
   companyId: string;
   from: string;
@@ -181,7 +214,10 @@ export async function getFinancialEntries({
   }
 
   return buildPaginatedResult(
-    (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [],
+    await enrichEntriesWithPaidCents(
+      companyId,
+      (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [],
+    ),
     count ?? 0,
     page,
     pageSize,
@@ -210,7 +246,10 @@ async function fetchEntriesInPeriod(
     throw new Error("Não foi possível carregar o resumo financeiro.");
   }
 
-  return (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [];
+  return enrichEntriesWithPaidCents(
+    companyId,
+    (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [],
+  );
 }
 
 export async function getFinancialSummary(
@@ -257,7 +296,7 @@ export async function getPendingReceivables(companyId: string, limit = 10) {
     .select(ENTRY_SELECT)
     .eq("company_id", companyId)
     .eq("entry_type", "income")
-    .eq("status", "pending")
+    .in("status", ["pending", "partially_paid"])
     .is("deleted_at", null)
     .order("due_date", { ascending: true, nullsFirst: false })
     .limit(limit);
@@ -266,7 +305,10 @@ export async function getPendingReceivables(companyId: string, limit = 10) {
     return [];
   }
 
-  return (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [];
+  return enrichEntriesWithPaidCents(
+    companyId,
+    (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [],
+  );
 }
 
 export async function getFinancialEntryById(
@@ -293,7 +335,11 @@ export async function getFinancialEntryById(
     return null;
   }
 
-  return mapFinancialEntryRow(data as FinancialEntryRow);
+  const [entry] = await enrichEntriesWithPaidCents(companyId, [
+    mapFinancialEntryRow(data as FinancialEntryRow),
+  ]);
+
+  return entry ?? null;
 }
 
 export async function requireFinancialEntryById(
@@ -334,39 +380,28 @@ export async function getFinancialEntryByServiceOrderId(
     return null;
   }
 
-  return mapFinancialEntryRow(data as FinancialEntryRow);
+  const [entry] = await enrichEntriesWithPaidCents(companyId, [
+    mapFinancialEntryRow(data as FinancialEntryRow),
+  ]);
+
+  return entry ?? null;
 }
 
 export async function getPendingReceivablesTotal(companyId: string): Promise<number> {
-  noStore();
-  const supabase = await createSupabaseServerClient();
-
-  const { data, error } = await supabase
-    .from("financial_entries")
-    .select("amount_cents")
-    .eq("company_id", companyId)
-    .eq("entry_type", "income")
-    .eq("status", "pending")
-    .is("deleted_at", null);
-
-  if (error) {
-    return 0;
-  }
-
-  return (data ?? []).reduce((sum, row) => sum + row.amount_cents, 0);
+  return getOutstandingReceivablesCents(companyId);
 }
 
 export async function getDashboardFinanceMetrics(companyId: string, timeZone: string) {
   const today = getTodayInTimezone(timeZone);
 
-  const [dailySummary, monthlySummary, pendingReceivablesCents] = await Promise.all([
-    getDailyFinancialSummary(companyId, today, timeZone),
+  const [dailyCash, monthlySummary, pendingReceivablesCents] = await Promise.all([
+    getDailyCashSummary(companyId, today, timeZone),
     getMonthlyFinancialSummary(companyId, today, timeZone),
-    getPendingReceivablesTotal(companyId),
+    getOutstandingReceivablesCents(companyId),
   ]);
 
   return {
-    incomePaidTodayCents: dailySummary.incomePaidCents,
+    incomePaidTodayCents: dailyCash.totalReceivedCents,
     pendingReceivablesCents,
     expensePaidMonthCents: monthlySummary.expensePaidCents,
     realizedResultMonthCents: monthlySummary.realizedResultCents,

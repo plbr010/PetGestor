@@ -9,15 +9,16 @@ import {
   type FinanceActionState,
 } from "@/features/finance/actions";
 import { FinancialEntryStatusBadge } from "@/features/finance/components/financial-entry-status-badge";
-import { MarkPaidForm } from "@/features/finance/components/mark-paid-form";
+import { PaymentHistoryPanel } from "@/features/finance/components/payment-history-panel";
+import { RecordPaymentForm } from "@/features/finance/components/record-payment-form";
 import { isManualEntryEditable } from "@/features/finance/status";
+import type { FinancialPaymentRecord } from "@/features/finance/payments/types";
 import type { FinancialEntryDetail } from "@/features/finance/types";
 import {
   formatAmountCents,
   formatDisplayDate,
-  formatPaidAt,
-  getPaymentMethodLabel,
   getSourceLabel,
+  getStatusLabel,
   getTypeLabel,
 } from "@/features/finance/utils";
 import { FormFeedback } from "@/components/shared/form-feedback";
@@ -29,10 +30,14 @@ import { Textarea } from "@/components/ui/textarea";
 
 type FinanceDetailActionsProps = {
   entry: FinancialEntryDetail;
+  payments: FinancialPaymentRecord[];
   timeZone: string;
 };
 
-export function FinanceDetailActions({ entry, timeZone }: FinanceDetailActionsProps) {
+export function FinanceDetailActions({ entry, payments, timeZone }: FinanceDetailActionsProps) {
+  const paidCents = entry.paid_cents ?? 0;
+  const remainingCents = Math.max(entry.amount_cents - paidCents, 0);
+
   const [updateState, updateAction, isUpdating] = useActionState(
     updateManualFinancialEntryAction.bind(null, entry.id),
     {} as FinanceActionState,
@@ -61,29 +66,28 @@ export function FinanceDetailActions({ entry, timeZone }: FinanceDetailActionsPr
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <Item label="Tipo" value={getTypeLabel(entry.entry_type)} />
         <Item label="Origem" value={getSourceLabel(entry.source_type)} />
-        <Item label="Valor" value={formatAmountCents(entry.amount_cents)} />
+        <Item label="Status" value={getStatusLabel(entry.status)} />
         <Item label="Vencimento" value={formatDisplayDate(entry.due_date)} />
-        <Item
-          label="Pagamento"
-          value={
-            entry.status === "paid"
-              ? `${getPaymentMethodLabel(entry.payment_method)} · ${formatPaidAt(entry.paid_at, timeZone)}`
-              : "—"
-          }
-        />
+        <Item label="Valor total" value={formatAmountCents(entry.amount_cents)} />
+        <Item label="Valor pago" value={formatAmountCents(paidCents)} />
+        <Item label="Saldo restante" value={formatAmountCents(remainingCents)} />
         <Item label="Categoria" value={entry.category ?? "—"} />
       </dl>
 
       {entry.notes ? (
         <div className="rounded-lg bg-muted/20 p-3 text-sm">
-          <p className="text-muted-foreground">Observações</p>
+          <p className="text-muted-foreground">Observações do lançamento</p>
           <p className="mt-1 whitespace-pre-wrap">{entry.notes}</p>
         </div>
       ) : null}
 
-      {entry.status === "pending" ? <MarkPaidForm entry={entry} /> : null}
+      <PaymentHistoryPanel entryId={entry.id} payments={payments} timeZone={timeZone} />
 
-      {entry.status === "paid" ? (
+      {(entry.status === "pending" || entry.status === "partially_paid") && remainingCents > 0 ? (
+        <RecordPaymentForm entry={entry} />
+      ) : null}
+
+      {entry.status === "paid" || entry.status === "partially_paid" ? (
         <Button
           type="button"
           variant="outline"

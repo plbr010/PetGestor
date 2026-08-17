@@ -46,6 +46,7 @@ export function FinanceFilters({
         <Select id="status" name="status" defaultValue={status}>
           <option value="all">Todos</option>
           <option value="pending">Pendente</option>
+          <option value="partially_paid">Parcialmente pago</option>
           <option value="paid">Pago</option>
           <option value="cancelled">Cancelado</option>
         </Select>

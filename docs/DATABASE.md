@@ -251,10 +251,14 @@ Migration: `supabase/migrations/20260806081500_finance.sql`
 
 ```text
 service_orders → financial_entries (receita automática ao marcar pronto)
-financial_entries (manual: receitas e despesas)
+service_packages → financial_entries (cobrança na venda; uso não gera nova receita)
+financial_entries → financial_payments (pagamentos parciais / múltiplas formas)
+cash_closings (snapshot diário; não altera pagamentos)
 ```
 
-Ver `docs/FINANCE.md`. **Migration pendente de aplicação remota.**
+Status: `pending | partially_paid | paid | cancelled`.
+
+Ver `docs/FINANCE.md`. **Migration pendente de aplicação remota** (`20260817190000_partial_payments_cash_closing.sql`).
 
 ## Entidades NÃO criadas na Etapa 9
 

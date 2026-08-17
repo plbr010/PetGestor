@@ -63,6 +63,9 @@ export function FinancePeriodNav({ from, to, preset, filters }: FinancePeriodNav
       </form>
 
       <div className="flex gap-2">
+        <ButtonLink href="/dashboard/financeiro/fechamento" variant="outline" size="sm">
+          Fechamento
+        </ButtonLink>
         <ButtonLink href="/dashboard/financeiro/nova-receita" size="sm">
           Nova receita
         </ButtonLink>

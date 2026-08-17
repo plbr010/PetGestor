@@ -67,7 +67,9 @@ export function FinanceEntryList({ entries, timeZone }: FinanceEntryListProps) {
                 <td className="px-3 py-3">
                   {entry.status === "paid"
                     ? `${getPaymentMethodLabel(entry.payment_method)} · ${formatPaidAt(entry.paid_at, timeZone)}`
-                    : "—"}
+                    : entry.status === "partially_paid"
+                      ? `${formatAmountCents(entry.paid_cents ?? 0)} pago · ${formatAmountCents(Math.max(entry.amount_cents - (entry.paid_cents ?? 0), 0))} restante`
+                      : "—"}
                 </td>
                 <td className="px-3 py-3">
                   <Link href={`/dashboard/financeiro/${entry.id}`} className="text-primary hover:underline">
@@ -90,9 +92,11 @@ export function FinanceEntryList({ entries, timeZone }: FinanceEntryListProps) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">{entry.description}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {getTypeLabel(entry.entry_type)} · {getSourceLabel(entry.source_type)}
-                  </p>
+              <p className="text-sm text-muted-foreground">
+                {entry.status === "partially_paid"
+                  ? `${formatAmountCents(entry.paid_cents ?? 0)} pago · restante ${formatAmountCents(Math.max(entry.amount_cents - (entry.paid_cents ?? 0), 0))}`
+                  : getTypeLabel(entry.entry_type) + " · " + getSourceLabel(entry.source_type)}
+              </p>
                 </div>
                 <FinancialEntryStatusBadge status={entry.status} />
               </div>

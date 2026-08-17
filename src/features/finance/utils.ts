@@ -44,6 +44,22 @@ export function mapFinanceError(message: string | undefined): string {
     return "Esta alteração não é permitida no status atual.";
   }
 
+  if (code.includes("payment_exceeds_balance")) {
+    return "O valor excede o saldo restante.";
+  }
+
+  if (code.includes("invalid_payment_amount")) {
+    return "Informe um valor de pagamento válido.";
+  }
+
+  if (code.includes("cash_closing_already_closed")) {
+    return "Este dia já possui fechamento de caixa ativo.";
+  }
+
+  if (code.includes("insufficient_permissions")) {
+    return "Você não tem permissão para esta ação.";
+  }
+
   if (code.includes("service_order_entry_not_cancellable")) {
     return "Receitas geradas por atendimento não podem ser canceladas manualmente.";
   }
@@ -134,6 +150,8 @@ export function resolveFinancialPeriod(
 }
 
 export function computeFinancialSummary(entries: FinancialEntryListItem[]): FinancialSummary {
+  let incomeGeneratedCents = 0;
+  let incomeReceivedCents = 0;
   let incomePaidCents = 0;
   let incomePendingCents = 0;
   let expensePaidCents = 0;
@@ -144,26 +162,34 @@ export function computeFinancialSummary(entries: FinancialEntryListItem[]): Fina
       continue;
     }
 
+    const paid = entry.paid_cents ?? (entry.status === "paid" ? entry.amount_cents : 0);
+    const remaining = Math.max(entry.amount_cents - paid, 0);
+
     if (entry.entry_type === "income") {
+      incomeGeneratedCents += entry.amount_cents;
+      incomeReceivedCents += paid;
       if (entry.status === "paid") {
         incomePaidCents += entry.amount_cents;
       } else {
-        incomePendingCents += entry.amount_cents;
+        incomePendingCents += remaining;
       }
-    } else if (entry.status === "paid") {
-      expensePaidCents += entry.amount_cents;
+    } else if (entry.status === "paid" || entry.status === "partially_paid") {
+      expensePaidCents += paid;
+      if (entry.status === "partially_paid") {
+        expensePendingCents += remaining;
+      }
     } else {
       expensePendingCents += entry.amount_cents;
     }
   }
 
-  const realizedResultCents = incomePaidCents - expensePaidCents;
+  const realizedResultCents = incomeReceivedCents - expensePaidCents;
   const projectedResultCents =
-    incomePaidCents +
-    incomePendingCents -
-    (expensePaidCents + expensePendingCents);
+    incomeGeneratedCents - (expensePaidCents + expensePendingCents);
 
   return {
+    incomeGeneratedCents,
+    incomeReceivedCents,
     incomePaidCents,
     incomePendingCents,
     expensePaidCents,
