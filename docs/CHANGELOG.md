@@ -1,3 +1,11 @@
+## [0.23.0] — 2026-08-17
+
+### Melhorado — Experiência das mensagens automáticas
+
+- Tela de Configurações explica o fluxo, o status do WhatsApp e que não há botão de envio manual
+- Cards separados para tutor e funcionário, com horário do lembrete do dia e preview estilo conversa
+- Histórico em cards (mobile first), status em português simples e erros amigáveis
+
 ## [0.22.0] — 2026-08-17
 
 ### Adicionado — WhatsApp Cloud API (fila de lembretes)

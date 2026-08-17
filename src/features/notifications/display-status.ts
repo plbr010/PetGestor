@@ -26,17 +26,20 @@ export function getNotificationDisplayStatus(item: {
 }
 
 export const NOTIFICATION_DISPLAY_STATUS_LABELS: Record<NotificationDisplayStatus, string> = {
-  pending: "Pendente",
-  processing: "Processando",
+  pending: "Agendada",
+  processing: "Enviando",
   sent: "Enviada",
   delivered: "Entregue",
   read: "Lida",
   failed: "Falhou",
   cancelled: "Cancelada",
-  simulated: "Simulação (não enviada)",
+  simulated: "Simulação",
 };
 
-export function getFriendlyNotificationError(codeOrMessage: string | null): string | null {
+export function getFriendlyNotificationError(
+  codeOrMessage: string | null,
+  recipientType?: "customer" | "employee",
+): string | null {
   if (!codeOrMessage) {
     return null;
   }
@@ -44,19 +47,31 @@ export function getFriendlyNotificationError(codeOrMessage: string | null): stri
   const value = codeOrMessage.toLowerCase();
 
   if (value.includes("invalid_phone")) {
-    return "Telefone inválido. Atualize o número no cadastro.";
+    return recipientType === "employee"
+      ? "Telefone do funcionário inválido."
+      : "Telefone do tutor inválido.";
   }
 
   if (value.includes("template_not_configured") || value.includes("132001") || value.includes("132000")) {
-    return "Modelo de mensagem ainda não configurado na Meta.";
+    return "Template de mensagem indisponível.";
   }
 
   if (value.includes("whatsapp_not_configured")) {
     return "WhatsApp ainda não está configurado.";
   }
 
+  if (
+    value.includes("timeout") ||
+    value.includes("network") ||
+    value.includes("429") ||
+    value.includes("503") ||
+    value.includes("500")
+  ) {
+    return "Mensagem não pôde ser enviada. O sistema tentará novamente.";
+  }
+
   if (value.includes("whatsapp_send_disabled")) {
-    return "Envio real desligado (modo de teste).";
+    return "Envio automático está desativado. A mensagem não foi enviada de verdade.";
   }
 
   if (value.includes("automation_disabled")) {
