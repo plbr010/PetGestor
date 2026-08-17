@@ -1,3 +1,18 @@
+## [0.21.0] — 2026-08-17
+
+### Adicionado — Pagamento parcial + fechamento de caixa
+
+- Tabela `financial_payments` com múltiplos pagamentos por lançamento
+- Status `partially_paid` em `financial_entries`
+- UI no detalhe financeiro: total/pago/restante, histórico, registrar pagamento parcial
+- Estorno interno de pagamento (soft cancel + recálculo de saldo)
+- Fechamento diário de caixa (`cash_closings`) com totais por forma de pagamento
+- Conferência de dinheiro físico (esperado x contado)
+- Dashboard financeiro diferencia receita gerada, recebida e pendente
+- Timezone da empresa para agrupamento do dia comercial
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260817190000_partial_payments_cash_closing.sql`
+
 ## [0.20.0] — 2026-08-17
 
 ### Adicionado — Agenda mais rápida + lista de espera

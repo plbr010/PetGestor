@@ -59,7 +59,8 @@ export function FinanceSummaryCard({
         <div>
           <CardTitle>Resumo financeiro</CardTitle>
           <CardDescription>
-            Realizado do mês · pendente receitas{" "}
+            Gerada {formatAmountCents(monthlySummary.incomeGeneratedCents)} · recebida{" "}
+            {formatAmountCents(monthlySummary.incomeReceivedCents)} · pendente{" "}
             {formatAmountCents(monthlySummary.incomePendingCents)}
           </CardDescription>
         </div>

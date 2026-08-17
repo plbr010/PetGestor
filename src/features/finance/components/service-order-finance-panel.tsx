@@ -1,11 +1,7 @@
-import { MarkPaidForm } from "@/features/finance/components/mark-paid-form";
+import { RecordPaymentForm } from "@/features/finance/components/record-payment-form";
 import { FinancialEntryStatusBadge } from "@/features/finance/components/financial-entry-status-badge";
 import type { FinancialEntryDetail } from "@/features/finance/types";
-import {
-  formatAmountCents,
-  formatPaidAt,
-  getPaymentMethodLabel,
-} from "@/features/finance/utils";
+import { formatAmountCents } from "@/features/finance/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button-link";
 
@@ -18,7 +14,6 @@ type ServiceOrderFinancePanelProps = {
 export function ServiceOrderFinancePanel({
   entry,
   serviceOrderStatus,
-  timeZone,
 }: ServiceOrderFinancePanelProps) {
   if (!entry) {
     if (serviceOrderStatus === "waiting" || serviceOrderStatus === "in_progress") {
@@ -39,6 +34,9 @@ export function ServiceOrderFinancePanel({
     return null;
   }
 
+  const paidCents = entry.paid_cents ?? 0;
+  const remainingCents = Math.max(entry.amount_cents - paidCents, 0);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
@@ -46,26 +44,26 @@ export function ServiceOrderFinancePanel({
         <FinancialEntryStatusBadge status={entry.status} />
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {entry.status === "pending" ? "Valor a receber" : "Valor"}
-          </p>
-          <p className="text-2xl font-semibold text-success">
-            {formatAmountCents(entry.amount_cents)}
-          </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <p className="text-sm text-muted-foreground">Total</p>
+            <p className="text-lg font-semibold text-success">
+              {formatAmountCents(entry.amount_cents)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Pago</p>
+            <p className="text-lg font-semibold">{formatAmountCents(paidCents)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Restante</p>
+            <p className="text-lg font-semibold">{formatAmountCents(remainingCents)}</p>
+          </div>
         </div>
 
-        {entry.status === "paid" ? (
-          <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-            <p>
-              <span className="text-muted-foreground">Pago · </span>
-              {getPaymentMethodLabel(entry.payment_method)}
-            </p>
-            <p className="text-muted-foreground">{formatPaidAt(entry.paid_at, timeZone)}</p>
-          </div>
-        ) : (
-          <MarkPaidForm entry={entry} />
-        )}
+        {(entry.status === "pending" || entry.status === "partially_paid") && remainingCents > 0 ? (
+          <RecordPaymentForm entry={entry} />
+        ) : null}
 
         <ButtonLink href={`/dashboard/financeiro/${entry.id}`} variant="outline" size="sm">
           Ver lançamento

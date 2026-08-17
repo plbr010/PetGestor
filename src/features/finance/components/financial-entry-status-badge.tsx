@@ -8,8 +8,9 @@ const statusVariant: Record<
   "default" | "secondary" | "outline" | "destructive"
 > = {
   pending: "outline",
+  partially_paid: "secondary",
   paid: "default",
-  cancelled: "secondary",
+  cancelled: "destructive",
 };
 
 type FinancialEntryStatusBadgeProps = {

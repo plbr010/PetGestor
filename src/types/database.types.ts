@@ -35,7 +35,7 @@ export type ServiceOrderStatus =
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled";
 export type PlatformAdminRole = "platform_owner";
 export type FinancialEntryType = "income" | "expense";
-export type FinancialEntryStatus = "pending" | "paid" | "cancelled";
+export type FinancialEntryStatus = "pending" | "partially_paid" | "paid" | "cancelled";
 export type FinancialSourceType = "service_order" | "manual" | "service_package";
 export type CustomerPackageStatus = "active" | "expired" | "fully_used" | "cancelled";
 export type PackageUsageStatus = "consumed" | "reversed";
@@ -1466,6 +1466,155 @@ export type Database = {
           },
         ];
       };
+      financial_payments: {
+        Row: {
+          id: string;
+          company_id: string;
+          financial_entry_id: string;
+          amount_cents: number;
+          payment_method: PaymentMethod;
+          paid_at: string;
+          notes: string | null;
+          idempotency_key: string | null;
+          created_by: string;
+          created_at: string;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          financial_entry_id: string;
+          amount_cents: number;
+          payment_method: PaymentMethod;
+          paid_at?: string;
+          notes?: string | null;
+          idempotency_key?: string | null;
+          created_by: string;
+          created_at?: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          financial_entry_id?: string;
+          amount_cents?: number;
+          payment_method?: PaymentMethod;
+          paid_at?: string;
+          notes?: string | null;
+          idempotency_key?: string | null;
+          created_by?: string;
+          created_at?: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "financial_payments_entry_company_fkey";
+            columns: ["financial_entry_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "financial_entries";
+            referencedColumns: ["id", "company_id"];
+          },
+          {
+            foreignKeyName: "financial_payments_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      cash_closings: {
+        Row: {
+          id: string;
+          company_id: string;
+          business_date: string;
+          opened_at: string;
+          closed_at: string | null;
+          opening_balance_cents: number;
+          expected_cash_cents: number | null;
+          actual_cash_cents: number | null;
+          difference_cents: number | null;
+          total_received_cents: number;
+          cash_received_cents: number;
+          pix_received_cents: number;
+          debit_received_cents: number;
+          credit_received_cents: number;
+          transfer_received_cents: number;
+          other_received_cents: number;
+          expense_paid_cents: number;
+          net_balance_cents: number;
+          notes: string | null;
+          closed_by: string | null;
+          reopened_at: string | null;
+          reopened_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          business_date: string;
+          opened_at?: string;
+          closed_at?: string | null;
+          opening_balance_cents?: number;
+          expected_cash_cents?: number | null;
+          actual_cash_cents?: number | null;
+          difference_cents?: number | null;
+          total_received_cents?: number;
+          cash_received_cents?: number;
+          pix_received_cents?: number;
+          debit_received_cents?: number;
+          credit_received_cents?: number;
+          transfer_received_cents?: number;
+          other_received_cents?: number;
+          expense_paid_cents?: number;
+          net_balance_cents?: number;
+          notes?: string | null;
+          closed_by?: string | null;
+          reopened_at?: string | null;
+          reopened_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          business_date?: string;
+          opened_at?: string;
+          closed_at?: string | null;
+          opening_balance_cents?: number;
+          expected_cash_cents?: number | null;
+          actual_cash_cents?: number | null;
+          difference_cents?: number | null;
+          total_received_cents?: number;
+          cash_received_cents?: number;
+          pix_received_cents?: number;
+          debit_received_cents?: number;
+          credit_received_cents?: number;
+          transfer_received_cents?: number;
+          other_received_cents?: number;
+          expense_paid_cents?: number;
+          net_balance_cents?: number;
+          notes?: string | null;
+          closed_by?: string | null;
+          reopened_at?: string | null;
+          reopened_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cash_closings_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -1609,6 +1758,34 @@ export type Database = {
         Args: { p_entry_id: string };
         Returns: string;
       };
+      record_financial_payment: {
+        Args: {
+          p_entry_id: string;
+          p_amount_cents: number;
+          p_payment_method: PaymentMethod;
+          p_paid_at?: string | null;
+          p_notes?: string | null;
+          p_idempotency_key?: string | null;
+        };
+        Returns: string;
+      };
+      cancel_financial_payment: {
+        Args: { p_payment_id: string };
+        Returns: string;
+      };
+      close_cash_closing: {
+        Args: {
+          p_business_date: string;
+          p_opening_balance_cents?: number;
+          p_actual_cash_cents?: number | null;
+          p_notes?: string | null;
+        };
+        Returns: string;
+      };
+      reopen_cash_closing: {
+        Args: { p_closing_id: string };
+        Returns: string;
+      };
       create_service_package_with_items: {
         Args: {
           p_name: string;
@@ -1680,6 +1857,8 @@ export type CompanySubscription = Database["public"]["Tables"]["company_subscrip
 export type BillingWebhookEvent = Database["public"]["Tables"]["billing_webhook_events"]["Row"];
 export type PlatformAdmin = Database["public"]["Tables"]["platform_admins"]["Row"];
 export type FinancialEntry = Database["public"]["Tables"]["financial_entries"]["Row"];
+export type FinancialPayment = Database["public"]["Tables"]["financial_payments"]["Row"];
+export type CashClosing = Database["public"]["Tables"]["cash_closings"]["Row"];
 export type ServicePackage = Database["public"]["Tables"]["service_packages"]["Row"];
 export type ServicePackageItem = Database["public"]["Tables"]["service_package_items"]["Row"];
 export type CustomerServicePackage =

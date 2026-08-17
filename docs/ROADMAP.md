@@ -11,6 +11,7 @@
 7. **Agenda** — agendamentos, calendário dia/semana, conflitos, snapshots (`appointments`)
 8. **Atendimentos / ordens de serviço** — check-in, fila operacional, entrega (`service_orders`)
 9. **Financeiro operacional** — receitas/despesas, contas a receber, dashboard real (`financial_entries`)
+9b. **Pagamento parcial e fechamento de caixa** — `financial_payments`, `partially_paid`, `cash_closings`
 10. **Trial 72h e controle de acesso** — `company_subscriptions`, entitlement, bloqueio pós-trial
 11. **Mercado Pago e assinatura real** — checkout pós-trial, webhooks, recorrência MP
 

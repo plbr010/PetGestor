@@ -17,6 +17,14 @@ describe("canTransitionFinancialStatus", () => {
     expect(canTransitionFinancialStatus("pending", "cancelled")).toBe(true);
   });
 
+  it("permite pending → partially_paid", () => {
+    expect(canTransitionFinancialStatus("pending", "partially_paid")).toBe(true);
+  });
+
+  it("permite partially_paid → paid", () => {
+    expect(canTransitionFinancialStatus("partially_paid", "paid")).toBe(true);
+  });
+
   it("permite paid → pending (reabertura)", () => {
     expect(canTransitionFinancialStatus("paid", "pending")).toBe(true);
   });
@@ -40,6 +48,10 @@ describe("filtros de URL", () => {
   it("parseia tipo", () => {
     expect(parseFinancialEntryTypeFilter("income")).toBe("income");
     expect(parseFinancialEntryTypeFilter("invalid")).toBe("all");
+  });
+
+  it("parseia status partially_paid", () => {
+    expect(parseFinancialEntryStatusFilter("partially_paid")).toBe("partially_paid");
   });
 
   it("parseia status", () => {

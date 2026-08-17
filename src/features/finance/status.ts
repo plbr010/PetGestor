@@ -12,6 +12,7 @@ export const FINANCIAL_ENTRY_TYPE_LABELS: Record<FinancialEntryType, string> = {
 
 export const FINANCIAL_ENTRY_STATUS_LABELS: Record<FinancialEntryStatus, string> = {
   pending: "Pendente",
+  partially_paid: "Parcialmente pago",
   paid: "Pago",
   cancelled: "Cancelado",
 };
@@ -44,7 +45,8 @@ export const EXPENSE_CATEGORY_SUGGESTIONS = [
 ] as const;
 
 const ALLOWED_TRANSITIONS: Record<FinancialEntryStatus, FinancialEntryStatus[]> = {
-  pending: ["paid", "cancelled"],
+  pending: ["paid", "partially_paid", "cancelled"],
+  partially_paid: ["paid", "pending", "cancelled"],
   paid: ["pending"],
   cancelled: [],
 };
@@ -65,7 +67,12 @@ export function isServiceOrderEntryCancellable(): boolean {
 }
 
 export type FinancialEntryTypeFilter = "all" | "income" | "expense";
-export type FinancialEntryStatusFilter = "all" | "pending" | "paid" | "cancelled";
+export type FinancialEntryStatusFilter =
+  | "all"
+  | "pending"
+  | "partially_paid"
+  | "paid"
+  | "cancelled";
 export type PaymentMethodFilter =
   | "all"
   | "cash"
@@ -88,7 +95,12 @@ export function parseFinancialEntryTypeFilter(
 export function parseFinancialEntryStatusFilter(
   value: string | undefined | null,
 ): FinancialEntryStatusFilter {
-  if (value === "pending" || value === "paid" || value === "cancelled") {
+  if (
+    value === "pending" ||
+    value === "partially_paid" ||
+    value === "paid" ||
+    value === "cancelled"
+  ) {
     return value;
   }
 

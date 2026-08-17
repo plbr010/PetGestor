@@ -1,4 +1,5 @@
 import { FinanceDetailActions } from "@/features/finance/components/finance-detail-actions";
+import { getPaymentsForEntry } from "@/features/finance/payments/queries";
 import { requireFinancialEntryById } from "@/features/finance/queries";
 import { formatAmountCents, formatDisplayDate, formatPaidAt } from "@/features/finance/utils";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
@@ -14,6 +15,7 @@ export default async function FinanceDetailPage({ params }: FinanceDetailPagePro
   const { id } = await params;
   const timeZone = context.membership.company.timezone;
   const entry = await requireFinancialEntryById(context.membership.company.id, id);
+  const payments = await getPaymentsForEntry(context.membership.company.id, id);
 
   return (
     <>
@@ -24,7 +26,7 @@ export default async function FinanceDetailPage({ params }: FinanceDetailPagePro
             <CardTitle>{entry.description}</CardTitle>
           </CardHeader>
           <CardContent>
-            <FinanceDetailActions entry={entry} timeZone={timeZone} />
+            <FinanceDetailActions entry={entry} payments={payments} timeZone={timeZone} />
           </CardContent>
         </Card>
 

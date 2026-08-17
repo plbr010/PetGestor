@@ -10,12 +10,17 @@ type FinanceSummaryCardsProps = {
 export function FinanceSummaryCards({ summary }: FinanceSummaryCardsProps) {
   const cards = [
     {
-      label: "Receitas recebidas",
-      value: summary.incomePaidCents,
+      label: "Receita gerada",
+      value: summary.incomeGeneratedCents,
+      tone: "text-foreground",
+    },
+    {
+      label: "Receita recebida",
+      value: summary.incomeReceivedCents,
       tone: "text-success",
     },
     {
-      label: "Receitas pendentes",
+      label: "Receita pendente",
       value: summary.incomePendingCents,
       tone: "text-foreground",
     },
@@ -35,12 +40,6 @@ export function FinanceSummaryCards({ summary }: FinanceSummaryCardsProps) {
       tone:
         summary.realizedResultCents >= 0 ? "text-success" : "text-destructive",
     },
-    {
-      label: "Resultado projetado",
-      value: summary.projectedResultCents,
-      tone: "text-muted-foreground",
-      subtitle: "Projetado",
-    },
   ];
 
   return (
@@ -50,9 +49,6 @@ export function FinanceSummaryCards({ summary }: FinanceSummaryCardsProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {card.label}
-              {"subtitle" in card && card.subtitle ? (
-                <span className="ml-2 text-xs">({card.subtitle})</span>
-              ) : null}
             </CardTitle>
           </CardHeader>
           <CardContent>

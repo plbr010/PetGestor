@@ -17,7 +17,7 @@ src/
   app/           Rotas (public, auth, dashboard, auth handlers)
   components/    UI reutilizável (ui, shared, layout, auth)
   config/        Marca, navegação e dados demonstrativos
-  features/      auth, companies, customers, pets, services, employees, appointments, service-orders, finance, subscription
+  features/      auth, companies, customers, pets, services, employees, appointments, service-orders, finance (incl. payments), subscription
   lib/
     auth/        Guards, redirects seguros, getClaims helpers
     env/         Validação tipada de variáveis de ambiente
