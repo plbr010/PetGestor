@@ -20,13 +20,11 @@ import { Separator } from "@/components/ui/separator";
 import { RestartOnboardingTourCard } from "@/features/onboarding-tour/components/restart-onboarding-tour-card";
 
 type ProfileSettingsContentProps = {
-  notificationSettings?: ReactNode;
-  notificationHistory?: ReactNode;
+  automaticMessages?: ReactNode;
 };
 
 export function ProfileSettingsContent({
-  notificationSettings,
-  notificationHistory,
+  automaticMessages,
 }: ProfileSettingsContentProps) {
   const { user, profile, membership } = useDashboardUser();
 
@@ -77,8 +75,7 @@ export function ProfileSettingsContent({
 
       <RestartOnboardingTourCard />
 
-      {notificationSettings}
-      {notificationHistory}
+      {automaticMessages}
 
       <p className="text-sm text-muted-foreground">
         Esqueceu a senha atual?{" "}

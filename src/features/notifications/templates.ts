@@ -89,10 +89,10 @@ export const NOTIFICATION_STATUS_LABELS: Record<
   import("@/features/notifications/types").NotificationStatus,
   string
 > = {
-  pending: "Pendente",
-  processing: "Processando",
+  pending: "Agendada",
+  processing: "Enviando",
   sent: "Enviada",
   failed: "Falhou",
   cancelled: "Cancelada",
-  simulated: "Simulação (não enviada)",
+  simulated: "Simulação",
 };

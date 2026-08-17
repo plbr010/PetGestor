@@ -106,5 +106,5 @@ export async function updateNotificationSettingsAction(
   }
 
   revalidatePath("/dashboard/configuracoes");
-  return { success: "Mensagens automáticas atualizadas." };
+  return { success: "Configuração salva." };
 }

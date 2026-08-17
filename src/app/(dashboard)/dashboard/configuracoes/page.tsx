@@ -3,14 +3,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { ProfileSettingsContent } from "@/components/dashboard/profile-settings-content";
-import {
-  NotificationHistoryList,
-  NotificationSettingsForm,
-} from "@/features/notifications/components/notification-settings-panel";
+import { AutomaticMessagesPanel } from "@/features/notifications/components/notification-settings-panel";
 import {
   getCompanyNotificationSettings,
   listNotificationHistory,
 } from "@/features/notifications/queue-service";
+import { getWhatsAppPublicStatus } from "@/features/notifications/whatsapp-public-status";
+import { isPlatformAdmin } from "@/lib/auth/require-platform-admin";
 
 type SettingsPageProps = {
   searchParams: Promise<{
@@ -25,9 +24,11 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const companyId = context.membership.company.id;
   const supabase = await createSupabaseServerClient();
 
-  const [settings, history] = await Promise.all([
+  const [settings, history, whatsappStatus, platformAdmin] = await Promise.all([
     getCompanyNotificationSettings(supabase, companyId),
     listNotificationHistory(supabase, companyId),
+    Promise.resolve(getWhatsAppPublicStatus()),
+    isPlatformAdmin(context.user),
   ]);
 
   return (
@@ -42,8 +43,20 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </div>
       ) : null}
       <ProfileSettingsContent
-        notificationSettings={<NotificationSettingsForm settings={settings} />}
-        notificationHistory={<NotificationHistoryList items={history} timeZone={context.membership.company.timezone} />}
+        automaticMessages={
+          <AutomaticMessagesPanel
+            settings={settings}
+            history={history}
+            timeZone={context.membership.company.timezone}
+            companyName={context.membership.company.name}
+            whatsappStatus={{
+              configured: whatsappStatus.configured,
+              sendEnabled: whatsappStatus.sendEnabled,
+              checkedAt: whatsappStatus.checkedAt,
+            }}
+            showTestMessage={platformAdmin && whatsappStatus.canSendTest}
+          />
+        }
       />
     </>
   );
