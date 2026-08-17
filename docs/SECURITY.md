@@ -42,6 +42,7 @@ Tabelas com RLS habilitado:
 - `services`, `service_size_prices`
 - `employees`, `employee_services`, `employee_working_hours`
 - `appointments`, `service_orders`, `financial_entries`, `company_subscriptions`
+- `company_notification_settings`, `notification_queue`
 
 Helpers em schema `private` (não exposto pela Data API):
 
@@ -89,7 +90,7 @@ Arquivos: `src/lib/security/uuid.ts`, `src/lib/security/tenant-access.ts`
 ### Service role (Etapa 10B — exceção controlada)
 
 - `SUPABASE_SERVICE_ROLE_KEY` — **somente** `src/lib/supabase/admin.ts`
-- Uso restrito: webhook Mercado Pago, sync billing e **leituras do painel `/admin`** após `requirePlatformAdmin()`
+- Uso restrito: webhook Mercado Pago, sync billing, **cron/webhook WhatsApp** e **leituras do painel `/admin`** após `requirePlatformAdmin()`
 - **Nunca** em Client Components, `NEXT_PUBLIC_`, ou CRUD operacional
 
 ### Platform admin (painel interno)
@@ -98,6 +99,17 @@ Arquivos: `src/lib/security/uuid.ts`, `src/lib/security/tenant-access.ts`
 - RLS: SELECT da própria linha; sem INSERT/UPDATE/DELETE para `authenticated`
 - Gate: `requirePlatformAdmin()` → `notFound()` se não for admin
 - Menu "Admin" só renderiza quando `isPlatformAdmin` é verdadeiro (UI); a autorização real é no layout `/admin`
+
+## WhatsApp Cloud API
+
+- Tokens e secrets **somente** no servidor (`src/lib/whatsapp/`, nunca `NEXT_PUBLIC_`)
+- Cron exige `Authorization: Bearer CRON_SECRET` (Vercel envia automaticamente se `CRON_SECRET` existir)
+- Webhook POST exige HMAC SHA-256 (`x-hub-signature-256`) com `META_APP_SECRET`
+- RPC `claim_due_notifications` concedida só a `service_role`
+- Teste de envio: apenas `requirePlatformAdmin()` + número igual a `WHATSAPP_TEST_RECIPIENT`
+- Isolamento: histórico e cancelamento filtram `company_id`; empresa A não vê fila da B
+
+Ver `docs/WHATSAPP_SETUP.md`.
 
 ## Ferramentas de desenvolvimento
 
@@ -114,7 +126,7 @@ Parâmetros `next`, `redirect`, `returnTo` passam por `getSafeRedirectPath` — 
 
 ## CSRF e mutações
 
-Operações mutáveis usam **Server Actions** ou Route Handlers POST/GET apropriados — sem endpoints GET mutáveis.
+Operações mutáveis usam **Server Actions** ou Route Handlers POST/GET apropriados — sem endpoints GET mutáveis, **exceto** o cron autenticado da Vercel (`/api/cron/whatsapp-notifications` com `CRON_SECRET`).
 
 ## Rate limiting
 

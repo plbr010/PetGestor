@@ -35,6 +35,14 @@ Legenda:
 | `MERCADO_PAGO_ENVIRONMENT` | **Não** | Não | Sim | `production` | `test` | `test` |
 | `MERCADO_PAGO_TEST_PAYER_EMAIL` | **Não** | Não | Sim (só ambiente `test`) | Não usar | Recomendada em `test` | Recomendada em `test` |
 | `BILLING_DEV_BYPASS` | **Não** | Não | Dev only | **Nunca** `true` | Não | Opcional (`false` por padrão) |
+| `CRON_SECRET` | **Não** | Não | Sim (cron WhatsApp) | Obrigatória para o cron | Obrigatória para testar cron | Obrigatória para testar cron |
+| `WHATSAPP_ACCESS_TOKEN` | **Não** | Não | Sim (envio) | Obrigatória para envio real | Opcional | Opcional |
+| `WHATSAPP_PHONE_NUMBER_ID` | **Não** | Não | Sim (envio) | Obrigatória para envio real | Opcional | Opcional |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | **Não** | Não | Referência | Recomendada | Opcional | Opcional |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | **Não** | Não | Sim (webhook GET) | Obrigatória para webhook | Obrigatória para webhook | Obrigatória para webhook |
+| `META_APP_SECRET` | **Não** | Não | Sim (webhook POST) | Obrigatória para webhook | Obrigatória para webhook | Obrigatória para webhook |
+| `META_GRAPH_API_VERSION` | **Não** | Não | Sim | Opcional (`v22.0`) | Opcional | Opcional |
+| `WHATSAPP_SEND_ENABLED` | **Não** | Não | Sim | `true` só com templates aprovados | `false` | `false` |
 
 \* `NEXT_PUBLIC_APP_URL` é lida em runtime; preferir `APP_URL` no servidor.
 
@@ -63,6 +71,7 @@ Estas secrets **não** precisam existir para o `next build` concluir. Continuam 
 - `MERCADO_PAGO_TEST_PAYER_EMAIL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `APP_URL` (fallback local só em desenvolvimento)
+- Variáveis WhatsApp (`WHATSAPP_*`, `META_*`, `CRON_SECRET`)
 
 Validação é **lazy**: o throw acontece ao chamar checkout, webhook ou sync — não ao importar o módulo durante o build de landing/login.
 
@@ -97,5 +106,7 @@ Detalhes: `docs/MERCADO_PAGO_SETUP.md`.
 ## Segurança
 
 - Nunca commitar `.env.local`, `.env` ou `.env.production.local`
-- Nunca expor `SUPABASE_SERVICE_ROLE_KEY` ou tokens Mercado Pago no client
+- Nunca expor `SUPABASE_SERVICE_ROLE_KEY`, tokens Mercado Pago ou `WHATSAPP_ACCESS_TOKEN` no client
 - `.env.example` contém apenas nomes/placeholders
+
+Guia WhatsApp: `docs/WHATSAPP_SETUP.md`. Cron: `vercel.json` chama `/api/cron/whatsapp-notifications` a cada 5 minutos (plano Vercel com cron frequente).

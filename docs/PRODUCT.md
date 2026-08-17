@@ -24,8 +24,10 @@ Donos e gestores de pet shops que precisam de uma solução simples, acessível 
 - Agenda, cadastros e financeiro operacionais
 - Cobrança recorrente e teste gratuito automatizado
 - Integrações de pagamento (Stripe, Mercado Pago)
-- WhatsApp automático e inteligência artificial
+- Chatbot, inteligência artificial, marketing e disparo em massa no WhatsApp
 - Painel administrativo global
+
+WhatsApp **transacional** (lembretes de agendamento via Cloud API oficial) está implementado no código; o envio real depende da conta Meta, templates aprovados e variáveis na Vercel. Ver `docs/WHATSAPP_SETUP.md`.
 
 ## Teste gratuito
 

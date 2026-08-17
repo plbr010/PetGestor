@@ -79,8 +79,18 @@ O Proxy **não substitui** proteção server-side em layouts.
 3. **Dados demo** permanecem parcialmente no dashboard (badge demonstrativo); módulos operacionais usam dados reais.
 4. **Trial 72h** — entitlement calculado no servidor; gate no layout do dashboard e em `requireCompanyContext()`.
 4. **Rotas agrupadas** por contexto: `(public)`, `(auth)`, `(dashboard)`.
-5. **Sem service role** nesta etapa — apenas publishable key + RLS.
+5. **Service role** — apenas rotas privilegiadas (billing, cron WhatsApp, webhook Meta, painel `/admin`). Operações do pet shop continuam no client autenticado + RLS.
 6. **user_metadata** só para pré-preenchimento — nunca para autorização.
+
+## WhatsApp Cloud API
+
+Camada isolada em `src/lib/whatsapp/` (`sendWhatsAppTemplate`). Worker em `src/features/notifications/processor.ts`.
+
+- Cron: `GET/POST /api/cron/whatsapp-notifications` (Bearer `CRON_SECRET`, lote 25)
+- Webhook: `/api/webhooks/whatsapp` (verify token + HMAC `x-hub-signature-256`)
+- Sem WhatsApp Web, Baileys, Evolution ou chatbot
+
+Guia: `docs/WHATSAPP_SETUP.md`.
 
 ## Separação de responsabilidades
 
@@ -106,3 +116,4 @@ O projeto utiliza **npm** exclusivamente.
 - `docs/EMPLOYEES.md` — equipe operacional e horários
 - `docs/APPOINTMENTS.md` — agenda, timezone, snapshots e conflitos
 - `docs/SERVICE_ORDERS.md` — atendimentos e ordens de serviço
+- `docs/WHATSAPP_SETUP.md` — WhatsApp Cloud API (Meta)

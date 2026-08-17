@@ -1,3 +1,31 @@
+## [0.22.0] — 2026-08-17
+
+### Adicionado — WhatsApp Cloud API (fila de lembretes)
+
+- Provider isolado (`src/lib/whatsapp/`) usando Graph API oficial da Meta (mensagens tipo `template`)
+- Worker com claim `FOR UPDATE SKIP LOCKED`, retries com backoff e janela de tolerância
+- Cron Vercel `/api/cron/whatsapp-notifications` e webhook `/api/webhooks/whatsapp`
+- Histórico: Pendente, Processando, Enviada, Entregue, Lida, Falhou, Cancelada
+- Modo `WHATSAPP_SEND_ENABLED=false` (simulação, sem marcar entregue)
+- Teste interno no painel `/admin` (número autorizado no servidor)
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260817200000_whatsapp_notification_delivery.sql`
+
+Código pronto; integração aguardando configuração da conta Meta/templates/credenciais.
+
+## [0.21.0] — 2026-08-17
+
+### Adicionado — Lembretes internos para tutor e funcionário
+
+- Reutiliza `notification_queue` e `company_notification_settings` (sem WhatsApp ainda)
+- Lembrete do dia (horário configurável, padrão 08:00 no timezone da empresa)
+- Lembretes 2h e do dia também para a equipe, usando `employees.phone`
+- Destinatário `customer` / `employee` na fila e no histórico
+- Falta (`no_show`) cancela lembretes futuros; `getDueNotifications()` preparado para o worker
+- Templates internos atualizados; pet pronto continua idempotente por `service_order_id`
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260817193000_customer_employee_reminders.sql`
+
 ## [0.20.0] — 2026-08-17
 
 ### Adicionado — Agenda mais rápida + lista de espera

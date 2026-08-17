@@ -50,13 +50,18 @@ export type NotificationType =
   | "appointment_confirmation"
   | "appointment_reminder_24h"
   | "appointment_reminder_2h"
-  | "pet_ready";
+  | "customer_same_day_reminder"
+  | "pet_ready"
+  | "employee_same_day_reminder"
+  | "employee_2h_reminder";
+export type NotificationRecipientType = "customer" | "employee";
 export type NotificationStatus =
   | "pending"
   | "processing"
   | "sent"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "simulated";
 
 export type Database = {
   public: {
@@ -828,6 +833,10 @@ export type Database = {
           reminder_24h_enabled: boolean;
           reminder_2h_enabled: boolean;
           pet_ready_enabled: boolean;
+          customer_same_day_reminder_enabled: boolean;
+          employee_same_day_reminder_enabled: boolean;
+          employee_reminder_2h_enabled: boolean;
+          same_day_reminder_time: string;
           created_at: string;
           updated_at: string;
         };
@@ -837,6 +846,10 @@ export type Database = {
           reminder_24h_enabled?: boolean;
           reminder_2h_enabled?: boolean;
           pet_ready_enabled?: boolean;
+          customer_same_day_reminder_enabled?: boolean;
+          employee_same_day_reminder_enabled?: boolean;
+          employee_reminder_2h_enabled?: boolean;
+          same_day_reminder_time?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -846,6 +859,10 @@ export type Database = {
           reminder_24h_enabled?: boolean;
           reminder_2h_enabled?: boolean;
           pet_ready_enabled?: boolean;
+          customer_same_day_reminder_enabled?: boolean;
+          employee_same_day_reminder_enabled?: boolean;
+          employee_reminder_2h_enabled?: boolean;
+          same_day_reminder_time?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -868,6 +885,8 @@ export type Database = {
           appointment_id: string | null;
           service_order_id: string | null;
           type: NotificationType;
+          recipient_type: NotificationRecipientType;
+          employee_id: string | null;
           destination_phone: string;
           message_body: string;
           scheduled_for: string;
@@ -875,6 +894,17 @@ export type Database = {
           attempts: number;
           last_error: string | null;
           sent_at: string | null;
+          provider: string;
+          provider_message_id: string | null;
+          accepted_at: string | null;
+          delivered_at: string | null;
+          read_at: string | null;
+          failed_at: string | null;
+          provider_error_code: string | null;
+          provider_error_message: string | null;
+          next_attempt_at: string | null;
+          max_attempts: number;
+          claimed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -886,6 +916,8 @@ export type Database = {
           appointment_id?: string | null;
           service_order_id?: string | null;
           type: NotificationType;
+          recipient_type?: NotificationRecipientType;
+          employee_id?: string | null;
           destination_phone: string;
           message_body: string;
           scheduled_for?: string;
@@ -893,6 +925,17 @@ export type Database = {
           attempts?: number;
           last_error?: string | null;
           sent_at?: string | null;
+          provider?: string;
+          provider_message_id?: string | null;
+          accepted_at?: string | null;
+          delivered_at?: string | null;
+          read_at?: string | null;
+          failed_at?: string | null;
+          provider_error_code?: string | null;
+          provider_error_message?: string | null;
+          next_attempt_at?: string | null;
+          max_attempts?: number;
+          claimed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -904,6 +947,8 @@ export type Database = {
           appointment_id?: string | null;
           service_order_id?: string | null;
           type?: NotificationType;
+          recipient_type?: NotificationRecipientType;
+          employee_id?: string | null;
           destination_phone?: string;
           message_body?: string;
           scheduled_for?: string;
@@ -911,6 +956,17 @@ export type Database = {
           attempts?: number;
           last_error?: string | null;
           sent_at?: string | null;
+          provider?: string;
+          provider_message_id?: string | null;
+          accepted_at?: string | null;
+          delivered_at?: string | null;
+          read_at?: string | null;
+          failed_at?: string | null;
+          provider_error_code?: string | null;
+          provider_error_message?: string | null;
+          next_attempt_at?: string | null;
+          max_attempts?: number;
+          claimed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -935,6 +991,20 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "pets";
             referencedColumns: ["id", "customer_id", "company_id"];
+          },
+          {
+            foreignKeyName: "notification_queue_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "appointments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_queue_employee_company_fkey";
+            columns: ["employee_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id", "company_id"];
           },
         ];
       };
@@ -1469,6 +1539,13 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      claim_due_notifications: {
+        Args: {
+          p_limit?: number;
+          p_now?: string;
+        };
+        Returns: Json;
+      };
       complete_onboarding: {
         Args: {
           p_full_name: string;
