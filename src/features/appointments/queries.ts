@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 
 import type { AppointmentStatusFilter } from "@/features/appointments/status";
 import type { AppointmentDetail, AppointmentListItem } from "@/features/appointments/types";
+import { isRangeBlockedByTimeBlocks } from "@/features/appointments/waitlist/utils";
+import { getTimeBlocksForSlotCheck } from "@/features/appointments/time-blocks/queries";
 import { generateTimeSlots, SLOT_INTERVAL_MINUTES } from "@/features/appointments/utils";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -65,6 +67,10 @@ function mapAppointmentRow(row: AppointmentRow): AppointmentListItem {
     notes: row.notes,
     recurrence_id: row.recurrence_id ?? null,
     recurrence_index: row.recurrence_index ?? null,
+    customer_id: row.customer_id,
+    pet_id: row.pet_id,
+    service_id: row.service_id,
+    employee_id: row.employee_id,
     pet: { id: pet.id, name: pet.name },
     customer: { id: customer.id, name: customer.name, phone: customer.phone },
     employee: { id: employee.id, name: employee.name },
@@ -305,6 +311,8 @@ export async function getAvailableTimeSlots(
 
   const { data: appointments } = await apptQuery;
 
+  const timeBlocks = await getTimeBlocksForSlotCheck(companyId, employeeId, date, timeZone);
+
   const slots = generateTimeSlots(
     workingHour.start_time.slice(0, 5),
     workingHour.end_time.slice(0, 5),
@@ -338,7 +346,14 @@ export async function getAvailableTimeSlots(
       (range) => slotStart < range.end && slotEnd > range.start,
     );
 
-    if (!overlaps) {
+    const blocked = isRangeBlockedByTimeBlocks(
+      slotStart,
+      slotEnd,
+      timeBlocks,
+      employeeId,
+    );
+
+    if (!overlaps && !blocked) {
       available.push(slot);
     }
   }

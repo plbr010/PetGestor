@@ -1,25 +1,32 @@
-import Link from "next/link";
+"use client";
 
 import { AppointmentRecurrenceBadge } from "@/features/appointments/components/appointment-recurrence-badge";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
+import type { ScheduleTimeBlock } from "@/features/appointments/time-blocks/types";
 import type { AppointmentListItem } from "@/features/appointments/types";
+import { slotTimeFromClick } from "@/features/appointments/waitlist/utils";
 import {
   formatAppointmentDateLabel,
   formatPriceSnapshot,
+  SLOT_INTERVAL_MINUTES,
 } from "@/features/appointments/utils";
 import { formatUtcInTimezone } from "@/lib/timezone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
 
 type AgendaDayViewProps = {
   appointments: AppointmentListItem[];
+  timeBlocks: ScheduleTimeBlock[];
   date: string;
   timeZone: string;
+  onSlotClick: (time: string) => void;
+  onAppointmentClick: (appointment: AppointmentListItem) => void;
 };
 
 const HOUR_HEIGHT = 56;
 const DAY_START_HOUR = 7;
 const DAY_END_HOUR = 20;
+const SLOTS_PER_HOUR = 60 / SLOT_INTERVAL_MINUTES;
 
 function getMinutesFromMidnight(iso: string, timeZone: string): number {
   const time = formatUtcInTimezone(iso, timeZone);
@@ -27,23 +34,26 @@ function getMinutesFromMidnight(iso: string, timeZone: string): number {
   return h * 60 + m;
 }
 
-export function AgendaDayView({ appointments, date, timeZone }: AgendaDayViewProps) {
+export function AgendaDayView({
+  appointments,
+  timeBlocks,
+  date,
+  timeZone,
+  onSlotClick,
+  onAppointmentClick,
+}: AgendaDayViewProps) {
   const activeAppointments = appointments.filter(
     (item) => item.status !== "cancelled" && item.status !== "no_show",
   );
 
-  if (appointments.length === 0) {
-    return (
-      <EmptyState
-        title="Nenhum agendamento neste dia"
-        description="Crie um novo agendamento para preencher a agenda."
-      />
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{formatAppointmentDateLabel(date, timeZone)}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">{formatAppointmentDateLabel(date, timeZone)}</p>
+        <Button type="button" className="min-h-11 lg:hidden" onClick={() => onSlotClick("09:00")}>
+          Agendar horário
+        </Button>
+      </div>
 
       <div className="hidden lg:block">
         <Card>
@@ -70,6 +80,57 @@ export function AgendaDayView({ appointments, date, timeZone }: AgendaDayViewPro
                 );
               })}
 
+              {Array.from({ length: DAY_END_HOUR - DAY_START_HOUR }, (_, hourIndex) => {
+                const hour = DAY_START_HOUR + hourIndex;
+                return Array.from({ length: SLOTS_PER_HOUR }, (_, slotIndex) => {
+                  const top =
+                    hourIndex * HOUR_HEIGHT + (slotIndex * HOUR_HEIGHT) / SLOTS_PER_HOUR;
+                  const time = slotTimeFromClick(hour, slotIndex);
+                  return (
+                    <button
+                      key={`${hour}-${slotIndex}`}
+                      type="button"
+                      aria-label={`Agendar às ${time}`}
+                      className="absolute right-0 left-0 border-0 bg-transparent hover:bg-primary/5"
+                      style={{
+                        top,
+                        height: HOUR_HEIGHT / SLOTS_PER_HOUR,
+                      }}
+                      onClick={() => onSlotClick(time)}
+                    />
+                  );
+                });
+              })}
+
+              {timeBlocks.map((block) => {
+                const startMinutes = getMinutesFromMidnight(block.block_start, timeZone);
+                const endMinutes = getMinutesFromMidnight(block.block_end, timeZone);
+                const top = ((startMinutes - DAY_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+                const height = Math.max(
+                  ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT,
+                  HOUR_HEIGHT / 4,
+                );
+
+                if (startMinutes < DAY_START_HOUR * 60 || startMinutes > DAY_END_HOUR * 60) {
+                  return null;
+                }
+
+                return (
+                  <div
+                    key={block.id}
+                    className="pointer-events-none absolute right-0 left-0 rounded-md border border-dashed border-muted-foreground/40 bg-muted/50 p-2 text-xs"
+                    style={{ top, height }}
+                  >
+                    <p className="font-medium">{block.reason}</p>
+                    {block.employeeName ? (
+                      <p className="text-muted-foreground">{block.employeeName}</p>
+                    ) : (
+                      <p className="text-muted-foreground">Todos</p>
+                    )}
+                  </div>
+                );
+              })}
+
               {activeAppointments.map((appointment) => {
                 const startMinutes = getMinutesFromMidnight(appointment.scheduled_start, timeZone);
                 const endMinutes = getMinutesFromMidnight(appointment.scheduled_end, timeZone);
@@ -84,11 +145,12 @@ export function AgendaDayView({ appointments, date, timeZone }: AgendaDayViewPro
                 }
 
                 return (
-                  <Link
+                  <button
                     key={appointment.id}
-                    href={`/dashboard/agenda/${appointment.id}`}
-                    className="absolute right-0 left-0 block rounded-lg border bg-card p-3 shadow-sm transition hover:border-primary/40"
+                    type="button"
+                    className="absolute right-0 left-0 block rounded-lg border bg-card p-3 text-left shadow-sm transition hover:border-primary/40"
                     style={{ top, height, minHeight: HOUR_HEIGHT * 0.75 }}
+                    onClick={() => onAppointmentClick(appointment)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -113,7 +175,7 @@ export function AgendaDayView({ appointments, date, timeZone }: AgendaDayViewPro
                         </p>
                       </div>
                     </div>
-                  </Link>
+                  </button>
                 );
               })}
             </div>
@@ -122,36 +184,43 @@ export function AgendaDayView({ appointments, date, timeZone }: AgendaDayViewPro
       </div>
 
       <ul className="space-y-3 lg:hidden">
-        {appointments.map((appointment) => (
-          <li key={appointment.id}>
-            <Link
-              href={`/dashboard/agenda/${appointment.id}`}
-              className="flex flex-col gap-2 rounded-xl border bg-card p-4 transition hover:border-primary/40"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold text-primary">
-                    {formatUtcInTimezone(appointment.scheduled_start, timeZone)}
-                  </p>
-                  <p className="font-medium">{appointment.pet.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {appointment.customer.name} · {appointment.service_name_snapshot}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{appointment.employee.name}</p>
-                </div>
-                <div className="text-right">
-                  <div className="flex flex-col items-end gap-1">
-                    <AppointmentStatusBadge status={appointment.status} />
-                    {appointment.recurrence_id ? <AppointmentRecurrenceBadge compact /> : null}
-                  </div>
-                  <p className="mt-2 font-medium">
-                    {formatPriceSnapshot(appointment.price_cents_snapshot)}
-                  </p>
-                </div>
-              </div>
-            </Link>
+        {appointments.length === 0 ? (
+          <li className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+            Nenhum agendamento neste dia. Toque em &quot;Agendar horário&quot; para criar.
           </li>
-        ))}
+        ) : (
+          appointments.map((appointment) => (
+            <li key={appointment.id}>
+              <button
+                type="button"
+                className="flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition hover:border-primary/40"
+                onClick={() => onAppointmentClick(appointment)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold text-primary">
+                      {formatUtcInTimezone(appointment.scheduled_start, timeZone)}
+                    </p>
+                    <p className="font-medium">{appointment.pet.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {appointment.customer.name} · {appointment.service_name_snapshot}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{appointment.employee.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex flex-col items-end gap-1">
+                      <AppointmentStatusBadge status={appointment.status} />
+                      {appointment.recurrence_id ? <AppointmentRecurrenceBadge compact /> : null}
+                    </div>
+                    <p className="mt-2 font-medium">
+                      {formatPriceSnapshot(appointment.price_cents_snapshot)}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </li>
+          ))
+        )}
       </ul>
     </div>
   );

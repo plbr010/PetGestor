@@ -14,6 +14,10 @@ import {
   type RecurrenceFrequency,
 } from "@/features/appointments/recurrence";
 import { canTransitionStatus } from "@/features/appointments/status";
+import {
+  countMatchingWaitlistEntries,
+} from "@/features/appointments/waitlist/utils";
+import { getWaitlistMatchCandidates } from "@/features/appointments/waitlist/queries";
 import { getAvailableTimeSlots } from "@/features/appointments/queries";
 import { mapAppointmentError } from "@/features/appointments/utils";
 import {
@@ -33,6 +37,8 @@ import type { AppointmentStatus, PetSize } from "@/types/database.types";
 export type AppointmentActionState = {
   error?: string;
   success?: string;
+  appointmentId?: string;
+  waitlistMatches?: number;
 };
 
 function revalidateAgendaPaths(appointmentId?: string) {
@@ -406,7 +412,11 @@ export async function updateAppointmentAction(
 async function transitionAppointmentStatus(
   appointmentId: string,
   nextStatus: AppointmentStatus,
-  extra?: { cancellation_reason?: string | null; seriesScope?: SeriesScope },
+  extra?: {
+    cancellation_reason?: string | null;
+    seriesScope?: SeriesScope;
+    waitlistMatches?: number;
+  },
 ): Promise<AppointmentActionState> {
   if (!isValidUuid(appointmentId)) {
     return { error: GENERIC_NOT_FOUND_MESSAGE };
@@ -498,6 +508,7 @@ async function transitionAppointmentStatus(
         followingCancelled > 0
           ? `Agendamento cancelado e mais ${followingCancelled} ocorrência(s) futura(s).`
           : "Agendamento cancelado.",
+      waitlistMatches: extra?.waitlistMatches,
     };
   }
 
@@ -507,13 +518,74 @@ async function transitionAppointmentStatus(
     no_show: "Agendamento marcado como não compareceu.",
   };
 
-  return { success: successMessages[nextStatus] ?? "Status atualizado." };
+  return {
+    success: successMessages[nextStatus] ?? "Status atualizado.",
+    waitlistMatches: extra?.waitlistMatches,
+  };
 }
 
 export async function confirmAppointmentAction(
   appointmentId: string,
 ): Promise<AppointmentActionState> {
   return transitionAppointmentStatus(appointmentId, "confirmed");
+}
+
+export async function createAppointmentInlineAction(
+  _prevState: AppointmentActionState,
+  formData: FormData,
+): Promise<AppointmentActionState> {
+  const context = await requireCompanyContext();
+  const companyId = context.membership.company.id;
+  const timeZone = context.membership.company.timezone;
+  const parsed = parseAppointmentForm(formData, timeZone);
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  if (parsed.data.repeatEnabled) {
+    return { error: "Use a página completa para agendamentos recorrentes." };
+  }
+
+  const scheduledStart = localDateTimeToUtcIso(
+    parsed.data.date,
+    parsed.data.time,
+    timeZone,
+  );
+
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase.rpc("create_appointment", {
+    p_pet_id: parsed.data.petId,
+    p_service_id: parsed.data.serviceId,
+    p_employee_id: parsed.data.employeeId,
+    p_scheduled_start: scheduledStart,
+    p_pet_size: parsed.data.petSize,
+    p_notes: parsed.data.notes,
+  });
+
+  if (error || !data) {
+    return { error: mapAppointmentError(error?.message) };
+  }
+
+  const appointmentId = String(data);
+  await syncAppointmentNotifications(supabase, companyId, appointmentId, timeZone);
+
+  const waitlistId = String(formData.get("waitlistId") ?? "");
+  if (isValidUuid(waitlistId)) {
+    await supabase
+      .from("appointment_waitlist")
+      .update({
+        status: "converted",
+        appointment_id: appointmentId,
+      })
+      .eq("id", waitlistId)
+      .eq("company_id", companyId)
+      .in("status", ["waiting", "contacted"]);
+  }
+
+  revalidateAgendaPaths(appointmentId);
+  return { success: "Agendamento criado.", appointmentId };
 }
 
 export async function cancelAppointmentAction(
@@ -530,10 +602,33 @@ export async function cancelAppointmentAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
-  return transitionAppointmentStatus(appointmentId, "cancelled", {
+  const context = await requireCompanyContext();
+  const companyId = context.membership.company.id;
+  const timeZone = context.membership.company.timezone;
+  const supabase = await createSupabaseServerClient();
+
+  const { data: appointment } = await supabase
+    .from("appointments")
+    .select("service_id, employee_id, scheduled_start, scheduled_end")
+    .eq("id", appointmentId)
+    .eq("company_id", companyId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  let waitlistMatches = 0;
+
+  if (appointment) {
+    const candidates = await getWaitlistMatchCandidates(companyId);
+    waitlistMatches = countMatchingWaitlistEntries(candidates, appointment, timeZone);
+  }
+
+  const result = await transitionAppointmentStatus(appointmentId, "cancelled", {
     cancellation_reason: parsed.data.cancellationReason,
     seriesScope: parsed.data.seriesScope,
+    waitlistMatches,
   });
+
+  return result;
 }
 
 export async function markNoShowAction(

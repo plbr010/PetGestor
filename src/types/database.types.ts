@@ -722,6 +722,105 @@ export type Database = {
           },
         ];
       };
+      appointment_waitlist: {
+        Row: {
+          id: string;
+          company_id: string;
+          customer_id: string;
+          pet_id: string;
+          service_id: string;
+          preferred_employee_id: string | null;
+          preferred_date: string | null;
+          preferred_period: "morning" | "afternoon" | "evening" | "any" | null;
+          preferred_time_start: string | null;
+          preferred_time_end: string | null;
+          notes: string | null;
+          status: "waiting" | "contacted" | "converted" | "cancelled";
+          appointment_id: string | null;
+          contacted_at: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          customer_id: string;
+          pet_id: string;
+          service_id: string;
+          preferred_employee_id?: string | null;
+          preferred_date?: string | null;
+          preferred_period?: "morning" | "afternoon" | "evening" | "any" | null;
+          preferred_time_start?: string | null;
+          preferred_time_end?: string | null;
+          notes?: string | null;
+          status?: "waiting" | "contacted" | "converted" | "cancelled";
+          appointment_id?: string | null;
+          contacted_at?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          customer_id?: string;
+          pet_id?: string;
+          service_id?: string;
+          preferred_employee_id?: string | null;
+          preferred_date?: string | null;
+          preferred_period?: "morning" | "afternoon" | "evening" | "any" | null;
+          preferred_time_start?: string | null;
+          preferred_time_end?: string | null;
+          notes?: string | null;
+          status?: "waiting" | "contacted" | "converted" | "cancelled";
+          appointment_id?: string | null;
+          contacted_at?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      schedule_time_blocks: {
+        Row: {
+          id: string;
+          company_id: string;
+          employee_id: string | null;
+          block_start: string;
+          block_end: string;
+          reason: string;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          employee_id?: string | null;
+          block_start: string;
+          block_end: string;
+          reason: string;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          employee_id?: string | null;
+          block_start?: string;
+          block_end?: string;
+          reason?: string;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
       company_notification_settings: {
         Row: {
           company_id: string;

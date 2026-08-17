@@ -12,6 +12,10 @@ export type AppointmentListItem = {
   notes: string | null;
   recurrence_id: string | null;
   recurrence_index: number | null;
+  customer_id: string;
+  pet_id: string;
+  service_id: string;
+  employee_id: string;
   pet: { id: string; name: string };
   customer: { id: string; name: string; phone: string };
   employee: { id: string; name: string };

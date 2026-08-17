@@ -25,6 +25,10 @@ export function mapAppointmentError(message: string | undefined): string {
     return "O horário está fora da jornada deste profissional.";
   }
 
+  if (code.includes("time_block_conflict")) {
+    return "Este horário está bloqueado na agenda.";
+  }
+
   if (code.includes("employee_service_mismatch") || code.includes("employee_not_eligible")) {
     return "Este profissional não realiza o serviço selecionado.";
   }

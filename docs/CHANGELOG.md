@@ -1,3 +1,15 @@
+## [0.20.0] — 2026-08-17
+
+### Adicionado — Agenda mais rápida + lista de espera
+
+- Criação rápida na agenda (clique em slot ou botão) via sheet sem sair da página
+- Painel rápido do agendamento: confirmar, cancelar, falta, check-in, duplicar, editar
+- Lista de espera (`appointment_waitlist`) com conversão em agendamento
+- Aviso interno ao cancelar quando há clientes compatíveis na lista de espera
+- Bloqueios pontuais de horário (`schedule_time_blocks`) integrados a slots e RPCs
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260817180000_agenda_waitlist_time_blocks.sql`
+
 ## [0.19.0] — 2026-08-17
 
 ### Adicionado — Histórico completo do pet

@@ -34,6 +34,32 @@ function revalidateServiceOrderPaths(serviceOrderId?: string, appointmentId?: st
   }
 }
 
+export async function checkInAppointmentInlineAction(
+  appointmentId: string,
+): Promise<ServiceOrderActionState & { serviceOrderId?: string }> {
+  if (!isValidUuid(appointmentId)) {
+    return { error: GENERIC_NOT_FOUND_MESSAGE };
+  }
+
+  await requireCompanyContext();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase.rpc("check_in_appointment", {
+    p_appointment_id: appointmentId,
+    p_intake_notes: null,
+  });
+
+  if (error || !data) {
+    return { error: mapServiceOrderError(error?.message) };
+  }
+
+  revalidateServiceOrderPaths(String(data), appointmentId);
+  return {
+    success: "Check-in realizado.",
+    serviceOrderId: String(data),
+  };
+}
+
 export async function checkInAppointmentAction(
   appointmentId: string,
   _prevState: ServiceOrderActionState,
