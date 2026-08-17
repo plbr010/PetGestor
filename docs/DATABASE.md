@@ -209,9 +209,31 @@ Campos principais: `scheduled_start`, `scheduled_end`, `status`, snapshots (`ser
 
 Status: `scheduled`, `confirmed`, `in_progress`, `completed`, `cancelled`, `no_show`.
 
-### Notificações internas
+### Notificações (fila + WhatsApp Cloud API)
 
-`notification_queue` + `company_notification_settings` — lembretes de tutor e funcionário, sem envio externo. Telefone da equipe reutiliza `employees.phone` (nullable). Dia comercial e 08:00 usam `companies.timezone`.
+`notification_queue` + `company_notification_settings` — lembretes de tutor e funcionário.
+
+Telefone da equipe reutiliza `employees.phone` (nullable). Dia comercial e 08:00 usam `companies.timezone`.
+
+Envio real: WhatsApp Cloud API oficial (Meta), via worker server-side. Novos campos de entrega (migration `20260817200000_whatsapp_notification_delivery.sql`):
+
+| Coluna | Uso |
+|--------|-----|
+| `provider` | Sempre `whatsapp` nesta etapa |
+| `provider_message_id` | ID da mensagem aceita pela Meta |
+| `accepted_at` / `delivered_at` / `read_at` / `failed_at` | Rastreio de entrega |
+| `provider_error_code` / `provider_error_message` | Erro sanitizado |
+| `next_attempt_at` / `max_attempts` / `claimed_at` | Retry e lock |
+
+Status extra: `simulated` (modo `WHATSAPP_SEND_ENABLED=false`, sem marcar entregue).
+
+RPC `claim_due_notifications` (`FOR UPDATE SKIP LOCKED`) — **somente `service_role`**.
+
+Índices: `(status, scheduled_for, next_attempt_at)` para a fila; único em `provider_message_id` quando preenchido.
+
+**Migration pendente:** `supabase/migrations/20260817200000_whatsapp_notification_delivery.sql`
+
+Ver `docs/WHATSAPP_SETUP.md`.
 
 ### Integridade
 

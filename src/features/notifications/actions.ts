@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { normalizeSameDayReminderTime } from "@/features/notifications/scheduler";
+import type { NotificationType } from "@/features/notifications/types";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -80,6 +81,28 @@ export async function updateNotificationSettingsAction(
 
   if (error) {
     return { error: "Não foi possível salvar as configurações." };
+  }
+
+  const disabledTypes: NotificationType[] = [];
+  if (!parsed.data.appointmentConfirmationEnabled) disabledTypes.push("appointment_confirmation");
+  if (!parsed.data.reminder24hEnabled) disabledTypes.push("appointment_reminder_24h");
+  if (!parsed.data.reminder2hEnabled) disabledTypes.push("appointment_reminder_2h");
+  if (!parsed.data.petReadyEnabled) disabledTypes.push("pet_ready");
+  if (!parsed.data.customerSameDayReminderEnabled) {
+    disabledTypes.push("customer_same_day_reminder");
+  }
+  if (!parsed.data.employeeSameDayReminderEnabled) {
+    disabledTypes.push("employee_same_day_reminder");
+  }
+  if (!parsed.data.employeeReminder2hEnabled) disabledTypes.push("employee_2h_reminder");
+
+  if (disabledTypes.length > 0) {
+    await supabase
+      .from("notification_queue")
+      .update({ status: "cancelled", last_error: "automation_disabled" })
+      .eq("company_id", companyId)
+      .eq("status", "pending")
+      .in("type", disabledTypes);
   }
 
   revalidatePath("/dashboard/configuracoes");

@@ -1,6 +1,7 @@
 import { AdminCompaniesTable } from "@/features/admin/components/admin-companies-table";
 import { AdminFilters } from "@/features/admin/components/admin-filters";
 import { AdminSummaryCards } from "@/features/admin/components/admin-summary-cards";
+import { WhatsAppAdminTestForm } from "@/features/admin/components/whatsapp-admin-test-form";
 import type { AdminAccountStatusFilter } from "@/features/admin/types";
 import { listAdminCompanies } from "@/features/admin/queries";
 
@@ -41,6 +42,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       </div>
 
       <AdminSummaryCards summary={summary} />
+      <WhatsAppAdminTestForm />
       <AdminFilters query={query} status={status} />
       <AdminCompaniesTable items={items} />
     </div>

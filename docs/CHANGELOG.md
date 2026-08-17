@@ -1,3 +1,18 @@
+## [0.22.0] — 2026-08-17
+
+### Adicionado — WhatsApp Cloud API (fila de lembretes)
+
+- Provider isolado (`src/lib/whatsapp/`) usando Graph API oficial da Meta (mensagens tipo `template`)
+- Worker com claim `FOR UPDATE SKIP LOCKED`, retries com backoff e janela de tolerância
+- Cron Vercel `/api/cron/whatsapp-notifications` e webhook `/api/webhooks/whatsapp`
+- Histórico: Pendente, Processando, Enviada, Entregue, Lida, Falhou, Cancelada
+- Modo `WHATSAPP_SEND_ENABLED=false` (simulação, sem marcar entregue)
+- Teste interno no painel `/admin` (número autorizado no servidor)
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260817200000_whatsapp_notification_delivery.sql`
+
+Código pronto; integração aguardando configuração da conta Meta/templates/credenciais.
+
 ## [0.21.0] — 2026-08-17
 
 ### Adicionado — Lembretes internos para tutor e funcionário

@@ -60,7 +60,8 @@ export type NotificationStatus =
   | "processing"
   | "sent"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "simulated";
 
 export type Database = {
   public: {
@@ -893,6 +894,17 @@ export type Database = {
           attempts: number;
           last_error: string | null;
           sent_at: string | null;
+          provider: string;
+          provider_message_id: string | null;
+          accepted_at: string | null;
+          delivered_at: string | null;
+          read_at: string | null;
+          failed_at: string | null;
+          provider_error_code: string | null;
+          provider_error_message: string | null;
+          next_attempt_at: string | null;
+          max_attempts: number;
+          claimed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -913,6 +925,17 @@ export type Database = {
           attempts?: number;
           last_error?: string | null;
           sent_at?: string | null;
+          provider?: string;
+          provider_message_id?: string | null;
+          accepted_at?: string | null;
+          delivered_at?: string | null;
+          read_at?: string | null;
+          failed_at?: string | null;
+          provider_error_code?: string | null;
+          provider_error_message?: string | null;
+          next_attempt_at?: string | null;
+          max_attempts?: number;
+          claimed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -933,6 +956,17 @@ export type Database = {
           attempts?: number;
           last_error?: string | null;
           sent_at?: string | null;
+          provider?: string;
+          provider_message_id?: string | null;
+          accepted_at?: string | null;
+          delivered_at?: string | null;
+          read_at?: string | null;
+          failed_at?: string | null;
+          provider_error_code?: string | null;
+          provider_error_message?: string | null;
+          next_attempt_at?: string | null;
+          max_attempts?: number;
+          claimed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1505,6 +1539,13 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      claim_due_notifications: {
+        Args: {
+          p_limit?: number;
+          p_now?: string;
+        };
+        Returns: Json;
+      };
       complete_onboarding: {
         Args: {
           p_full_name: string;

@@ -281,6 +281,10 @@ export async function listNotificationHistory(
       recipient_type,
       scheduled_for,
       status,
+      last_error,
+      delivered_at,
+      read_at,
+      failed_at,
       customers(name),
       pets(name),
       employees(name),
@@ -319,6 +323,10 @@ export async function listNotificationHistory(
       type: row.type as NotificationHistoryItem["type"],
       scheduledFor: row.scheduled_for,
       status: row.status as NotificationHistoryItem["status"],
+      lastError: (row.last_error as string | null) ?? null,
+      deliveredAt: (row.delivered_at as string | null) ?? null,
+      readAt: (row.read_at as string | null) ?? null,
+      failedAt: (row.failed_at as string | null) ?? null,
     };
   });
 }

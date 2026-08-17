@@ -4,8 +4,12 @@ import { useActionState } from "react";
 
 import { updateNotificationSettingsAction } from "@/features/notifications/actions";
 import {
+  getFriendlyNotificationError,
+  getNotificationDisplayStatus,
+  NOTIFICATION_DISPLAY_STATUS_LABELS,
+} from "@/features/notifications/display-status";
+import {
   NOTIFICATION_RECIPIENT_LABELS,
-  NOTIFICATION_STATUS_LABELS,
   NOTIFICATION_TYPE_LABELS,
 } from "@/features/notifications/templates";
 import type {
@@ -43,7 +47,10 @@ export function NotificationSettingsForm({ settings }: NotificationSettingsFormP
       <CardHeader>
         <CardTitle>Mensagens automáticas</CardTitle>
         <CardDescription>
-          Lembretes internos para tutores e equipe. O envio pelo WhatsApp será conectado depois.
+          Lembretes operacionais do WhatsApp relacionados aos agendamentos (confirmação, lembrete
+          do dia, 2 horas antes, pet pronto e avisos para a equipe). Não é marketing nem chatbot:
+          só mensagens sobre um atendimento já marcado. Desative um tipo para parar novos envios e
+          cancelar os pendentes daquela automação.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -171,7 +178,8 @@ export function NotificationHistoryList({ items, timeZone }: NotificationHistory
       <CardHeader>
         <CardTitle>Histórico de mensagens</CardTitle>
         <CardDescription>
-          Fila interna — ainda sem envio externo.
+          Status das mensagens do WhatsApp desta empresa. “Lida” só aparece se a Meta confirmar a
+          leitura.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -179,25 +187,42 @@ export function NotificationHistoryList({ items, timeZone }: NotificationHistory
           <p className="text-sm text-muted-foreground">Nenhuma mensagem gerada ainda.</p>
         ) : (
           <ul className="divide-y rounded-lg border">
-            {items.map((item) => (
-              <li key={item.id} className="space-y-1 p-3 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">
-                    {item.recipientName} — {NOTIFICATION_RECIPIENT_LABELS[item.recipientType]}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {NOTIFICATION_STATUS_LABELS[item.status]}
-                  </span>
-                </div>
-                <p className="text-muted-foreground">
-                  {item.petName} — {item.serviceName}
-                </p>
-                <p className="text-muted-foreground">
-                  {NOTIFICATION_TYPE_LABELS[item.type]} ·{" "}
-                  {formatScheduledFor(item.scheduledFor, timeZone)}
-                </p>
-              </li>
-            ))}
+            {items.map((item) => {
+              const displayStatus = getNotificationDisplayStatus({
+                status: item.status,
+                deliveredAt: item.deliveredAt,
+                readAt: item.readAt,
+              });
+              const friendlyError =
+                displayStatus === "failed" ||
+                displayStatus === "cancelled" ||
+                displayStatus === "simulated"
+                  ? getFriendlyNotificationError(item.lastError)
+                  : null;
+
+              return (
+                <li key={item.id} className="space-y-1 p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">
+                      {item.recipientName} — {NOTIFICATION_RECIPIENT_LABELS[item.recipientType]}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {NOTIFICATION_DISPLAY_STATUS_LABELS[displayStatus]}
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground">
+                    {item.petName} — {item.serviceName}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {NOTIFICATION_TYPE_LABELS[item.type]} ·{" "}
+                    {formatScheduledFor(item.scheduledFor, timeZone)}
+                  </p>
+                  {friendlyError ? (
+                    <p className="text-destructive">{friendlyError}</p>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

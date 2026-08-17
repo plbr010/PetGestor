@@ -94,4 +94,5 @@ export const NOTIFICATION_STATUS_LABELS: Record<
   sent: "Enviada",
   failed: "Falhou",
   cancelled: "Cancelada",
+  simulated: "Simulação (não enviada)",
 };

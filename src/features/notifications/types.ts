@@ -16,6 +16,7 @@ export const NOTIFICATION_STATUSES = [
   "sent",
   "failed",
   "cancelled",
+  "simulated",
 ] as const;
 
 export type NotificationStatus = (typeof NOTIFICATION_STATUSES)[number];
@@ -91,6 +92,10 @@ export type NotificationHistoryItem = {
   type: NotificationType;
   scheduledFor: string;
   status: NotificationStatus;
+  lastError: string | null;
+  deliveredAt: string | null;
+  readAt: string | null;
+  failedAt: string | null;
 };
 
 export type DueNotification = {
