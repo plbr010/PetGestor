@@ -44,6 +44,17 @@ export type PaymentMethod =
   | "credit_card"
   | "bank_transfer"
   | "other";
+export type NotificationType =
+  | "appointment_confirmation"
+  | "appointment_reminder_24h"
+  | "appointment_reminder_2h"
+  | "pet_ready";
+export type NotificationStatus =
+  | "pending"
+  | "processing"
+  | "sent"
+  | "failed"
+  | "cancelled";
 
 export type Database = {
   public: {
@@ -703,6 +714,123 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "companies";
             referencedColumns: ["id"];
+          },
+        ];
+      };
+      company_notification_settings: {
+        Row: {
+          company_id: string;
+          appointment_confirmation_enabled: boolean;
+          reminder_24h_enabled: boolean;
+          reminder_2h_enabled: boolean;
+          pet_ready_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          company_id: string;
+          appointment_confirmation_enabled?: boolean;
+          reminder_24h_enabled?: boolean;
+          reminder_2h_enabled?: boolean;
+          pet_ready_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          company_id?: string;
+          appointment_confirmation_enabled?: boolean;
+          reminder_24h_enabled?: boolean;
+          reminder_2h_enabled?: boolean;
+          pet_ready_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "company_notification_settings_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: true;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notification_queue: {
+        Row: {
+          id: string;
+          company_id: string;
+          customer_id: string;
+          pet_id: string;
+          appointment_id: string | null;
+          service_order_id: string | null;
+          type: NotificationType;
+          destination_phone: string;
+          message_body: string;
+          scheduled_for: string;
+          status: NotificationStatus;
+          attempts: number;
+          last_error: string | null;
+          sent_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          customer_id: string;
+          pet_id: string;
+          appointment_id?: string | null;
+          service_order_id?: string | null;
+          type: NotificationType;
+          destination_phone: string;
+          message_body: string;
+          scheduled_for?: string;
+          status?: NotificationStatus;
+          attempts?: number;
+          last_error?: string | null;
+          sent_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          customer_id?: string;
+          pet_id?: string;
+          appointment_id?: string | null;
+          service_order_id?: string | null;
+          type?: NotificationType;
+          destination_phone?: string;
+          message_body?: string;
+          scheduled_for?: string;
+          status?: NotificationStatus;
+          attempts?: number;
+          last_error?: string | null;
+          sent_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_queue_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_queue_customer_company_fkey";
+            columns: ["customer_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id", "company_id"];
+          },
+          {
+            foreignKeyName: "notification_queue_pet_customer_company_fkey";
+            columns: ["pet_id", "customer_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "pets";
+            referencedColumns: ["id", "customer_id", "company_id"];
           },
         ];
       };

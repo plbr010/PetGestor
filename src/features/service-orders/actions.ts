@@ -9,6 +9,7 @@ import {
   parseServiceOrderNotesForm,
 } from "@/features/service-orders/schemas";
 import { mapServiceOrderError } from "@/features/service-orders/utils";
+import { enqueuePetReadyNotification } from "@/features/notifications/queue-service";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
@@ -93,7 +94,7 @@ export async function markServiceOrderReadyAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requireCompanyContext();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("mark_service_order_ready", {
@@ -104,7 +105,15 @@ export async function markServiceOrderReadyAction(
     return { error: mapServiceOrderError(error?.message) };
   }
 
+  await enqueuePetReadyNotification(
+    supabase,
+    context.membership.company.id,
+    serviceOrderId,
+    context.membership.company.timezone,
+  );
+
   revalidateServiceOrderPaths(serviceOrderId);
+  revalidatePath("/dashboard/configuracoes");
   return { success: "Pet marcado como pronto para buscar." };
 }
 

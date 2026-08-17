@@ -1,3 +1,15 @@
+## [0.17.0] — 2026-08-17
+
+### Adicionado — Fila interna de confirmações e lembretes
+
+- Tabelas `company_notification_settings` e `notification_queue` (sem envio externo ainda)
+- Confirmação ao criar, lembretes 24h/2h, aviso pet pronto — respeitando timezone da empresa
+- Toggles em Configurações · histórico simples de mensagens geradas
+- Telefone do tutor reutiliza `customers.phone` (E.164 na fila)
+- Idempotência via índices únicos parciais; cancelamento preserva histórico
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260817120000_appointment_notifications.sql`
+
 ## [0.16.1] — 2026-08-15
 
 ### Corrigido — Assinatura dentro do app autenticado

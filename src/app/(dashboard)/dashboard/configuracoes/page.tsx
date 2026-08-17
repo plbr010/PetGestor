@@ -1,5 +1,16 @@
+import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { ProfileSettingsContent } from "@/components/dashboard/profile-settings-content";
+import {
+  NotificationHistoryList,
+  NotificationSettingsForm,
+} from "@/features/notifications/components/notification-settings-panel";
+import {
+  getCompanyNotificationSettings,
+  listNotificationHistory,
+} from "@/features/notifications/queue-service";
 
 type SettingsPageProps = {
   searchParams: Promise<{
@@ -10,6 +21,14 @@ type SettingsPageProps = {
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
   const passwordUpdated = params["senha-atualizada"] === "1";
+  const context = await requireCompanyContext();
+  const companyId = context.membership.company.id;
+  const supabase = await createSupabaseServerClient();
+
+  const [settings, history] = await Promise.all([
+    getCompanyNotificationSettings(supabase, companyId),
+    listNotificationHistory(supabase, companyId),
+  ]);
 
   return (
     <>
@@ -22,7 +41,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           Senha atualizada com sucesso.
         </div>
       ) : null}
-      <ProfileSettingsContent />
+      <ProfileSettingsContent
+        notificationSettings={<NotificationSettingsForm settings={settings} />}
+        notificationHistory={<NotificationHistoryList items={history} />}
+      />
     </>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { NewPasswordForm } from "@/components/auth/new-password-form";
@@ -18,7 +19,15 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { RestartOnboardingTourCard } from "@/features/onboarding-tour/components/restart-onboarding-tour-card";
 
-export function ProfileSettingsContent() {
+type ProfileSettingsContentProps = {
+  notificationSettings?: ReactNode;
+  notificationHistory?: ReactNode;
+};
+
+export function ProfileSettingsContent({
+  notificationSettings,
+  notificationHistory,
+}: ProfileSettingsContentProps) {
   const { user, profile, membership } = useDashboardUser();
 
   return (
@@ -67,6 +76,9 @@ export function ProfileSettingsContent() {
       </Card>
 
       <RestartOnboardingTourCard />
+
+      {notificationSettings}
+      {notificationHistory}
 
       <p className="text-sm text-muted-foreground">
         Esqueceu a senha atual?{" "}

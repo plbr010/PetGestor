@@ -16,6 +16,10 @@ import {
 import { canTransitionStatus } from "@/features/appointments/status";
 import { getAvailableTimeSlots } from "@/features/appointments/queries";
 import { mapAppointmentError } from "@/features/appointments/utils";
+import {
+  cancelAppointmentNotificationsForStatusChange,
+  syncAppointmentNotifications,
+} from "@/features/notifications/queue-service";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import {
   didMutateAccessibleRow,
@@ -109,6 +113,8 @@ export async function createAppointmentAction(
       return { error: mapAppointmentError(error?.message) };
     }
 
+    await syncAppointmentNotifications(supabase, companyId, String(data), timeZone);
+
     revalidateAgendaPaths(String(data));
     redirect(`/dashboard/agenda/${data}`);
   }
@@ -194,6 +200,12 @@ export async function createAppointmentAction(
     }
 
     createdIds.push(String(appointmentId));
+    await syncAppointmentNotifications(
+      supabase,
+      companyId,
+      String(appointmentId),
+      timeZone,
+    );
   }
 
   if (createdIds.length === 0) {
@@ -232,6 +244,7 @@ export async function createAppointmentAction(
 async function updateFollowingRecurrenceAppointments(params: {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   companyId: string;
+  timeZone: string;
   recurrenceId: string;
   fromScheduledStart: string;
   excludeAppointmentId: string;
@@ -282,6 +295,13 @@ async function updateFollowingRecurrenceAppointments(params: {
       skipped += 1;
       continue;
     }
+
+    await syncAppointmentNotifications(
+      params.supabase,
+      params.companyId,
+      row.id,
+      params.timeZone,
+    );
 
     updated += 1;
   }
@@ -341,6 +361,8 @@ export async function updateAppointmentAction(
     return { error: mapAppointmentError(error?.message) };
   }
 
+  await syncAppointmentNotifications(supabase, companyId, appointmentId, timeZone);
+
   const scope: SeriesScope = parsed.data.seriesScope ?? "this";
 
   if (
@@ -354,6 +376,7 @@ export async function updateAppointmentAction(
     const result = await updateFollowingRecurrenceAppointments({
       supabase,
       companyId,
+      timeZone,
       recurrenceId: current.recurrence_id,
       fromScheduledStart: current.scheduled_start,
       excludeAppointmentId: appointmentId,
@@ -426,6 +449,14 @@ async function transitionAppointmentStatus(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
+  if (nextStatus === "cancelled") {
+    await cancelAppointmentNotificationsForStatusChange(
+      supabase,
+      companyId,
+      appointmentId,
+    );
+  }
+
   let followingCancelled = 0;
 
   if (
@@ -447,6 +478,16 @@ async function transitionAppointmentStatus(
       .select("id");
 
     followingCancelled = following?.length ?? 0;
+
+    if (following?.length) {
+      for (const row of following) {
+        await cancelAppointmentNotificationsForStatusChange(
+          supabase,
+          companyId,
+          row.id,
+        );
+      }
+    }
   }
 
   revalidateAgendaPaths(appointmentId);
