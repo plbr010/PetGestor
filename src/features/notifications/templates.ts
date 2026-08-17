@@ -8,6 +8,9 @@ import type { NotificationType } from "@/features/notifications/types";
 export type MessageTemplateContext = {
   tutorName: string;
   petName: string;
+  serviceName: string;
+  companyName: string;
+  employeeName: string;
   appointmentStartUtcIso: string;
   timeZone: string;
 };
@@ -32,7 +35,15 @@ export function renderNotificationMessage(
   type: NotificationType,
   context: MessageTemplateContext,
 ): string {
-  const { tutorName, petName, appointmentStartUtcIso, timeZone } = context;
+  const {
+    tutorName,
+    petName,
+    serviceName,
+    companyName,
+    employeeName,
+    appointmentStartUtcIso,
+    timeZone,
+  } = context;
   const time = formatLocalTime(appointmentStartUtcIso, timeZone);
 
   switch (type) {
@@ -42,10 +53,16 @@ export function renderNotificationMessage(
     }
     case "appointment_reminder_24h":
       return `Olá, ${tutorName}! Passando para lembrar que ${petName} tem atendimento amanhã às ${time}.`;
+    case "customer_same_day_reminder":
+      return `Olá, ${tutorName}! Passando para lembrar que ${petName} tem ${serviceName} agendado hoje às ${time} na ${companyName}. 🐾`;
     case "appointment_reminder_2h":
-      return `Olá, ${tutorName}! O atendimento de ${petName} está marcado para hoje às ${time}.`;
+      return `Olá, ${tutorName}! O atendimento de ${petName} começa daqui a 2 horas, às ${time}. Estamos te esperando! 😊`;
     case "pet_ready":
-      return `Olá, ${tutorName}! ${petName} já está pronto(a).`;
+      return `Olá, ${tutorName}! ${petName} já está pronto(a) e pode ser buscado(a). 🐾`;
+    case "employee_same_day_reminder":
+      return `Olá, ${employeeName}! Você tem atendimento de ${petName} hoje às ${time}. Serviço: ${serviceName}.`;
+    case "employee_2h_reminder":
+      return `Lembrete: atendimento de ${petName} em 2 horas, às ${time}. Serviço: ${serviceName}.`;
     default: {
       const _exhaustive: never = type;
       return _exhaustive;
@@ -56,8 +73,16 @@ export function renderNotificationMessage(
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   appointment_confirmation: "Confirmação de agendamento",
   appointment_reminder_24h: "Lembrete 24h antes",
+  customer_same_day_reminder: "Lembrete no dia",
   appointment_reminder_2h: "Lembrete 2h antes",
   pet_ready: "Pet pronto",
+  employee_same_day_reminder: "Lembrete no dia (equipe)",
+  employee_2h_reminder: "Lembrete 2h antes (equipe)",
+};
+
+export const NOTIFICATION_RECIPIENT_LABELS: Record<"customer" | "employee", string> = {
+  customer: "Tutor",
+  employee: "Funcionário",
 };
 
 export const NOTIFICATION_STATUS_LABELS: Record<

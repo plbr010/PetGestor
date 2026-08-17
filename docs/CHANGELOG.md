@@ -1,3 +1,16 @@
+## [0.21.0] — 2026-08-17
+
+### Adicionado — Lembretes internos para tutor e funcionário
+
+- Reutiliza `notification_queue` e `company_notification_settings` (sem WhatsApp ainda)
+- Lembrete do dia (horário configurável, padrão 08:00 no timezone da empresa)
+- Lembretes 2h e do dia também para a equipe, usando `employees.phone`
+- Destinatário `customer` / `employee` na fila e no histórico
+- Falta (`no_show`) cancela lembretes futuros; `getDueNotifications()` preparado para o worker
+- Templates internos atualizados; pet pronto continua idempotente por `service_order_id`
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260817193000_customer_employee_reminders.sql`
+
 ## [0.20.0] — 2026-08-17
 
 ### Adicionado — Agenda mais rápida + lista de espera

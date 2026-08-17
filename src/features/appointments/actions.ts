@@ -459,7 +459,7 @@ async function transitionAppointmentStatus(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  if (nextStatus === "cancelled") {
+  if (nextStatus === "cancelled" || nextStatus === "no_show") {
     await cancelAppointmentNotificationsForStatusChange(
       supabase,
       companyId,

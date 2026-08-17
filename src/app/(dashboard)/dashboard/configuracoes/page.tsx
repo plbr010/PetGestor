@@ -43,7 +43,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       ) : null}
       <ProfileSettingsContent
         notificationSettings={<NotificationSettingsForm settings={settings} />}
-        notificationHistory={<NotificationHistoryList items={history} />}
+        notificationHistory={<NotificationHistoryList items={history} timeZone={context.membership.company.timezone} />}
       />
     </>
   );

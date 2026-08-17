@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { buildAppointmentNotificationRows, buildPetReadyNotificationRow } from "@/features/notifications/build-queue-rows";
-import { computeReminderScheduledFor } from "@/features/notifications/scheduler";
+import {
+  computeReminderScheduledFor,
+  computeSameDayReminderScheduledFor,
+  isActiveAppointmentStatus,
+} from "@/features/notifications/scheduler";
 import { renderNotificationMessage } from "@/features/notifications/templates";
 import type {
   AppointmentNotificationContext,
@@ -17,13 +21,18 @@ function baseContext(
   return {
     appointmentId: "appt-1",
     companyId: "company-a",
+    companyName: "PetGestor Shop",
     customerId: "cust-1",
     petId: "pet-1",
-    scheduledStart: localDateTimeToUtcIso("2026-08-20", "14:00", TIMEZONE),
+    employeeId: "emp-1",
+    employeeName: "João",
+    employeePhone: "32988887777",
+    scheduledStart: localDateTimeToUtcIso("2026-08-20", "15:00", TIMEZONE),
     status: "scheduled",
     customerName: "Maria",
     customerPhone: "11987654321",
     petName: "Thor",
+    serviceName: "Banho",
     ...overrides,
   };
 }
@@ -35,153 +44,92 @@ function allEnabledSettings(companyId = "company-a"): CompanyNotificationSetting
     reminder24hEnabled: true,
     reminder2hEnabled: true,
     petReadyEnabled: true,
+    customerSameDayReminderEnabled: true,
+    employeeSameDayReminderEnabled: true,
+    employeeReminder2hEnabled: true,
+    sameDayReminderTime: "08:00",
   };
 }
 
-describe("buildAppointmentNotificationRows", () => {
-  it("A) cria confirmação ao criar agendamento", () => {
-    const now = new Date("2026-08-17T12:00:00.000Z");
-    const rows = buildAppointmentNotificationRows({
-      context: baseContext(),
-      settings: allEnabledSettings(),
-      timeZone: TIMEZONE,
-      now,
-    });
-
-    expect(rows.some((row) => row.type === "appointment_confirmation")).toBe(true);
-    const confirmation = rows.find((row) => row.type === "appointment_confirmation");
-    expect(confirmation?.destination_phone).toBe("+5511987654321");
-    expect(confirmation?.message_body).toContain("Maria");
-    expect(confirmation?.message_body).toContain("Thor");
+function rowsAt(nowIso: string, context = baseContext(), settings = allEnabledSettings()) {
+  return buildAppointmentNotificationRows({
+    context,
+    settings,
+    timeZone: TIMEZONE,
+    now: new Date(nowIso),
   });
+}
 
-  it("B) cria lembrete 24h", () => {
-    const scheduledStart = localDateTimeToUtcIso("2026-08-20", "14:00", TIMEZONE);
-    const now = new Date(new Date(scheduledStart).getTime() - 48 * 60 * 60 * 1000);
-    const rows = buildAppointmentNotificationRows({
-      context: baseContext({ scheduledStart }),
-      settings: allEnabledSettings(),
-      timeZone: TIMEZONE,
-      now,
-    });
-
-    const reminder = rows.find((row) => row.type === "appointment_reminder_24h");
-    expect(reminder).toBeDefined();
-    expect(reminder?.scheduled_for).toBe(
-      computeReminderScheduledFor(scheduledStart, 24, now),
-    );
-  });
-
-  it("C) cria lembrete 2h", () => {
-    const scheduledStart = localDateTimeToUtcIso("2026-08-20", "14:00", TIMEZONE);
-    const now = new Date(new Date(scheduledStart).getTime() - 6 * 60 * 60 * 1000);
-    const rows = buildAppointmentNotificationRows({
-      context: baseContext({ scheduledStart }),
-      settings: allEnabledSettings(),
-      timeZone: TIMEZONE,
-      now,
-    });
-
-    const reminder = rows.find((row) => row.type === "appointment_reminder_2h");
-    expect(reminder).toBeDefined();
-    expect(reminder?.scheduled_for).toBe(
-      computeReminderScheduledFor(scheduledStart, 2, now),
-    );
-  });
-
-  it("D) toggle desativado não gera notificação", () => {
-    const rows = buildAppointmentNotificationRows({
-      context: baseContext(),
-      settings: {
-        ...allEnabledSettings(),
-        appointmentConfirmationEnabled: false,
-        reminder24hEnabled: false,
-        reminder2hEnabled: false,
-      },
-      timeZone: TIMEZONE,
-      now: new Date("2026-08-17T12:00:00.000Z"),
-    });
-
-    expect(rows).toHaveLength(0);
-  });
-
-  it("E) edição recalcula lembretes com novo horário", () => {
-    const oldStart = localDateTimeToUtcIso("2026-08-20", "14:00", TIMEZONE);
-    const newStart = localDateTimeToUtcIso("2026-08-21", "10:00", TIMEZONE);
-    const now = new Date("2026-08-17T12:00:00.000Z");
-
-    const oldRows = buildAppointmentNotificationRows({
-      context: baseContext({ scheduledStart: oldStart }),
-      settings: allEnabledSettings(),
-      timeZone: TIMEZONE,
-      now,
-    });
-
-    const newRows = buildAppointmentNotificationRows({
-      context: baseContext({ scheduledStart: newStart }),
-      settings: allEnabledSettings(),
-      timeZone: TIMEZONE,
-      now,
-    });
-
-    const old24 = oldRows.find((row) => row.type === "appointment_reminder_24h");
-    const new24 = newRows.find((row) => row.type === "appointment_reminder_24h");
-
-    expect(old24?.scheduled_for).not.toBe(new24?.scheduled_for);
-  });
-
-  it("F) cancelamento não gera novas notificações para status cancelado", () => {
-    const rows = buildAppointmentNotificationRows({
-      context: baseContext({ status: "cancelled" }),
-      settings: allEnabledSettings(),
-      timeZone: TIMEZONE,
-      now: new Date("2026-08-17T12:00:00.000Z"),
-    });
-
-    expect(rows).toHaveLength(0);
-  });
-
-  it("I) usa timezone da empresa no conteúdo da confirmação", () => {
-    const scheduledStart = "2026-08-20T17:00:00.000Z";
-    const message = renderNotificationMessage("appointment_confirmation", {
-      tutorName: "Maria",
-      petName: "Thor",
-      appointmentStartUtcIso: scheduledStart,
-      timeZone: TIMEZONE,
-    });
-
-    expect(message).toContain("14:00");
-  });
-
-  it("K) horário passado não gera lembrete inválido", () => {
+describe("tutor lembrete do dia", () => {
+  it("agenda para o horário configurado no timezone da empresa", () => {
     const scheduledStart = localDateTimeToUtcIso("2026-08-17", "15:00", TIMEZONE);
-    const now = new Date(localDateTimeToUtcIso("2026-08-17", "14:30", TIMEZONE));
+    const now = localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE);
+    const rows = rowsAt(now, baseContext({ scheduledStart }));
+    const reminder = rows.find((row) => row.type === "customer_same_day_reminder");
 
-    const rows = buildAppointmentNotificationRows({
-      context: baseContext({ scheduledStart }),
-      settings: allEnabledSettings(),
-      timeZone: TIMEZONE,
-      now,
-    });
-
-    expect(rows.find((row) => row.type === "appointment_reminder_24h")).toBeUndefined();
-    expect(rows.find((row) => row.type === "appointment_reminder_2h")).toBeUndefined();
-  });
-
-  it("J) isola company_id nas linhas geradas", () => {
-    const rows = buildAppointmentNotificationRows({
-      context: baseContext({ companyId: "company-b" }),
-      settings: allEnabledSettings("company-b"),
-      timeZone: TIMEZONE,
-      now: new Date("2026-08-17T12:00:00.000Z"),
-    });
-
-    expect(rows.every((row) => row.company_id === "company-b")).toBe(true);
+    expect(reminder).toBeDefined();
+    expect(reminder?.scheduled_for).toBe(
+      localDateTimeToUtcIso("2026-08-17", "08:00", TIMEZONE),
+    );
+    expect(reminder?.recipient_type).toBe("customer");
+    expect(reminder?.message_body).toContain("Maria");
+    expect(reminder?.message_body).toContain("Thor");
+    expect(reminder?.message_body).toContain("Banho");
+    expect(reminder?.message_body).toContain("PetGestor Shop");
   });
 });
 
-describe("buildPetReadyNotificationRow", () => {
-  it("G) pet ready gera notificação", () => {
+describe("tutor lembrete 2h", () => {
+  it("agenda appointment_at - 2h", () => {
+    const scheduledStart = localDateTimeToUtcIso("2026-08-20", "15:00", TIMEZONE);
+    const now = localDateTimeToUtcIso("2026-08-19", "10:00", TIMEZONE);
+    const rows = rowsAt(now, baseContext({ scheduledStart }));
+    const reminder = rows.find((row) => row.type === "appointment_reminder_2h");
+
+    expect(reminder).toBeDefined();
+    expect(reminder?.scheduled_for).toBe(
+      computeReminderScheduledFor(scheduledStart, 2, new Date(now)),
+    );
+    expect(reminder?.message_body).toContain("2 horas");
+  });
+});
+
+describe("funcionário lembrete do dia", () => {
+  it("cria lembrete no mesmo horário configurado", () => {
+    const scheduledStart = localDateTimeToUtcIso("2026-08-17", "15:00", TIMEZONE);
+    const now = localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE);
+    const rows = rowsAt(now, baseContext({ scheduledStart }));
+    const reminder = rows.find((row) => row.type === "employee_same_day_reminder");
+
+    expect(reminder).toBeDefined();
+    expect(reminder?.recipient_type).toBe("employee");
+    expect(reminder?.employee_id).toBe("emp-1");
+    expect(reminder?.destination_phone).toBe("+5532988887777");
+    expect(reminder?.message_body).toContain("João");
+    expect(reminder?.scheduled_for).toBe(
+      localDateTimeToUtcIso("2026-08-17", "08:00", TIMEZONE),
+    );
+  });
+});
+
+describe("funcionário lembrete 2h", () => {
+  it("agenda 2h antes para o funcionário", () => {
+    const scheduledStart = localDateTimeToUtcIso("2026-08-20", "15:00", TIMEZONE);
+    const now = localDateTimeToUtcIso("2026-08-19", "10:00", TIMEZONE);
+    const rows = rowsAt(now, baseContext({ scheduledStart }));
+    const reminder = rows.find((row) => row.type === "employee_2h_reminder");
+
+    expect(reminder).toBeDefined();
+    expect(reminder?.scheduled_for).toBe(
+      computeReminderScheduledFor(scheduledStart, 2, new Date(now)),
+    );
+    expect(reminder?.message_body).toContain("Thor");
+    expect(reminder?.message_body).toContain("Banho");
+  });
+});
+
+describe("pet pronto", () => {
+  it("gera uma notificação para o tutor", () => {
     const row = buildPetReadyNotificationRow({
       companyId: "company-a",
       customerId: "cust-1",
@@ -195,11 +143,119 @@ describe("buildPetReadyNotificationRow", () => {
     });
 
     expect(row?.type).toBe("pet_ready");
+    expect(row?.recipient_type).toBe("customer");
     expect(row?.service_order_id).toBe("so-1");
+    expect(row?.appointment_id).toBeNull();
     expect(row?.message_body).toContain("pronto");
+    expect(row?.message_body).toContain("buscado");
+  });
+});
+
+describe("timezone", () => {
+  it("usa o dia local da empresa, não UTC", () => {
+    const scheduledStart = localDateTimeToUtcIso("2026-08-17", "15:00", TIMEZONE);
+    const scheduledFor = computeSameDayReminderScheduledFor(
+      scheduledStart,
+      "08:00",
+      TIMEZONE,
+      new Date(localDateTimeToUtcIso("2026-08-16", "23:00", TIMEZONE)),
+    );
+
+    expect(scheduledFor).toBe(localDateTimeToUtcIso("2026-08-17", "08:00", TIMEZONE));
+  });
+});
+
+describe("horário do dia já passado", () => {
+  it("não cria lembrete do dia inválido", () => {
+    const scheduledStart = localDateTimeToUtcIso("2026-08-17", "15:00", TIMEZONE);
+    const now = localDateTimeToUtcIso("2026-08-17", "09:00", TIMEZONE);
+    const rows = rowsAt(now, baseContext({ scheduledStart }));
+
+    expect(rows.find((row) => row.type === "customer_same_day_reminder")).toBeUndefined();
+    expect(rows.find((row) => row.type === "employee_same_day_reminder")).toBeUndefined();
+  });
+});
+
+describe("funcionário sem telefone", () => {
+  it("não quebra e não cria notificação de equipe", () => {
+    const now = localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE);
+    const rows = rowsAt(
+      now,
+      baseContext({ employeePhone: null }),
+    );
+
+    expect(rows.some((row) => row.recipient_type === "customer")).toBe(true);
+    expect(rows.some((row) => row.recipient_type === "employee")).toBe(false);
+  });
+});
+
+describe("troca de funcionário", () => {
+  it("recalcula lembretes para o novo funcionário", () => {
+    const now = localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE);
+    const joao = rowsAt(now, baseContext({ employeeId: "emp-joao", employeeName: "João" }));
+    const maria = rowsAt(
+      now,
+      baseContext({ employeeId: "emp-maria", employeeName: "Maria F.", employeePhone: "32977776666" }),
+    );
+
+    const joaoRow = joao.find((row) => row.type === "employee_same_day_reminder");
+    const mariaRow = maria.find((row) => row.type === "employee_same_day_reminder");
+
+    expect(joaoRow?.employee_id).toBe("emp-joao");
+    expect(mariaRow?.employee_id).toBe("emp-maria");
+    expect(mariaRow?.destination_phone).toBe("+5532977776666");
+    expect(mariaRow?.message_body).toContain("Maria F.");
+  });
+});
+
+describe("alteração de horário", () => {
+  it("recalcula lembretes 2h com o novo horário", () => {
+    const now = localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE);
+    const oldStart = localDateTimeToUtcIso("2026-08-20", "15:00", TIMEZONE);
+    const newStart = localDateTimeToUtcIso("2026-08-21", "10:00", TIMEZONE);
+
+    const oldRows = rowsAt(now, baseContext({ scheduledStart: oldStart }));
+    const newRows = rowsAt(now, baseContext({ scheduledStart: newStart }));
+
+    expect(
+      oldRows.find((row) => row.type === "appointment_reminder_2h")?.scheduled_for,
+    ).not.toBe(newRows.find((row) => row.type === "appointment_reminder_2h")?.scheduled_for);
+    expect(
+      oldRows.find((row) => row.type === "customer_same_day_reminder")?.scheduled_for,
+    ).not.toBe(newRows.find((row) => row.type === "customer_same_day_reminder")?.scheduled_for);
+  });
+});
+
+describe("cancelamento e no-show", () => {
+  it("não gera novas notificações para cancelado", () => {
+    const rows = rowsAt(
+      localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE),
+      baseContext({ status: "cancelled" }),
+    );
+
+    expect(rows).toHaveLength(0);
   });
 
-  it("H) pet ready usa service_order_id para idempotência", () => {
+  it("não gera lembretes posteriores para falta", () => {
+    expect(isActiveAppointmentStatus("no_show")).toBe(false);
+    const rows = rowsAt(
+      localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE),
+      baseContext({ status: "no_show" }),
+    );
+
+    expect(rows).toHaveLength(0);
+  });
+});
+
+describe("idempotência", () => {
+  it("gera no máximo um registro por tipo no mesmo appointment", () => {
+    const rows = rowsAt(localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE));
+    const types = rows.map((row) => row.type);
+
+    expect(new Set(types).size).toBe(types.length);
+  });
+
+  it("pet ready usa service_order_id como chave", () => {
     const row = buildPetReadyNotificationRow({
       companyId: "company-a",
       customerId: "cust-1",
@@ -212,30 +268,61 @@ describe("buildPetReadyNotificationRow", () => {
     });
 
     expect(row?.service_order_id).toBe("so-unique");
-    expect(row?.appointment_id).toBeNull();
   });
 });
 
-describe("computeReminderScheduledFor", () => {
-  it("retorna null quando lembrete já passou", () => {
-    const appointmentStart = "2026-08-20T14:00:00.000Z";
-    const now = new Date("2026-08-20T13:30:00.000Z");
+describe("isolamento multi-tenant", () => {
+  it("grava company_id da empresa do agendamento", () => {
+    const rows = rowsAt(
+      localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE),
+      baseContext({ companyId: "company-b" }),
+      allEnabledSettings("company-b"),
+    );
 
-    expect(computeReminderScheduledFor(appointmentStart, 2, now)).toBeNull();
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((row) => row.company_id === "company-b")).toBe(true);
+  });
+});
+
+describe("toggles desligados", () => {
+  it("não gera lembretes quando as opções estão off", () => {
+    const rows = rowsAt(
+      localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE),
+      baseContext(),
+      {
+        ...allEnabledSettings(),
+        appointmentConfirmationEnabled: false,
+        reminder24hEnabled: false,
+        reminder2hEnabled: false,
+        customerSameDayReminderEnabled: false,
+        employeeSameDayReminderEnabled: false,
+        employeeReminder2hEnabled: false,
+      },
+    );
+
+    expect(rows).toHaveLength(0);
+  });
+});
+
+describe("confirmação existente", () => {
+  it("ainda cria confirmação ao tutor quando habilitada", () => {
+    const rows = rowsAt(localDateTimeToUtcIso("2026-08-16", "10:00", TIMEZONE));
+    expect(rows.some((row) => row.type === "appointment_confirmation")).toBe(true);
   });
 });
 
 describe("renderNotificationMessage", () => {
-  it("gera templates esperados", () => {
-    const ctx = {
-      tutorName: "João",
-      petName: "Mel",
-      appointmentStartUtcIso: localDateTimeToUtcIso("2026-08-20", "09:30", TIMEZONE),
+  it("usa timezone da empresa na hora", () => {
+    const message = renderNotificationMessage("customer_same_day_reminder", {
+      tutorName: "Maria",
+      petName: "Thor",
+      serviceName: "Banho",
+      companyName: "PetGestor Shop",
+      employeeName: "João",
+      appointmentStartUtcIso: "2026-08-20T18:00:00.000Z",
       timeZone: TIMEZONE,
-    };
+    });
 
-    expect(renderNotificationMessage("appointment_reminder_24h", ctx)).toContain("amanhã");
-    expect(renderNotificationMessage("appointment_reminder_2h", ctx)).toContain("hoje");
-    expect(renderNotificationMessage("pet_ready", ctx)).toContain("Mel");
+    expect(message).toContain("15:00");
   });
 });

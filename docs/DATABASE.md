@@ -209,6 +209,10 @@ Campos principais: `scheduled_start`, `scheduled_end`, `status`, snapshots (`ser
 
 Status: `scheduled`, `confirmed`, `in_progress`, `completed`, `cancelled`, `no_show`.
 
+### Notificações internas
+
+`notification_queue` + `company_notification_settings` — lembretes de tutor e funcionário, sem envio externo. Telefone da equipe reutiliza `employees.phone` (nullable). Dia comercial e 08:00 usam `companies.timezone`.
+
 ### Integridade
 
 - FK composta pet → `(pet_id, customer_id, company_id)`

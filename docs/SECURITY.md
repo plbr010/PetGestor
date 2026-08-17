@@ -42,6 +42,7 @@ Tabelas com RLS habilitado:
 - `services`, `service_size_prices`
 - `employees`, `employee_services`, `employee_working_hours`
 - `appointments`, `service_orders`, `financial_entries`, `company_subscriptions`
+- `company_notification_settings`, `notification_queue`
 
 Helpers em schema `private` (não exposto pela Data API):
 
