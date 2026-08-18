@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import type { RecentCustomerItem } from "@/features/customers/queries";
 import {
   Card,
   CardContent,
@@ -6,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { demoRecentClients } from "@/config/demo-data";
+import { formatDateTimeDisplay } from "@/lib/pet-display";
 
 function getInitials(name: string) {
   return name
@@ -17,33 +20,49 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-export function RecentClientsList() {
+type RecentClientsListProps = {
+  customers: RecentCustomerItem[];
+};
+
+export function RecentClientsList({ customers }: RecentClientsListProps) {
   return (
     <Card className="border bg-card shadow-sm">
       <CardHeader>
-        <CardTitle>Clientes recentes</CardTitle>
-        <CardDescription>Tutores e pets cadastrados (demonstração)</CardDescription>
+        <CardTitle>Tutores recentes</CardTitle>
+        <CardDescription>Últimos cadastros no pet shop</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {demoRecentClients.map((client) => (
-          <div
-            key={client.id}
-            className="flex items-center gap-3 rounded-lg border bg-muted/20 p-3"
-          >
-            <Avatar className="size-10">
-              <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                {getInitials(client.name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{client.name}</p>
-              <p className="truncate text-sm text-muted-foreground">
-                Pet: {client.pet}
+        {customers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nenhum tutor cadastrado ainda.{" "}
+            <Link href="/dashboard/tutores/novo" className="font-medium text-primary underline-offset-4 hover:underline">
+              Cadastrar tutor
+            </Link>
+          </p>
+        ) : (
+          customers.map((client) => (
+            <Link
+              key={client.id}
+              href={`/dashboard/tutores/${client.id}`}
+              className="flex items-center gap-3 rounded-lg border bg-muted/20 p-3 transition-colors hover:bg-muted/40"
+            >
+              <Avatar className="size-10">
+                <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                  {getInitials(client.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{client.name}</p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {client.petName ? `Pet: ${client.petName}` : "Sem pet vinculado"}
+                </p>
+              </div>
+              <p className="shrink-0 text-xs text-muted-foreground">
+                {formatDateTimeDisplay(client.createdAt)}
               </p>
-            </div>
-            <p className="shrink-0 text-xs text-muted-foreground">{client.lastVisit}</p>
-          </div>
-        ))}
+            </Link>
+          ))
+        )}
       </CardContent>
     </Card>
   );

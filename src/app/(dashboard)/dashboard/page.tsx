@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 
 import { DashboardAppointmentsList } from "@/components/dashboard/dashboard-appointments-list";
-import { DemoNotice } from "@/components/dashboard/demo-notice";
 import { FinanceSummaryCard } from "@/components/dashboard/finance-summary-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { RecentClientsList } from "@/components/dashboard/recent-clients-list";
@@ -19,11 +18,13 @@ import { DashboardScheduleList } from "@/components/dashboard/dashboard-schedule
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { FormFeedback } from "@/components/shared/form-feedback";
 import { loadDashboardHomeData } from "@/features/dashboard/load-home-data";
+import { getRecentCustomers } from "@/features/customers/queries";
 import { requireCompany } from "@/features/companies/queries";
 import { formatAmountCents } from "@/features/finance/utils";
 import { InventoryDashboardCard } from "@/features/inventory/components/inventory-dashboard-card";
 import { PosDashboardCard } from "@/features/pos/components/pos-dashboard-card";
 import { hasPermission } from "@/lib/auth/permissions";
+import { formatDashboardPartialErrors } from "@/features/dashboard/partial-errors";
 import { requireUser } from "@/lib/auth/require-user";
 import { getTodayInTimezone } from "@/lib/timezone";
 
@@ -32,6 +33,19 @@ export default async function DashboardHomePage() {
   const context = await requireCompany(user.id);
   const timeZone = context.membership.company.timezone;
   const today = getTodayInTimezone(timeZone);
+
+  const [
+    homeData,
+    recentCustomers,
+  ] = await Promise.all([
+    loadDashboardHomeData(
+      context.membership.company.id,
+      timeZone,
+      today,
+      context.membership,
+    ),
+    getRecentCustomers(context.membership.company.id, 5),
+  ]);
 
   const {
     customersCount,
@@ -48,12 +62,9 @@ export default async function DashboardHomePage() {
     inventoryAlerts,
     posMetrics,
     partialErrors,
-  } = await loadDashboardHomeData(
-    context.membership.company.id,
-    timeZone,
-    today,
-    context.membership,
-  );
+  } = homeData;
+
+  const partialErrorMessage = formatDashboardPartialErrors(partialErrors);
 
   const canViewFinance = hasPermission(context.membership, "finance.view");
   const canViewInventory = hasPermission(context.membership, "inventory.view");
@@ -145,13 +156,8 @@ export default async function DashboardHomePage() {
         description="resumo do pet shop"
       />
       <main className="flex-1 space-y-6 overflow-x-hidden p-4 sm:p-6">
-        <DemoNotice />
-
-        {partialErrors.length > 0 ? (
-          <FormFeedback
-            message="Alguns dados do resumo não puderam ser carregados. O restante continua disponível."
-            variant="error"
-          />
+        {partialErrorMessage ? (
+          <FormFeedback message={partialErrorMessage} variant="error" />
         ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
@@ -190,10 +196,10 @@ export default async function DashboardHomePage() {
               realizedResultMonthCents={financeMetrics.realizedResultMonthCents}
               monthlySummary={financeMetrics.monthlySummary}
             />
-            <RecentClientsList />
+            <RecentClientsList customers={recentCustomers} />
           </div>
         ) : (
-          <RecentClientsList />
+          <RecentClientsList customers={recentCustomers} />
         )}
       </main>
     </>

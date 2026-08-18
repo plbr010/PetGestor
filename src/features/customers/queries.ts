@@ -190,6 +190,63 @@ export async function countActiveCustomers(companyId: string): Promise<number> {
   return count ?? 0;
 }
 
+export type RecentCustomerItem = {
+  id: string;
+  name: string;
+  petName: string | null;
+  createdAt: string;
+};
+
+export async function getRecentCustomers(
+  companyId: string,
+  limit = 5,
+): Promise<RecentCustomerItem[]> {
+  noStore();
+
+  if (!isValidUuid(companyId)) {
+    return [];
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  const { data: customers, error } = await supabase
+    .from("customers")
+    .select("id, name, created_at")
+    .eq("company_id", companyId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !customers?.length) {
+    return [];
+  }
+
+  const customerIds = customers.map((customer) => customer.id);
+
+  const { data: pets } = await supabase
+    .from("pets")
+    .select("customer_id, name, created_at")
+    .eq("company_id", companyId)
+    .in("customer_id", customerIds)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+
+  const petByCustomer = new Map<string, string>();
+
+  for (const pet of pets ?? []) {
+    if (!petByCustomer.has(pet.customer_id)) {
+      petByCustomer.set(pet.customer_id, pet.name);
+    }
+  }
+
+  return customers.map((customer) => ({
+    id: customer.id,
+    name: customer.name,
+    petName: petByCustomer.get(customer.id) ?? null,
+    createdAt: customer.created_at,
+  }));
+}
+
 export async function countActivePetsForCustomer(
   companyId: string,
   customerId: string,

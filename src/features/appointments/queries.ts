@@ -119,7 +119,8 @@ async function queryAppointmentsInRange(
   const { data, error } = await builder;
 
   if (error) {
-    throw new Error("Não foi possível carregar a agenda.");
+    console.error("[appointments:query]", error.message);
+    return [];
   }
 
   return (data as AppointmentRow[] | null)?.map(mapAppointmentRow) ?? [];

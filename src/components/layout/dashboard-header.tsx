@@ -13,7 +13,6 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 
 type DashboardHeaderProps = {
   title: string;
@@ -39,9 +38,6 @@ export function DashboardHeader({ title, description }: DashboardHeaderProps) {
                 <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
                   {title}
                 </h1>
-                <Badge variant="secondary" className="hidden sm:inline-flex">
-                  Dados demonstrativos
-                </Badge>
               </div>
               <p className="mt-1 truncate text-sm text-muted-foreground">
                 {membership.company.name}
@@ -78,7 +74,7 @@ export function DashboardHeader({ title, description }: DashboardHeaderProps) {
               variant="outline"
               size="icon"
               className="relative"
-              aria-label="Notificações demonstrativas"
+              aria-label="Notificações"
               disabled
             >
               <Bell className="size-4" />
