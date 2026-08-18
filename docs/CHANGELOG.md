@@ -1,3 +1,15 @@
+## [0.26.0] — 2026-08-18
+
+### Adicionado — Dashboard financeiro visual
+
+- KPIs: receita recebida, despesas pagas, resultado líquido e margem
+- Gráficos: origem das receitas, destino das despesas, evolução financeira
+- Faturado x recebido x pendente (com pagamentos parciais via `financial_payments`)
+- Rankings de fontes de receita e maiores despesas
+- Lucro bruto do PDV quando há custo snapshot
+- Drill-down por origem/categoria na listagem de lançamentos
+- Filtros de período: hoje, 7 dias, mês, mês anterior, 30 dias, personalizado
+
 ## [0.25.0] — 2026-08-18
 
 ### Adicionado — Fotos e anexos (pets e atendimentos)

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type {
   FinancialEntryStatusFilter,
   FinancialEntryTypeFilter,
+  FinancialSourceFilter,
   PaymentMethodFilter,
 } from "@/features/finance/status";
 import type { FinancialEntryDetail, FinancialEntryListItem } from "@/features/finance/types";
@@ -122,6 +123,8 @@ type GetFinancialEntriesParams = {
   type?: FinancialEntryTypeFilter;
   status?: FinancialEntryStatusFilter;
   payment?: PaymentMethodFilter;
+  source?: FinancialSourceFilter;
+  drillCategory?: string;
   query?: string;
 };
 
@@ -135,6 +138,8 @@ export async function getFinancialEntries({
   type = "all",
   status = "all",
   payment = "all",
+  source = "all",
+  drillCategory,
   query,
 }: GetFinancialEntriesParams): Promise<PaginatedResult<FinancialEntryListItem>> {
   noStore();
@@ -164,6 +169,14 @@ export async function getFinancialEntries({
 
   if (status !== "all") {
     builder = builder.eq("status", status);
+  }
+
+  if (source !== "all") {
+    builder = builder.eq("source_type", source);
+  }
+
+  if (drillCategory) {
+    builder = builder.eq("entry_type", "expense").ilike("category", drillCategory);
   }
 
   if (payment !== "all") {

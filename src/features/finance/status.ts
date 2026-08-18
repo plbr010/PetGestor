@@ -69,6 +69,7 @@ export function isServiceOrderEntryCancellable(): boolean {
 
 export type FinancialEntryTypeFilter = "all" | "income" | "expense";
 export type FinancialEntryStatusFilter = "all" | "pending" | "partially_paid" | "paid" | "cancelled";
+export type FinancialSourceFilter = "all" | FinancialSourceType;
 export type PaymentMethodFilter =
   | "all"
   | "cash"
@@ -92,6 +93,21 @@ export function parseFinancialEntryStatusFilter(
   value: string | undefined | null,
 ): FinancialEntryStatusFilter {
   if (value === "pending" || value === "partially_paid" || value === "paid" || value === "cancelled") {
+    return value;
+  }
+
+  return "all";
+}
+
+export function parseFinancialSourceFilter(
+  value: string | undefined | null,
+): FinancialSourceFilter {
+  if (
+    value === "service_order" ||
+    value === "manual" ||
+    value === "service_package" ||
+    value === "sale"
+  ) {
     return value;
   }
 
