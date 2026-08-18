@@ -17,23 +17,12 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { RecentClientsList } from "@/components/dashboard/recent-clients-list";
 import { DashboardScheduleList } from "@/components/dashboard/dashboard-schedule-list";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import {
-  countAppointmentsForDay,
-  getAppointmentsForDay,
-  getUpcomingAppointments,
-} from "@/features/appointments/queries";
-import { countActiveCustomers } from "@/features/customers/queries";
-import { countActivePets } from "@/features/pets/queries";
-import { countActiveEmployees } from "@/features/employees/queries";
-import { countActiveServices } from "@/features/services/queries";
-import { getDashboardFinanceMetrics } from "@/features/finance/queries";
+import { FormFeedback } from "@/components/shared/form-feedback";
+import { loadDashboardHomeData } from "@/features/dashboard/load-home-data";
+import { requireCompany } from "@/features/companies/queries";
 import { formatAmountCents } from "@/features/finance/utils";
 import { InventoryDashboardCard } from "@/features/inventory/components/inventory-dashboard-card";
-import { getInventoryDashboardAlerts } from "@/features/inventory/queries";
 import { PosDashboardCard } from "@/features/pos/components/pos-dashboard-card";
-import { getPosDashboardMetrics } from "@/features/pos/queries";
-import { requireCompany } from "@/features/companies/queries";
-import { countServiceOrdersByStatus } from "@/features/service-orders/queries";
 import { requireUser } from "@/lib/auth/require-user";
 import { getTodayInTimezone } from "@/lib/timezone";
 
@@ -43,7 +32,7 @@ export default async function DashboardHomePage() {
   const timeZone = context.membership.company.timezone;
   const today = getTodayInTimezone(timeZone);
 
-  const [
+  const {
     customersCount,
     petsCount,
     servicesCount,
@@ -57,21 +46,8 @@ export default async function DashboardHomePage() {
     financeMetrics,
     inventoryAlerts,
     posMetrics,
-  ] = await Promise.all([
-    countActiveCustomers(context.membership.company.id),
-    countActivePets(context.membership.company.id),
-    countActiveServices(context.membership.company.id),
-    countActiveEmployees(context.membership.company.id),
-    countAppointmentsForDay(context.membership.company.id, today, timeZone),
-    getAppointmentsForDay(context.membership.company.id, today, timeZone),
-    getUpcomingAppointments(context.membership.company.id, 5),
-    countServiceOrdersByStatus(context.membership.company.id, "waiting", today, timeZone),
-    countServiceOrdersByStatus(context.membership.company.id, "in_progress", today, timeZone),
-    countServiceOrdersByStatus(context.membership.company.id, "ready", today, timeZone),
-    getDashboardFinanceMetrics(context.membership.company.id, timeZone),
-    getInventoryDashboardAlerts(context.membership.company.id),
-    getPosDashboardMetrics(context.membership.company.id, timeZone),
-  ]);
+    partialErrors,
+  } = await loadDashboardHomeData(context.membership.company.id, timeZone, today);
 
   const stats = [
     {
@@ -156,6 +132,13 @@ export default async function DashboardHomePage() {
       />
       <main className="flex-1 space-y-6 overflow-x-hidden p-4 sm:p-6">
         <DemoNotice />
+
+        {partialErrors.length > 0 ? (
+          <FormFeedback
+            message="Alguns dados do resumo não puderam ser carregados. O restante continua disponível."
+            variant="error"
+          />
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           {stats.map((stat) => (
