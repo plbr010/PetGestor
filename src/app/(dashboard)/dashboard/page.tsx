@@ -14,7 +14,7 @@ import { DashboardAppointmentsList } from "@/components/dashboard/dashboard-appo
 import { DemoNotice } from "@/components/dashboard/demo-notice";
 import { FinanceSummaryCard } from "@/components/dashboard/finance-summary-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { RecentClientsList } from "@/components/dashboard/recent-clients-list";
+import { RecentServiceOrdersList } from "@/components/dashboard/recent-service-orders-list";
 import { DashboardScheduleList } from "@/components/dashboard/dashboard-schedule-list";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { FormFeedback } from "@/components/shared/form-feedback";
@@ -23,6 +23,7 @@ import { requireCompany } from "@/features/companies/queries";
 import { formatAmountCents } from "@/features/finance/utils";
 import { InventoryDashboardCard } from "@/features/inventory/components/inventory-dashboard-card";
 import { PosDashboardCard } from "@/features/pos/components/pos-dashboard-card";
+import { getRecentServiceOrders } from "@/features/service-orders/queries";
 import { requireUser } from "@/lib/auth/require-user";
 import { getTodayInTimezone } from "@/lib/timezone";
 
@@ -48,6 +49,11 @@ export default async function DashboardHomePage() {
     posMetrics,
     partialErrors,
   } = await loadDashboardHomeData(context.membership.company.id, timeZone, today);
+
+  const recentServiceOrders = await getRecentServiceOrders(
+    context.membership.company.id,
+    5,
+  );
 
   const stats = [
     {
@@ -173,7 +179,11 @@ export default async function DashboardHomePage() {
             realizedResultMonthCents={financeMetrics.realizedResultMonthCents}
             monthlySummary={financeMetrics.monthlySummary}
           />
-          <RecentClientsList />
+          <RecentServiceOrdersList
+            orders={recentServiceOrders}
+            timeZone={timeZone}
+            today={today}
+          />
         </div>
       </main>
     </>

@@ -1,7 +1,7 @@
 import { SERVICE_ORDER_STATUS_LABELS } from "@/features/service-orders/status";
-import { formatUtcInTimezone } from "@/lib/timezone";
+import type { ServiceOrderListItem } from "@/features/service-orders/types";
+import { formatUtcDateInTimezone, formatUtcInTimezone, addDaysToDateString, getTodayInTimezone } from "@/lib/timezone";
 import type { ServiceOrderStatus } from "@/types/database.types";
-import { getTodayInTimezone } from "@/lib/timezone";
 
 export function mapServiceOrderError(message: string | undefined): string {
   const code = message ?? "";
@@ -93,4 +93,51 @@ export function buildAtendimentosHref(params: Record<string, string | undefined>
 
   const query = search.toString();
   return query ? `/dashboard/atendimentos?${query}` : "/dashboard/atendimentos";
+}
+
+/** Timestamp mais representativo do atendimento para exibição e ordenação local. */
+export function getServiceOrderActivityAt(
+  order: Pick<
+    ServiceOrderListItem,
+    "completed_at" | "ready_at" | "started_at" | "check_in_at" | "appointment"
+  >,
+): string {
+  return (
+    order.completed_at ??
+    order.ready_at ??
+    order.started_at ??
+    order.check_in_at ??
+    order.appointment.scheduled_start
+  );
+}
+
+export function formatDashboardWhenLabel(
+  iso: string,
+  timeZone: string,
+  today = getTodayInTimezone(timeZone),
+): string {
+  const date = formatUtcDateInTimezone(iso, timeZone);
+  const time = formatUtcInTimezone(iso, timeZone);
+
+  if (date === today) {
+    return `Hoje, ${time}`;
+  }
+
+  const yesterdayKey = addDaysToDateString(today, -1);
+  if (date === yesterdayKey) {
+    return `Ontem, ${time}`;
+  }
+
+  const [, month, day] = date.split("-");
+  return `${day}/${month}, ${time}`;
+}
+
+export function sortServiceOrdersByRecentActivity(
+  orders: ServiceOrderListItem[],
+): ServiceOrderListItem[] {
+  return [...orders].sort(
+    (left, right) =>
+      new Date(getServiceOrderActivityAt(right)).getTime() -
+      new Date(getServiceOrderActivityAt(left)).getTime(),
+  );
 }

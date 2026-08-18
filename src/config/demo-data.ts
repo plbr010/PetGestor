@@ -101,27 +101,6 @@ export const demoUpcomingAppointments = [
   },
 ] as const;
 
-export const demoRecentClients = [
-  {
-    id: "client-1",
-    name: "Ana Silva",
-    pet: "Thor",
-    lastVisit: "Hoje, 08:30",
-  },
-  {
-    id: "client-2",
-    name: "Carlos Mendes",
-    pet: "Luna",
-    lastVisit: "Hoje, 10:00",
-  },
-  {
-    id: "client-3",
-    name: "Juliana Costa",
-    pet: "Mel",
-    lastVisit: "Ontem",
-  },
-] as const;
-
 export const demoFinanceSummary = {
   revenue: "R$ 4.280,00",
   expenses: "R$ 1.950,00",

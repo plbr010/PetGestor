@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import type { ServiceOrderStatusFilter } from "@/features/service-orders/status";
 import type { ServiceOrderDetail, ServiceOrderListItem } from "@/features/service-orders/types";
+import { sortServiceOrdersByRecentActivity } from "@/features/service-orders/utils";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { addDaysToDateString, localDateTimeToUtcIso } from "@/lib/timezone";
 import { isValidUuid } from "@/lib/security/uuid";
@@ -255,4 +256,31 @@ export async function countServiceOrdersByStatus(
   }
 
   return count ?? 0;
+}
+
+export async function getRecentServiceOrders(
+  companyId: string,
+  limit = 5,
+): Promise<ServiceOrderListItem[]> {
+  noStore();
+
+  if (!isValidUuid(companyId)) {
+    return [];
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("service_orders")
+    .select(SERVICE_ORDER_SELECT)
+    .eq("company_id", companyId)
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    return [];
+  }
+
+  const orders = (data as ServiceOrderRow[] | null)?.map(mapServiceOrderRow) ?? [];
+  return sortServiceOrdersByRecentActivity(orders).slice(0, limit);
 }
