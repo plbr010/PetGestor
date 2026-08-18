@@ -15,6 +15,17 @@ ALTER TABLE public.pets
   ADD COLUMN IF NOT EXISTS photo_updated_at timestamptz;
 
 -- ---------------------------------------------------------------------------
+-- pets: UNIQUE composto para FK anexos → pet+empresa
+-- (id já é PK; par com company_id segue padrão multi-tenant do projeto)
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE public.pets
+  DROP CONSTRAINT IF EXISTS pets_id_company_id_key;
+
+ALTER TABLE public.pets
+  ADD CONSTRAINT pets_id_company_id_key UNIQUE (id, company_id);
+
+-- ---------------------------------------------------------------------------
 -- pet_attachments
 -- ---------------------------------------------------------------------------
 

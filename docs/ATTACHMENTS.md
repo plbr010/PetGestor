@@ -17,3 +17,5 @@ Armazenamento privado no Supabase Storage (`company-files`) com metadados em `pe
 ## Migration
 
 `supabase/migrations/20260818160000_pet_service_attachments.sql`
+
+Requer `pets_id_company_id_key UNIQUE (id, company_id)` — criada na própria migration antes das FKs de anexos.
