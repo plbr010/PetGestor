@@ -11,7 +11,8 @@ import { getActiveWaitlist } from "@/features/appointments/waitlist/queries";
 import { getTimeBlocksForDay } from "@/features/appointments/time-blocks/queries";
 import { parseAppointmentStatusFilter } from "@/features/appointments/status";
 import { getWeekRange, parseAgendaDate, parseAgendaView } from "@/features/appointments/utils";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { getScheduleEmployeeFilter } from "@/lib/auth/permissions";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { isValidUuid } from "@/lib/security/uuid";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,14 +28,16 @@ type AgendaPageProps = {
 };
 
 export default async function AgendaPage({ searchParams }: AgendaPageProps) {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.view");
   const query = await searchParams;
   const timeZone = context.membership.company.timezone;
   const date = parseAgendaDate(query.date, timeZone);
   const view = parseAgendaView(query.view);
   const status = parseAppointmentStatusFilter(query.status);
+  const ownScheduleEmployeeId = getScheduleEmployeeFilter(context.membership);
   const employeeId =
-    query.employee && isValidUuid(query.employee) ? query.employee : undefined;
+    ownScheduleEmployeeId ??
+    (query.employee && isValidUuid(query.employee) ? query.employee : undefined);
 
   const filters = { employeeId, status };
   const weekRange = getWeekRange(date);

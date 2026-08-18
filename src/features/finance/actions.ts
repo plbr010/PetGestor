@@ -14,7 +14,7 @@ import {
   mapFinanceError,
   parseAmountToCents,
 } from "@/features/finance/utils";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -47,7 +47,7 @@ async function createManualEntry(
   entryType: FinancialEntryType,
   formData: FormData,
 ): Promise<FinanceActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("finance.create");
   const parsed =
     entryType === "income"
       ? parseManualIncomeForm(formData)
@@ -129,7 +129,7 @@ export async function updateManualFinancialEntryAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("finance.edit");
   const parsed = parseManualUpdateForm(formData);
 
   if (!parsed.success) {
@@ -198,7 +198,7 @@ export async function markFinancialEntryPaidAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("finance.create");
   const parsed = parseMarkPaidForm(formData);
 
   if (!parsed.success) {
@@ -237,7 +237,7 @@ export async function reopenFinancialEntryAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  await requirePermission("finance.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("reopen_financial_entry", {
@@ -259,7 +259,7 @@ export async function cancelFinancialEntryAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  await requirePermission("finance.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("cancel_financial_entry", {

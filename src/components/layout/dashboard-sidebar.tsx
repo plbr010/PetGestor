@@ -7,18 +7,19 @@ import { Shield } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { dashboardNavItems } from "@/config/navigation";
 import {
   getInitials,
   useDashboardUser,
 } from "@/components/layout/dashboard-user-provider";
 import { useOptionalOnboardingTour } from "@/features/onboarding-tour/onboarding-tour-provider";
+import { useFilteredDashboardNav } from "@/lib/auth/use-filtered-nav";
 import { cn } from "@/lib/utils";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { profile, membership, isPlatformAdmin } = useDashboardUser();
   const tour = useOptionalOnboardingTour();
+  const navItems = useFilteredDashboardNav();
   const initials = getInitials(profile.fullName);
   const adminActive = pathname.startsWith("/admin");
   const activeTourTarget = tour?.isOpen ? tour.step?.targetId : null;
@@ -35,7 +36,7 @@ export function DashboardSidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 p-4" aria-label="Menu do dashboard">
-        {dashboardNavItems.map((item) => {
+        {navItems.map((item) => {
           const isActive =
             item.href === "/dashboard"
               ? pathname === "/dashboard"

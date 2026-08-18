@@ -157,18 +157,36 @@ export type Database = {
           user_id: string;
           role: CompanyRole;
           created_at: string;
+          access_profile: string | null;
+          permissions: Json;
+          employee_id: string | null;
+          access_revoked_at: string | null;
+          own_schedule_only: boolean;
+          updated_at: string;
         };
         Insert: {
           company_id: string;
           user_id: string;
           role: CompanyRole;
           created_at?: string;
+          access_profile?: string | null;
+          permissions?: Json;
+          employee_id?: string | null;
+          access_revoked_at?: string | null;
+          own_schedule_only?: boolean;
+          updated_at?: string;
         };
         Update: {
           company_id?: string;
           user_id?: string;
           role?: CompanyRole;
           created_at?: string;
+          access_profile?: string | null;
+          permissions?: Json;
+          employee_id?: string | null;
+          access_revoked_at?: string | null;
+          own_schedule_only?: boolean;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -186,6 +204,54 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      company_member_invites: {
+        Row: {
+          id: string;
+          company_id: string;
+          employee_id: string;
+          email: string;
+          access_profile: string;
+          permissions: Json;
+          own_schedule_only: boolean;
+          invited_by: string;
+          status: string;
+          accepted_at: string | null;
+          revoked_at: string | null;
+          created_at: string;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          employee_id: string;
+          email: string;
+          access_profile: string;
+          permissions?: Json;
+          own_schedule_only?: boolean;
+          invited_by: string;
+          status?: string;
+          accepted_at?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+          expires_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          employee_id?: string;
+          email?: string;
+          access_profile?: string;
+          permissions?: Json;
+          own_schedule_only?: boolean;
+          invited_by?: string;
+          status?: string;
+          accepted_at?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+          expires_at?: string;
+        };
+        Relationships: [];
       };
       customers: {
         Row: {
@@ -451,6 +517,7 @@ export type Database = {
           notes: string | null;
           active: boolean;
           can_be_scheduled: boolean;
+          user_id: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -2249,6 +2316,31 @@ export type Database = {
           p_size_prices?: Json | null;
         };
         Returns: string;
+      };
+      grant_employee_access: {
+        Args: {
+          p_employee_id: string;
+          p_email: string;
+          p_access_profile: string;
+          p_permissions: Json;
+          p_own_schedule_only?: boolean;
+        };
+        Returns: Json;
+      };
+      update_employee_access: {
+        Args: {
+          p_employee_id: string;
+          p_access_profile: string;
+          p_permissions: Json;
+          p_own_schedule_only?: boolean;
+        };
+        Returns: undefined;
+      };
+      revoke_employee_access: {
+        Args: {
+          p_employee_id: string;
+        };
+        Returns: undefined;
       };
       create_employee_with_schedule: {
         Args: {

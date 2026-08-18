@@ -23,6 +23,7 @@ import { requireCompany } from "@/features/companies/queries";
 import { formatAmountCents } from "@/features/finance/utils";
 import { InventoryDashboardCard } from "@/features/inventory/components/inventory-dashboard-card";
 import { PosDashboardCard } from "@/features/pos/components/pos-dashboard-card";
+import { hasPermission } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/require-user";
 import { getTodayInTimezone } from "@/lib/timezone";
 
@@ -47,7 +48,16 @@ export default async function DashboardHomePage() {
     inventoryAlerts,
     posMetrics,
     partialErrors,
-  } = await loadDashboardHomeData(context.membership.company.id, timeZone, today);
+  } = await loadDashboardHomeData(
+    context.membership.company.id,
+    timeZone,
+    today,
+    context.membership,
+  );
+
+  const canViewFinance = hasPermission(context.membership, "finance.view");
+  const canViewInventory = hasPermission(context.membership, "inventory.view");
+  const canViewPos = hasPermission(context.membership, "pos.use");
 
   const stats = [
     {
@@ -114,14 +124,18 @@ export default async function DashboardHomePage() {
       trend: "up" as const,
       icon: UserCog,
     },
-    {
-      id: "revenue-today",
-      label: "Recebido hoje",
-      value: formatAmountCents(financeMetrics.incomePaidTodayCents),
-      change: "Receitas pagas hoje",
-      trend: "up" as const,
-      icon: CircleDollarSign,
-    },
+    ...(canViewFinance
+      ? [
+          {
+            id: "revenue-today",
+            label: "Recebido hoje",
+            value: formatAmountCents(financeMetrics.incomePaidTodayCents),
+            change: "Receitas pagas hoje",
+            trend: "up" as const,
+            icon: CircleDollarSign,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -153,28 +167,34 @@ export default async function DashboardHomePage() {
           ))}
         </div>
 
-        <InventoryDashboardCard
-          lowStockCount={inventoryAlerts.lowStockCount}
-          outOfStockCount={inventoryAlerts.outOfStockCount}
-        />
+        {canViewInventory ? (
+          <InventoryDashboardCard
+            lowStockCount={inventoryAlerts.lowStockCount}
+            outOfStockCount={inventoryAlerts.outOfStockCount}
+          />
+        ) : null}
 
-        <PosDashboardCard metrics={posMetrics} />
+        {canViewPos ? <PosDashboardCard metrics={posMetrics} /> : null}
 
         <div className="grid gap-6 xl:grid-cols-2">
           <DashboardScheduleList appointments={todayAppointments} timeZone={timeZone} />
           <DashboardAppointmentsList appointments={upcomingAppointments} timeZone={timeZone} />
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-2">
-          <FinanceSummaryCard
-            incomePaidTodayCents={financeMetrics.incomePaidTodayCents}
-            pendingReceivablesCents={financeMetrics.pendingReceivablesCents}
-            expensePaidMonthCents={financeMetrics.expensePaidMonthCents}
-            realizedResultMonthCents={financeMetrics.realizedResultMonthCents}
-            monthlySummary={financeMetrics.monthlySummary}
-          />
+        {canViewFinance ? (
+          <div className="grid gap-6 xl:grid-cols-2">
+            <FinanceSummaryCard
+              incomePaidTodayCents={financeMetrics.incomePaidTodayCents}
+              pendingReceivablesCents={financeMetrics.pendingReceivablesCents}
+              expensePaidMonthCents={financeMetrics.expensePaidMonthCents}
+              realizedResultMonthCents={financeMetrics.realizedResultMonthCents}
+              monthlySummary={financeMetrics.monthlySummary}
+            />
+            <RecentClientsList />
+          </div>
+        ) : (
           <RecentClientsList />
-        </div>
+        )}
       </main>
     </>
   );

@@ -19,12 +19,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { dashboardNavItems } from "@/config/navigation";
+import { useFilteredDashboardNav } from "@/lib/auth/use-filtered-nav";
 import { cn } from "@/lib/utils";
 
 export function DashboardMobileNav() {
   const pathname = usePathname();
   const { profile, membership, isPlatformAdmin } = useDashboardUser();
+  const navItems = useFilteredDashboardNav();
   const initials = getInitials(profile.fullName);
   const adminActive = pathname.startsWith("/admin");
 
@@ -45,7 +46,7 @@ export function DashboardMobileNav() {
           <BrandLogo size="sm" />
         </SheetHeader>
         <nav className="flex flex-1 flex-col gap-1 p-4" aria-label="Menu mobile do dashboard">
-          {dashboardNavItems.map((item) => {
+          {navItems.map((item) => {
             const isActive =
               item.href === "/dashboard"
                 ? pathname === "/dashboard"
