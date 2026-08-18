@@ -8,6 +8,7 @@ import {
   PawPrint,
   Scissors,
   Settings,
+  ShoppingCart,
   UserCog,
   Users,
   type LucideIcon,
@@ -88,6 +89,12 @@ export const dashboardNavItems: DashboardNavItem[] = [
     href: "/dashboard/estoque",
     icon: Package,
     description: "Produtos e movimentações",
+  },
+  {
+    label: "PDV",
+    href: "/dashboard/pdv",
+    icon: ShoppingCart,
+    description: "Venda de produtos no balcão",
   },
   {
     label: "Financeiro",

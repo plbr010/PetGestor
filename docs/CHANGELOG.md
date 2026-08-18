@@ -1,3 +1,18 @@
+## [0.24.0] — 2026-08-18
+
+### Adicionado — PDV / venda de produtos
+
+- Tela mobile-first em `/dashboard/pdv` com carrinho, desconto e pagamento dividido
+- Histórico e detalhe em `/dashboard/pdv/vendas`
+- RPCs `complete_product_sale` e `cancel_product_sale` (transação atômica)
+- Tabelas `sales`, `sale_items`, `financial_payments`; status `partially_paid` no financeiro
+- Baixa de estoque tipo `sale`, snapshot de custo, recibo com impressão/PDF via navegador
+- Card de vendas do dia no dashboard
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260818140000_point_of_sale.sql`
+
+Sem emissão fiscal, TEF ou leitor de código de barras físico.
+
 ## [0.23.0] — 2026-08-18
 
 ### Adicionado — Estoque (produtos, lotes e movimentações)
