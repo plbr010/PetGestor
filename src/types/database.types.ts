@@ -256,6 +256,9 @@ export type Database = {
           allergies: string | null;
           notes: string | null;
           important_notes: string | null;
+          photo_storage_path: string | null;
+          photo_thumb_path: string | null;
+          photo_updated_at: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -275,6 +278,9 @@ export type Database = {
           allergies?: string | null;
           notes?: string | null;
           important_notes?: string | null;
+          photo_storage_path?: string | null;
+          photo_thumb_path?: string | null;
+          photo_updated_at?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -294,6 +300,9 @@ export type Database = {
           allergies?: string | null;
           notes?: string | null;
           important_notes?: string | null;
+          photo_storage_path?: string | null;
+          photo_thumb_path?: string | null;
+          photo_updated_at?: string | null;
           created_by?: string;
           created_at?: string;
           updated_at?: string;
@@ -1899,6 +1908,120 @@ export type Database = {
           },
         ];
       };
+      pet_attachments: {
+        Row: {
+          id: string;
+          company_id: string;
+          pet_id: string;
+          file_path: string;
+          thumb_path: string | null;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          category: string;
+          description: string | null;
+          uploaded_by: string;
+          uploaded_by_name: string;
+          created_at: string;
+          archived_at: string | null;
+          archived_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          pet_id: string;
+          file_path: string;
+          thumb_path?: string | null;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          category: string;
+          description?: string | null;
+          uploaded_by: string;
+          uploaded_by_name: string;
+          created_at?: string;
+          archived_at?: string | null;
+          archived_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          pet_id?: string;
+          file_path?: string;
+          thumb_path?: string | null;
+          file_name?: string;
+          mime_type?: string;
+          size_bytes?: number;
+          category?: string;
+          description?: string | null;
+          uploaded_by?: string;
+          uploaded_by_name?: string;
+          created_at?: string;
+          archived_at?: string | null;
+          archived_by?: string | null;
+        };
+        Relationships: [];
+      };
+      service_order_attachments: {
+        Row: {
+          id: string;
+          company_id: string;
+          service_order_id: string;
+          pet_id: string;
+          file_path: string;
+          thumb_path: string | null;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          category: string;
+          phase: string | null;
+          description: string | null;
+          uploaded_by: string;
+          uploaded_by_name: string;
+          created_at: string;
+          archived_at: string | null;
+          archived_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          service_order_id: string;
+          pet_id: string;
+          file_path: string;
+          thumb_path?: string | null;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          category: string;
+          phase?: string | null;
+          description?: string | null;
+          uploaded_by: string;
+          uploaded_by_name: string;
+          created_at?: string;
+          archived_at?: string | null;
+          archived_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          service_order_id?: string;
+          pet_id?: string;
+          file_path?: string;
+          thumb_path?: string | null;
+          file_name?: string;
+          mime_type?: string;
+          size_bytes?: number;
+          category?: string;
+          phase?: string | null;
+          description?: string | null;
+          uploaded_by?: string;
+          uploaded_by_name?: string;
+          created_at?: string;
+          archived_at?: string | null;
+          archived_by?: string | null;
+        };
+        Relationships: [];
+      };
       service_product_recipes: {
         Row: {
           id: string;
@@ -2352,8 +2475,9 @@ export type InventorySupplier = Database["public"]["Tables"]["inventory_supplier
 export type Product = Database["public"]["Tables"]["products"]["Row"];
 export type ProductBatch = Database["public"]["Tables"]["product_batches"]["Row"];
 export type StockMovement = Database["public"]["Tables"]["stock_movements"]["Row"];
-export type ServiceProductRecipe =
-  Database["public"]["Tables"]["service_product_recipes"]["Row"];
+export type PetAttachment = Database["public"]["Tables"]["pet_attachments"]["Row"];
+export type ServiceOrderAttachment =
+  Database["public"]["Tables"]["service_order_attachments"]["Row"];
 export type FinancialPayment = Database["public"]["Tables"]["financial_payments"]["Row"];
 export type Sale = Database["public"]["Tables"]["sales"]["Row"];
 export type SaleItem = Database["public"]["Tables"]["sale_items"]["Row"];

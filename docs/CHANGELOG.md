@@ -1,3 +1,16 @@
+## [0.25.0] — 2026-08-18
+
+### Adicionado — Fotos e anexos (pets e atendimentos)
+
+- Foto principal do pet com placeholder/avatar
+- Anexos do pet (imagens e PDF) por categoria
+- Fotos/anexos por atendimento com antes/depois
+- Galeria do pet com paginação
+- Bucket privado `company-files` + signed URLs
+- Indicador de anexos no histórico do pet
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260818160000_pet_service_attachments.sql`
+
 ## [0.24.0] — 2026-08-18
 
 ### Adicionado — PDV / venda de produtos

@@ -32,6 +32,7 @@ export type PetHistoryEvent = {
   packageName?: string | null;
   appointmentId?: string;
   serviceOrderId?: string;
+  attachmentCount?: number;
   href?: string;
 };
 

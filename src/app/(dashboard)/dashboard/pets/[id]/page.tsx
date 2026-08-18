@@ -4,6 +4,16 @@ import { PetImportantInfoPanel } from "@/features/pets/history/components/pet-im
 import { PetHistoryTimeline } from "@/features/pets/history/components/pet-history-timeline";
 import { PetSummaryCards } from "@/features/pets/history/components/pet-summary-cards";
 import {
+  getPetAttachments,
+  getPetGalleryPage,
+  getPetPhotoView,
+} from "@/features/attachments/queries";
+import { PetPhotoPanel } from "@/features/attachments/components/pet-photo-panel";
+import {
+  PetAttachmentsPanel,
+  PetGalleryPanel,
+} from "@/features/attachments/components/pet-attachments-panel";
+import {
   getPetHistoryPage,
   getPetHistorySummary,
 } from "@/features/pets/history/queries";
@@ -44,6 +54,7 @@ type PetDetailPageProps = {
     historico?: string;
     filtro?: string;
     info?: string;
+    galeria?: string;
   }>;
 };
 
@@ -53,15 +64,20 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
   const query = await searchParams;
   const timeZone = context.membership.company.timezone;
   const historyPage = parsePageParam(query.historico ?? "1");
+  const galleryPage = parsePageParam(query.galeria ?? "1");
   const historyFilter = parsePetHistoryFilter(query.filtro);
 
   const pet = await requirePetById(context.membership.company.id, id);
 
-  const [packages, catalogPackages, summary, history] = await Promise.all([
+  const [packages, catalogPackages, summary, history, photo, attachments, gallery] =
+    await Promise.all([
     getCustomerPackagesForPet(context.membership.company.id, id, timeZone),
     getServicePackages({ companyId: context.membership.company.id, activeOnly: true }),
     getPetHistorySummary(context.membership.company.id, id),
     getPetHistoryPage(context.membership.company.id, id, historyPage),
+    getPetPhotoView(context.membership.company.id, pet),
+    getPetAttachments(context.membership.company.id, id),
+    getPetGalleryPage(context.membership.company.id, id, galleryPage),
   ]);
 
   return (
@@ -85,6 +101,8 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
           importantNotes={pet.important_notes}
           saved={query.info === "salvo"}
         />
+
+        <PetPhotoPanel petId={id} petName={pet.name} photo={photo} />
 
         <PetSummaryCards summary={summary} timeZone={timeZone} />
 
@@ -138,6 +156,12 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
           hasMore={history.hasMore}
           initialFilter={historyFilter}
         />
+
+        <div id="galeria">
+          <PetGalleryPanel petId={id} initialPage={galleryPage} gallery={gallery} />
+        </div>
+
+        <PetAttachmentsPanel petId={id} attachments={attachments} />
 
         <Card>
           <CardHeader>
