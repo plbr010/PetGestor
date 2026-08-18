@@ -43,11 +43,16 @@ CREATE INDEX IF NOT EXISTS idx_financial_payments_company_paid_at
 
 ALTER TABLE public.financial_payments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS financial_payments_select ON public.financial_payments;
 CREATE POLICY financial_payments_select ON public.financial_payments
   FOR SELECT TO authenticated USING (private.is_company_member(company_id));
+
+DROP POLICY IF EXISTS financial_payments_insert ON public.financial_payments;
 CREATE POLICY financial_payments_insert ON public.financial_payments
   FOR INSERT TO authenticated
   WITH CHECK (private.is_company_member(company_id) AND created_by = auth.uid());
+
+DROP POLICY IF EXISTS financial_payments_update ON public.financial_payments;
 CREATE POLICY financial_payments_update ON public.financial_payments
   FOR UPDATE TO authenticated
   USING (private.is_company_member(company_id))
@@ -161,10 +166,16 @@ CREATE INDEX IF NOT EXISTS idx_sales_company_status
   WHERE cancelled_at IS NULL;
 
 ALTER TABLE public.sales
+  DROP CONSTRAINT IF EXISTS sales_financial_entry_company_fkey;
+
+ALTER TABLE public.sales
   ADD CONSTRAINT sales_financial_entry_company_fkey
   FOREIGN KEY (financial_entry_id, company_id)
   REFERENCES public.financial_entries (id, company_id)
   ON DELETE SET NULL;
+
+ALTER TABLE public.financial_entries
+  DROP CONSTRAINT IF EXISTS financial_entries_sale_company_fkey;
 
 ALTER TABLE public.financial_entries
   ADD CONSTRAINT financial_entries_sale_company_fkey
@@ -245,6 +256,9 @@ CREATE TRIGGER sale_items_prevent_company_change
 
 -- financial_payments FK after financial_entries exists
 ALTER TABLE public.financial_payments
+  DROP CONSTRAINT IF EXISTS financial_payments_entry_company_fkey;
+
+ALTER TABLE public.financial_payments
   ADD CONSTRAINT financial_payments_entry_company_fkey
   FOREIGN KEY (financial_entry_id, company_id)
   REFERENCES public.financial_entries (id, company_id)
@@ -257,16 +271,22 @@ ALTER TABLE public.financial_payments
 ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sale_items ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS sales_select_member ON public.sales;
 CREATE POLICY sales_select_member ON public.sales
   FOR SELECT TO authenticated USING (private.is_company_member(company_id));
+
+DROP POLICY IF EXISTS sales_insert_member ON public.sales;
 CREATE POLICY sales_insert_member ON public.sales
   FOR INSERT TO authenticated
   WITH CHECK (private.is_company_member(company_id) AND created_by = auth.uid());
+
+DROP POLICY IF EXISTS sales_update_member ON public.sales;
 CREATE POLICY sales_update_member ON public.sales
   FOR UPDATE TO authenticated
   USING (private.is_company_member(company_id))
   WITH CHECK (private.is_company_member(company_id));
 
+DROP POLICY IF EXISTS sale_items_select_member ON public.sale_items;
 CREATE POLICY sale_items_select_member ON public.sale_items
   FOR SELECT TO authenticated USING (private.is_company_member(company_id));
 
