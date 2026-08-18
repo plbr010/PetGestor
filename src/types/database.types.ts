@@ -62,6 +62,15 @@ export type NotificationStatus =
   | "failed"
   | "cancelled"
   | "simulated";
+export type ProductUnit = "unit" | "kg" | "g" | "ml" | "l" | "pack" | "box" | "other";
+export type StockMovementType =
+  | "entry"
+  | "exit"
+  | "adjustment"
+  | "loss"
+  | "internal_use"
+  | "return";
+export type StockStatus = "normal" | "low" | "out" | "archived";
 
 export type Database = {
   public: {
@@ -1536,6 +1545,343 @@ export type Database = {
           },
         ];
       };
+      product_categories: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      inventory_suppliers: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          contact_name: string | null;
+          phone: string | null;
+          email: string | null;
+          document: string | null;
+          notes: string | null;
+          active: boolean;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          contact_name?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          document?: string | null;
+          notes?: string | null;
+          active?: boolean;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          contact_name?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          document?: string | null;
+          notes?: string | null;
+          active?: boolean;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inventory_suppliers_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      products: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          sku: string | null;
+          barcode: string | null;
+          category_id: string | null;
+          description: string | null;
+          unit: ProductUnit;
+          cost_price_cents: number;
+          sale_price_cents: number | null;
+          current_stock: number;
+          minimum_stock: number;
+          active: boolean;
+          track_stock: boolean;
+          created_at: string;
+          updated_at: string;
+          archived_at: string | null;
+          created_by: string;
+          stock_status: StockStatus;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          sku?: string | null;
+          barcode?: string | null;
+          category_id?: string | null;
+          description?: string | null;
+          unit?: ProductUnit;
+          cost_price_cents?: number;
+          sale_price_cents?: number | null;
+          current_stock?: number;
+          minimum_stock?: number;
+          active?: boolean;
+          track_stock?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          archived_at?: string | null;
+          created_by: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          sku?: string | null;
+          barcode?: string | null;
+          category_id?: string | null;
+          description?: string | null;
+          unit?: ProductUnit;
+          cost_price_cents?: number;
+          sale_price_cents?: number | null;
+          current_stock?: number;
+          minimum_stock?: number;
+          active?: boolean;
+          track_stock?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          archived_at?: string | null;
+          created_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "products_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "products_category_company_fkey";
+            columns: ["category_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "product_categories";
+            referencedColumns: ["id", "company_id"];
+          },
+        ];
+      };
+      product_batches: {
+        Row: {
+          id: string;
+          company_id: string;
+          product_id: string;
+          batch_code: string | null;
+          quantity_remaining: number;
+          expiration_date: string | null;
+          unit_cost_cents: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          product_id: string;
+          batch_code?: string | null;
+          quantity_remaining?: number;
+          expiration_date?: string | null;
+          unit_cost_cents?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          product_id?: string;
+          batch_code?: string | null;
+          quantity_remaining?: number;
+          expiration_date?: string | null;
+          unit_cost_cents?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_batches_product_company_fkey";
+            columns: ["product_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id", "company_id"];
+          },
+        ];
+      };
+      stock_movements: {
+        Row: {
+          id: string;
+          company_id: string;
+          product_id: string;
+          type: StockMovementType;
+          quantity: number;
+          previous_quantity: number;
+          new_quantity: number;
+          unit_cost_cents: number | null;
+          reason: string | null;
+          reference_type: string | null;
+          reference_id: string | null;
+          notes: string | null;
+          supplier_id: string | null;
+          batch_id: string | null;
+          idempotency_key: string;
+          created_by: string;
+          created_by_name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          product_id: string;
+          type: StockMovementType;
+          quantity: number;
+          previous_quantity: number;
+          new_quantity: number;
+          unit_cost_cents?: number | null;
+          reason?: string | null;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          notes?: string | null;
+          supplier_id?: string | null;
+          batch_id?: string | null;
+          idempotency_key: string;
+          created_by: string;
+          created_by_name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          product_id?: string;
+          type?: StockMovementType;
+          quantity?: number;
+          previous_quantity?: number;
+          new_quantity?: number;
+          unit_cost_cents?: number | null;
+          reason?: string | null;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          notes?: string | null;
+          supplier_id?: string | null;
+          batch_id?: string | null;
+          idempotency_key?: string;
+          created_by?: string;
+          created_by_name?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_company_fkey";
+            columns: ["product_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id", "company_id"];
+          },
+          {
+            foreignKeyName: "stock_movements_supplier_company_fkey";
+            columns: ["supplier_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "inventory_suppliers";
+            referencedColumns: ["id", "company_id"];
+          },
+        ];
+      };
+      service_product_recipes: {
+        Row: {
+          id: string;
+          company_id: string;
+          service_id: string;
+          product_id: string;
+          quantity: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          service_id: string;
+          product_id: string;
+          quantity: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          service_id?: string;
+          product_id?: string;
+          quantity?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_product_recipes_service_company_fkey";
+            columns: ["service_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id", "company_id"];
+          },
+          {
+            foreignKeyName: "service_product_recipes_product_company_fkey";
+            columns: ["product_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id", "company_id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -1735,6 +2081,24 @@ export type Database = {
         Args: { p_customer_package_id: string };
         Returns: string;
       };
+      register_stock_movement: {
+        Args: {
+          p_product_id: string;
+          p_type: StockMovementType;
+          p_quantity: number;
+          p_idempotency_key: string;
+          p_unit_cost_cents?: number | null;
+          p_reason?: string | null;
+          p_notes?: string | null;
+          p_supplier_id?: string | null;
+          p_batch_code?: string | null;
+          p_expiration_date?: string | null;
+          p_counted_stock?: number | null;
+          p_reference_type?: string | null;
+          p_reference_id?: string | null;
+        };
+        Returns: string;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
@@ -1765,3 +2129,10 @@ export type CustomerServicePackageItem =
   Database["public"]["Tables"]["customer_service_package_items"]["Row"];
 export type CustomerServicePackageUsage =
   Database["public"]["Tables"]["customer_service_package_usages"]["Row"];
+export type ProductCategory = Database["public"]["Tables"]["product_categories"]["Row"];
+export type InventorySupplier = Database["public"]["Tables"]["inventory_suppliers"]["Row"];
+export type Product = Database["public"]["Tables"]["products"]["Row"];
+export type ProductBatch = Database["public"]["Tables"]["product_batches"]["Row"];
+export type StockMovement = Database["public"]["Tables"]["stock_movements"]["Row"];
+export type ServiceProductRecipe =
+  Database["public"]["Tables"]["service_product_recipes"]["Row"];

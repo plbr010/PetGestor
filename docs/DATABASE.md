@@ -267,7 +267,7 @@ Ver `docs/SUBSCRIPTIONS.md`. **Migration pendente de aplicação remota.**
 
 ## Entidades NÃO criadas nesta etapa
 
-Mercado Pago, checkout, webhooks, cobrança real, estoque, comissão, NF.
+Mercado Pago, checkout, webhooks, cobrança real, comissão, NF.
 
 ## Etapa 9 — Financeiro
 
@@ -282,9 +282,19 @@ financial_entries (manual: receitas e despesas)
 
 Ver `docs/FINANCE.md`. **Migration pendente de aplicação remota.**
 
+## Etapa — Estoque
+
+Migration: `supabase/migrations/20260818120000_inventory.sql`
+
+Tabelas: `product_categories`, `inventory_suppliers`, `products`, `product_batches`, `stock_movements`, `service_product_recipes` (stub).
+
+RLS por `company_id` + `private.is_company_member`. Movimentações imutáveis. Saldo e custo médio só via RPC `register_stock_movement`.
+
+Ver `docs/INVENTORY.md`. **Migration pendente de aplicação remota.**
+
 ## Entidades NÃO criadas na Etapa 9
 
-Estoque, comissão, NF, assinatura SaaS (trial implementado na 10A).
+PDV, comissão, NF, assinatura SaaS (trial implementado na 10A).
 
 ## Etapa 8 — Ordens de Serviço (Atendimentos)
 

@@ -17,7 +17,7 @@ src/
   app/           Rotas (public, auth, dashboard, auth handlers)
   components/    UI reutilizável (ui, shared, layout, auth)
   config/        Marca, navegação e dados demonstrativos
-  features/      auth, companies, customers, pets, services, employees, appointments, service-orders, finance, subscription
+  features/      auth, companies, customers, pets, services, employees, appointments, service-orders, finance, inventory, subscription
   lib/
     auth/        Guards, redirects seguros, getClaims helpers
     env/         Validação tipada de variáveis de ambiente
@@ -117,3 +117,4 @@ O projeto utiliza **npm** exclusivamente.
 - `docs/APPOINTMENTS.md` — agenda, timezone, snapshots e conflitos
 - `docs/SERVICE_ORDERS.md` — atendimentos e ordens de serviço
 - `docs/WHATSAPP_SETUP.md` — WhatsApp Cloud API (Meta)
+- `docs/INVENTORY.md` — estoque, lotes e movimentações
