@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import {
   applyConcurrentMovements,
   applyStockMovement,
@@ -7,6 +6,7 @@ import {
   isExpiredDate,
   type StockProductState,
 } from "@/features/inventory/stock-engine";
+import { localDateTimeToUtcIso } from "@/lib/timezone";
 import {
   buildRpcItemsPayload,
   buildRpcPaymentsPayload,
@@ -315,6 +315,15 @@ describe("PDV / vendas", () => {
       cartLine({ productId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", quantity: 1.5 }),
     ]);
     expect(payload[0]?.quantity).toBe(1.5);
+  });
+
+  it("dashboard — limites do dia não lançam Invalid time value", () => {
+    const timeZone = "America/Sao_Paulo";
+    const date = "2026-08-18";
+
+    expect(() => localDateTimeToUtcIso(date, "00:00", timeZone)).not.toThrow();
+    expect(() => localDateTimeToUtcIso(date, "23:59", timeZone)).not.toThrow();
+    expect(localDateTimeToUtcIso(date, "00:00", timeZone)).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
   it("desconto percentual inválido rejeitado", () => {

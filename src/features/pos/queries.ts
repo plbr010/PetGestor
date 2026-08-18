@@ -170,6 +170,14 @@ async function loadCustomerNames(
   return new Map((data ?? []).map((row) => [row.id, row.name]));
 }
 
+function startOfLocalDayUtc(date: string, timeZone: string): string {
+  return localDateTimeToUtcIso(date, "00:00", timeZone);
+}
+
+function endOfLocalDayUtc(date: string, timeZone: string): string {
+  return localDateTimeToUtcIso(date, "23:59", timeZone);
+}
+
 function periodBounds(
   period: string,
   timeZone: string,
@@ -180,16 +188,16 @@ function periodBounds(
 
   if (period === "today") {
     return {
-      start: localDateTimeToUtcIso(`${today}T00:00:00`, timeZone),
-      end: localDateTimeToUtcIso(`${today}T23:59:59`, timeZone),
+      start: startOfLocalDayUtc(today, timeZone),
+      end: endOfLocalDayUtc(today, timeZone),
     };
   }
 
   if (period === "week") {
     const week = getWeekDates(today);
     return {
-      start: localDateTimeToUtcIso(`${week[0]}T00:00:00`, timeZone),
-      end: localDateTimeToUtcIso(`${week[6]}T23:59:59`, timeZone),
+      start: startOfLocalDayUtc(week[0], timeZone),
+      end: endOfLocalDayUtc(week[6], timeZone),
     };
   }
 
@@ -200,15 +208,15 @@ function periodBounds(
       -1,
     );
     return {
-      start: localDateTimeToUtcIso(`${monthStart}T00:00:00`, timeZone),
-      end: localDateTimeToUtcIso(`${monthEnd}T23:59:59`, timeZone),
+      start: startOfLocalDayUtc(monthStart, timeZone),
+      end: endOfLocalDayUtc(monthEnd, timeZone),
     };
   }
 
   if (period === "custom" && from && to) {
     return {
-      start: localDateTimeToUtcIso(`${from}T00:00:00`, timeZone),
-      end: localDateTimeToUtcIso(`${to}T23:59:59`, timeZone),
+      start: startOfLocalDayUtc(from, timeZone),
+      end: endOfLocalDayUtc(to, timeZone),
     };
   }
 
@@ -407,8 +415,8 @@ export async function getPosDashboardMetrics(
 
   const supabase = await createSupabaseServerClient();
   const today = getTodayInTimezone(timeZone);
-  const start = localDateTimeToUtcIso(`${today}T00:00:00`, timeZone);
-  const end = localDateTimeToUtcIso(`${today}T23:59:59`, timeZone);
+  const start = startOfLocalDayUtc(today, timeZone);
+  const end = endOfLocalDayUtc(today, timeZone);
 
   const [{ data: sales }, { data: itemRows }] = await Promise.all([
     supabase
