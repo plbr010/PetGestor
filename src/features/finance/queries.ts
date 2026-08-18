@@ -370,21 +370,41 @@ export async function getPendingReceivablesTotal(companyId: string): Promise<num
 }
 
 export async function getDashboardFinanceMetrics(companyId: string, timeZone: string) {
-  const today = getTodayInTimezone(timeZone);
-
-  const [dailySummary, monthlySummary, pendingReceivablesCents] = await Promise.all([
-    getDailyFinancialSummary(companyId, today, timeZone),
-    getMonthlyFinancialSummary(companyId, today, timeZone),
-    getPendingReceivablesTotal(companyId),
-  ]);
-
-  return {
-    incomePaidTodayCents: dailySummary.incomePaidCents,
-    pendingReceivablesCents,
-    expensePaidMonthCents: monthlySummary.expensePaidCents,
-    realizedResultMonthCents: monthlySummary.realizedResultCents,
-    monthlySummary,
+  const empty = {
+    incomePaidTodayCents: 0,
+    pendingReceivablesCents: 0,
+    expensePaidMonthCents: 0,
+    realizedResultMonthCents: 0,
+    monthlySummary: {
+      incomePaidCents: 0,
+      incomePendingCents: 0,
+      expensePaidCents: 0,
+      expensePendingCents: 0,
+      realizedResultCents: 0,
+      projectedResultCents: 0,
+    },
   };
+
+  try {
+    const today = getTodayInTimezone(timeZone);
+
+    const [dailySummary, monthlySummary, pendingReceivablesCents] = await Promise.all([
+      getDailyFinancialSummary(companyId, today, timeZone),
+      getMonthlyFinancialSummary(companyId, today, timeZone),
+      getPendingReceivablesTotal(companyId),
+    ]);
+
+    return {
+      incomePaidTodayCents: dailySummary.incomePaidCents,
+      pendingReceivablesCents,
+      expensePaidMonthCents: monthlySummary.expensePaidCents,
+      realizedResultMonthCents: monthlySummary.realizedResultCents,
+      monthlySummary,
+    };
+  } catch (error) {
+    console.error("[finance:dashboard]", error);
+    return empty;
+  }
 }
 
 export { parsePageParam };
