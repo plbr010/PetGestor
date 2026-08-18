@@ -4,6 +4,7 @@ import {
   CreditCard,
   DollarSign,
   Home,
+  Package,
   PawPrint,
   Scissors,
   Settings,
@@ -81,6 +82,12 @@ export const dashboardNavItems: DashboardNavItem[] = [
     icon: ClipboardList,
     description: "Ordens de serviço",
     tourId: "nav-atendimentos",
+  },
+  {
+    label: "Estoque",
+    href: "/dashboard/estoque",
+    icon: Package,
+    description: "Produtos e movimentações",
   },
   {
     label: "Financeiro",

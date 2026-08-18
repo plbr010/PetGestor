@@ -29,6 +29,8 @@ Donos e gestores de pet shops que precisam de uma solução simples, acessível 
 
 WhatsApp **transacional** (lembretes de agendamento via Cloud API oficial) está implementado no código; o envio real depende da conta Meta, templates aprovados e variáveis na Vercel. Ver `docs/WHATSAPP_SETUP.md`.
 
+Estoque operacional (produtos, movimentações, fornecedores e lotes) está implementado **sem PDV**. Ver `docs/INVENTORY.md`.
+
 ## Teste gratuito
 
 PetGestor oferece **72 horas de teste gratuito** sem exigir meio de pagamento.

@@ -1,3 +1,18 @@
+## [0.23.0] — 2026-08-18
+
+### Adicionado — Estoque (produtos, lotes e movimentações)
+
+- Cadastro de produtos, categorias e fornecedores por empresa
+- Entrada, saída manual e ajuste com histórico imutável
+- Estoque mínimo, custo médio ponderado, lotes e alerta de validade
+- RPC transacional `register_stock_movement` (saldo atômico, idempotência, sem saldo negativo)
+- Card compacto de alertas no dashboard
+- Tabela `service_product_recipes` apenas como preparação futura (sem baixa automática)
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260818120000_inventory.sql`
+
+Sem PDV, NFC-e ou integração de despesa na entrada nesta etapa.
+
 ## [0.22.0] — 2026-08-17
 
 ### Adicionado — WhatsApp Cloud API (fila de lembretes)

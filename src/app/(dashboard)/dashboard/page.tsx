@@ -28,6 +28,8 @@ import { countActiveEmployees } from "@/features/employees/queries";
 import { countActiveServices } from "@/features/services/queries";
 import { getDashboardFinanceMetrics } from "@/features/finance/queries";
 import { formatAmountCents } from "@/features/finance/utils";
+import { InventoryDashboardCard } from "@/features/inventory/components/inventory-dashboard-card";
+import { getInventoryDashboardAlerts } from "@/features/inventory/queries";
 import { requireCompany } from "@/features/companies/queries";
 import { countServiceOrdersByStatus } from "@/features/service-orders/queries";
 import { requireUser } from "@/lib/auth/require-user";
@@ -51,6 +53,7 @@ export default async function DashboardHomePage() {
     inProgressCount,
     readyCount,
     financeMetrics,
+    inventoryAlerts,
   ] = await Promise.all([
     countActiveCustomers(context.membership.company.id),
     countActivePets(context.membership.company.id),
@@ -63,6 +66,7 @@ export default async function DashboardHomePage() {
     countServiceOrdersByStatus(context.membership.company.id, "in_progress", today, timeZone),
     countServiceOrdersByStatus(context.membership.company.id, "ready", today, timeZone),
     getDashboardFinanceMetrics(context.membership.company.id, timeZone),
+    getInventoryDashboardAlerts(context.membership.company.id),
   ]);
 
   const stats = [
@@ -161,6 +165,11 @@ export default async function DashboardHomePage() {
             />
           ))}
         </div>
+
+        <InventoryDashboardCard
+          lowStockCount={inventoryAlerts.lowStockCount}
+          outOfStockCount={inventoryAlerts.outOfStockCount}
+        />
 
         <div className="grid gap-6 xl:grid-cols-2">
           <DashboardScheduleList appointments={todayAppointments} timeZone={timeZone} />

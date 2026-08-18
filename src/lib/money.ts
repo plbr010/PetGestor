@@ -3,10 +3,14 @@
  */
 
 export const MAX_PRICE_CENTS = 999_999;
+export const MAX_INVENTORY_PRICE_CENTS = 99_999_999;
 export const MIN_DURATION_MINUTES = 5;
 export const MAX_DURATION_MINUTES = 720;
 
-export function parseBRLToCents(input: string): number | null {
+export function parseBRLToCents(
+  input: string,
+  maxCents: number = MAX_PRICE_CENTS,
+): number | null {
   if (!input || typeof input !== "string") {
     return null;
   }
@@ -84,7 +88,7 @@ export function parseBRLToCents(input: string): number | null {
 
   const total = reais * 100 + cents;
 
-  if (total < 0 || total > MAX_PRICE_CENTS) {
+  if (total < 0 || total > maxCents) {
     return null;
   }
 
