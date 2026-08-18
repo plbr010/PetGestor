@@ -123,6 +123,15 @@ export function PetHistoryTimeline({
                         <dd>{event.serviceName}</dd>
                       </div>
                     ) : null}
+                    {event.attachmentCount && event.attachmentCount > 0 ? (
+                      <div>
+                        <dt className="text-muted-foreground">Anexos</dt>
+                        <dd>
+                          {event.attachmentCount}{" "}
+                          {event.attachmentCount === 1 ? "foto/arquivo" : "fotos/arquivos"}
+                        </dd>
+                      </div>
+                    ) : null}
                     {event.employeeName ? (
                       <div>
                         <dt className="text-muted-foreground">Profissional</dt>

@@ -31,6 +31,7 @@ export const STOCK_MOVEMENT_TYPES = [
   "loss",
   "internal_use",
   "return",
+  "sale",
 ] as const;
 
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
@@ -42,6 +43,7 @@ export const STOCK_MOVEMENT_TYPE_LABELS: Record<StockMovementType, string> = {
   loss: "Perda",
   internal_use: "Uso interno",
   return: "Devolução",
+  sale: "Venda",
 };
 
 export const STOCK_EXIT_REASONS = [

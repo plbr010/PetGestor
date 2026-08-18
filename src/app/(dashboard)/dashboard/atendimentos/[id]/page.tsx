@@ -1,3 +1,5 @@
+import { ServiceOrderAttachmentsPanel } from "@/features/attachments/components/service-order-attachments-panel";
+import { getServiceOrderAttachments } from "@/features/attachments/queries";
 import { ServiceOrderPackagePanel } from "@/features/service-packages/components/service-order-package-panel";
 import {
   getPackageCreditsForServiceOrder,
@@ -49,9 +51,10 @@ export default async function ServiceOrderDetailPage({
     context.membership.company.id,
     order.id,
   );
-  const [packageCredits, packageUsage] = await Promise.all([
+  const [packageCredits, packageUsage, attachments] = await Promise.all([
     getPackageCreditsForServiceOrder(context.membership.company.id, order.id, timeZone),
     getPackageUsageForServiceOrder(context.membership.company.id, order.id),
+    getServiceOrderAttachments(context.membership.company.id, order.id),
   ]);
   const localDate = formatUtcDateInTimezone(order.appointment.scheduled_start, timeZone);
 
@@ -128,6 +131,8 @@ export default async function ServiceOrderDetailPage({
             <ServiceOrderNotesForm order={order} />
           </CardContent>
         </Card>
+
+        <ServiceOrderAttachmentsPanel serviceOrderId={order.id} attachments={attachments} />
 
         <ServiceOrderPackagePanel
           serviceOrderId={order.id}

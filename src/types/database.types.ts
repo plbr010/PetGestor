@@ -35,8 +35,10 @@ export type ServiceOrderStatus =
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled";
 export type PlatformAdminRole = "platform_owner";
 export type FinancialEntryType = "income" | "expense";
-export type FinancialEntryStatus = "pending" | "paid" | "cancelled";
-export type FinancialSourceType = "service_order" | "manual" | "service_package";
+export type FinancialEntryStatus = "pending" | "partially_paid" | "paid" | "cancelled";
+export type FinancialSourceType = "service_order" | "manual" | "service_package" | "sale";
+export type SaleStatus = "open" | "completed" | "partially_paid" | "cancelled";
+export type DiscountType = "fixed" | "percent";
 export type CustomerPackageStatus = "active" | "expired" | "fully_used" | "cancelled";
 export type PackageUsageStatus = "consumed" | "reversed";
 export type PaymentMethod =
@@ -69,7 +71,8 @@ export type StockMovementType =
   | "adjustment"
   | "loss"
   | "internal_use"
-  | "return";
+  | "return"
+  | "sale";
 export type StockStatus = "normal" | "low" | "out" | "archived";
 
 export type Database = {
@@ -253,6 +256,9 @@ export type Database = {
           allergies: string | null;
           notes: string | null;
           important_notes: string | null;
+          photo_storage_path: string | null;
+          photo_thumb_path: string | null;
+          photo_updated_at: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -272,6 +278,9 @@ export type Database = {
           allergies?: string | null;
           notes?: string | null;
           important_notes?: string | null;
+          photo_storage_path?: string | null;
+          photo_thumb_path?: string | null;
+          photo_updated_at?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -291,6 +300,9 @@ export type Database = {
           allergies?: string | null;
           notes?: string | null;
           important_notes?: string | null;
+          photo_storage_path?: string | null;
+          photo_thumb_path?: string | null;
+          photo_updated_at?: string | null;
           created_by?: string;
           created_at?: string;
           updated_at?: string;
@@ -1473,6 +1485,7 @@ export type Database = {
           source_type: FinancialSourceType;
           service_order_id: string | null;
           customer_service_package_id: string | null;
+          sale_id: string | null;
           description: string;
           category: string | null;
           amount_cents: number;
@@ -1494,6 +1507,7 @@ export type Database = {
           source_type?: FinancialSourceType;
           service_order_id?: string | null;
           customer_service_package_id?: string | null;
+          sale_id?: string | null;
           description: string;
           category?: string | null;
           amount_cents: number;
@@ -1515,6 +1529,7 @@ export type Database = {
           source_type?: FinancialSourceType;
           service_order_id?: string | null;
           customer_service_package_id?: string | null;
+          sale_id?: string | null;
           description?: string;
           category?: string | null;
           amount_cents?: number;
@@ -1541,6 +1556,59 @@ export type Database = {
             columns: ["service_order_id", "company_id"];
             isOneToOne: false;
             referencedRelation: "service_orders";
+            referencedColumns: ["id", "company_id"];
+          },
+        ];
+      };
+      financial_payments: {
+        Row: {
+          id: string;
+          company_id: string;
+          financial_entry_id: string;
+          amount_cents: number;
+          payment_method: PaymentMethod;
+          paid_at: string;
+          notes: string | null;
+          idempotency_key: string | null;
+          created_by: string;
+          created_at: string;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          financial_entry_id: string;
+          amount_cents: number;
+          payment_method: PaymentMethod;
+          paid_at?: string;
+          notes?: string | null;
+          idempotency_key?: string | null;
+          created_by: string;
+          created_at?: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          financial_entry_id?: string;
+          amount_cents?: number;
+          payment_method?: PaymentMethod;
+          paid_at?: string;
+          notes?: string | null;
+          idempotency_key?: string | null;
+          created_by?: string;
+          created_at?: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "financial_payments_entry_company_fkey";
+            columns: ["financial_entry_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "financial_entries";
             referencedColumns: ["id", "company_id"];
           },
         ];
@@ -1840,6 +1908,120 @@ export type Database = {
           },
         ];
       };
+      pet_attachments: {
+        Row: {
+          id: string;
+          company_id: string;
+          pet_id: string;
+          file_path: string;
+          thumb_path: string | null;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          category: string;
+          description: string | null;
+          uploaded_by: string;
+          uploaded_by_name: string;
+          created_at: string;
+          archived_at: string | null;
+          archived_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          pet_id: string;
+          file_path: string;
+          thumb_path?: string | null;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          category: string;
+          description?: string | null;
+          uploaded_by: string;
+          uploaded_by_name: string;
+          created_at?: string;
+          archived_at?: string | null;
+          archived_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          pet_id?: string;
+          file_path?: string;
+          thumb_path?: string | null;
+          file_name?: string;
+          mime_type?: string;
+          size_bytes?: number;
+          category?: string;
+          description?: string | null;
+          uploaded_by?: string;
+          uploaded_by_name?: string;
+          created_at?: string;
+          archived_at?: string | null;
+          archived_by?: string | null;
+        };
+        Relationships: [];
+      };
+      service_order_attachments: {
+        Row: {
+          id: string;
+          company_id: string;
+          service_order_id: string;
+          pet_id: string;
+          file_path: string;
+          thumb_path: string | null;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          category: string;
+          phase: string | null;
+          description: string | null;
+          uploaded_by: string;
+          uploaded_by_name: string;
+          created_at: string;
+          archived_at: string | null;
+          archived_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          service_order_id: string;
+          pet_id: string;
+          file_path: string;
+          thumb_path?: string | null;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          category: string;
+          phase?: string | null;
+          description?: string | null;
+          uploaded_by: string;
+          uploaded_by_name: string;
+          created_at?: string;
+          archived_at?: string | null;
+          archived_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          service_order_id?: string;
+          pet_id?: string;
+          file_path?: string;
+          thumb_path?: string | null;
+          file_name?: string;
+          mime_type?: string;
+          size_bytes?: number;
+          category?: string;
+          phase?: string | null;
+          description?: string | null;
+          uploaded_by?: string;
+          uploaded_by_name?: string;
+          created_at?: string;
+          archived_at?: string | null;
+          archived_by?: string | null;
+        };
+        Relationships: [];
+      };
       service_product_recipes: {
         Row: {
           id: string;
@@ -1878,6 +2060,145 @@ export type Database = {
             columns: ["product_id", "company_id"];
             isOneToOne: false;
             referencedRelation: "products";
+            referencedColumns: ["id", "company_id"];
+          },
+        ];
+      };
+      sales: {
+        Row: {
+          id: string;
+          company_id: string;
+          sale_number: number;
+          customer_id: string | null;
+          status: SaleStatus;
+          subtotal_cents: number;
+          discount_cents: number;
+          discount_type: DiscountType | null;
+          discount_percent: number | null;
+          total_cents: number;
+          paid_cents: number;
+          change_cents: number;
+          financial_entry_id: string | null;
+          sold_at: string;
+          idempotency_key: string;
+          created_by: string;
+          created_by_name: string;
+          discount_applied_by: string | null;
+          cancelled_by: string | null;
+          cancel_reason: string | null;
+          created_at: string;
+          updated_at: string;
+          cancelled_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          sale_number: number;
+          customer_id?: string | null;
+          status?: SaleStatus;
+          subtotal_cents: number;
+          discount_cents?: number;
+          discount_type?: DiscountType | null;
+          discount_percent?: number | null;
+          total_cents: number;
+          paid_cents?: number;
+          change_cents?: number;
+          financial_entry_id?: string | null;
+          sold_at?: string;
+          idempotency_key: string;
+          created_by: string;
+          created_by_name: string;
+          discount_applied_by?: string | null;
+          cancelled_by?: string | null;
+          cancel_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          cancelled_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          sale_number?: number;
+          customer_id?: string | null;
+          status?: SaleStatus;
+          subtotal_cents?: number;
+          discount_cents?: number;
+          discount_type?: DiscountType | null;
+          discount_percent?: number | null;
+          total_cents?: number;
+          paid_cents?: number;
+          change_cents?: number;
+          financial_entry_id?: string | null;
+          sold_at?: string;
+          idempotency_key?: string;
+          created_by?: string;
+          created_by_name?: string;
+          discount_applied_by?: string | null;
+          cancelled_by?: string | null;
+          cancel_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          cancelled_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sales_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sale_items: {
+        Row: {
+          id: string;
+          company_id: string;
+          sale_id: string;
+          product_id: string;
+          product_name_snapshot: string;
+          quantity: number;
+          unit_price_cents: number;
+          cost_price_cents_snapshot: number;
+          subtotal_cents: number;
+          discount_cents: number;
+          total_cents: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          sale_id: string;
+          product_id: string;
+          product_name_snapshot: string;
+          quantity: number;
+          unit_price_cents: number;
+          cost_price_cents_snapshot: number;
+          subtotal_cents: number;
+          discount_cents?: number;
+          total_cents: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          sale_id?: string;
+          product_id?: string;
+          product_name_snapshot?: string;
+          quantity?: number;
+          unit_price_cents?: number;
+          cost_price_cents_snapshot?: number;
+          subtotal_cents?: number;
+          discount_cents?: number;
+          total_cents?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_sale_company_fkey";
+            columns: ["sale_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
             referencedColumns: ["id", "company_id"];
           },
         ];
@@ -2099,6 +2420,26 @@ export type Database = {
         };
         Returns: string;
       };
+      complete_product_sale: {
+        Args: {
+          p_idempotency_key: string;
+          p_items: Json;
+          p_payments: Json;
+          p_customer_id?: string | null;
+          p_discount_type?: string | null;
+          p_discount_fixed_cents?: number;
+          p_discount_percent?: number | null;
+          p_cash_received_cents?: number | null;
+        };
+        Returns: string;
+      };
+      cancel_product_sale: {
+        Args: {
+          p_sale_id: string;
+          p_reason: string;
+        };
+        Returns: string;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
@@ -2134,5 +2475,9 @@ export type InventorySupplier = Database["public"]["Tables"]["inventory_supplier
 export type Product = Database["public"]["Tables"]["products"]["Row"];
 export type ProductBatch = Database["public"]["Tables"]["product_batches"]["Row"];
 export type StockMovement = Database["public"]["Tables"]["stock_movements"]["Row"];
-export type ServiceProductRecipe =
-  Database["public"]["Tables"]["service_product_recipes"]["Row"];
+export type PetAttachment = Database["public"]["Tables"]["pet_attachments"]["Row"];
+export type ServiceOrderAttachment =
+  Database["public"]["Tables"]["service_order_attachments"]["Row"];
+export type FinancialPayment = Database["public"]["Tables"]["financial_payments"]["Row"];
+export type Sale = Database["public"]["Tables"]["sales"]["Row"];
+export type SaleItem = Database["public"]["Tables"]["sale_items"]["Row"];

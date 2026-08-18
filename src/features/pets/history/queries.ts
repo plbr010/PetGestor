@@ -4,6 +4,7 @@ import {
   buildPetHistoryEvents,
   buildPetHistorySummary,
 } from "@/features/pets/history/build-history";
+import { getServiceOrderAttachmentCounts } from "@/features/attachments/queries";
 import type {
   AppointmentHistoryRow,
   PetHistoryPage,
@@ -150,7 +151,18 @@ export async function getPetHistoryPage(
   }
 
   const rows = data.map((row) => mapAppointmentRow(row as unknown as Record<string, unknown>));
-  const events = buildPetHistoryEvents(rows);
+  const serviceOrderIds = rows
+    .map((row) => row.service_order?.id)
+    .filter((id): id is string => Boolean(id));
+  const attachmentCounts = await getServiceOrderAttachmentCounts(companyId, serviceOrderIds);
+  const events = buildPetHistoryEvents(rows).map((event) => {
+    if (!event.serviceOrderId) {
+      return event;
+    }
+
+    const attachmentCount = attachmentCounts.get(event.serviceOrderId) ?? 0;
+    return attachmentCount > 0 ? { ...event, attachmentCount } : event;
+  });
   const totalAppointments = count ?? 0;
 
   return {

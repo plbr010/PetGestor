@@ -7,6 +7,7 @@ const statusVariant: Record<
   FinancialEntryStatus,
   "default" | "secondary" | "outline" | "destructive"
 > = {
+  partially_paid: "outline",
   pending: "outline",
   paid: "default",
   cancelled: "secondary",

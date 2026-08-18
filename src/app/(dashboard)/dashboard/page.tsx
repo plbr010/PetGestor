@@ -30,6 +30,8 @@ import { getDashboardFinanceMetrics } from "@/features/finance/queries";
 import { formatAmountCents } from "@/features/finance/utils";
 import { InventoryDashboardCard } from "@/features/inventory/components/inventory-dashboard-card";
 import { getInventoryDashboardAlerts } from "@/features/inventory/queries";
+import { PosDashboardCard } from "@/features/pos/components/pos-dashboard-card";
+import { getPosDashboardMetrics } from "@/features/pos/queries";
 import { requireCompany } from "@/features/companies/queries";
 import { countServiceOrdersByStatus } from "@/features/service-orders/queries";
 import { requireUser } from "@/lib/auth/require-user";
@@ -54,6 +56,7 @@ export default async function DashboardHomePage() {
     readyCount,
     financeMetrics,
     inventoryAlerts,
+    posMetrics,
   ] = await Promise.all([
     countActiveCustomers(context.membership.company.id),
     countActivePets(context.membership.company.id),
@@ -67,6 +70,7 @@ export default async function DashboardHomePage() {
     countServiceOrdersByStatus(context.membership.company.id, "ready", today, timeZone),
     getDashboardFinanceMetrics(context.membership.company.id, timeZone),
     getInventoryDashboardAlerts(context.membership.company.id),
+    getPosDashboardMetrics(context.membership.company.id, timeZone),
   ]);
 
   const stats = [
@@ -170,6 +174,8 @@ export default async function DashboardHomePage() {
           lowStockCount={inventoryAlerts.lowStockCount}
           outOfStockCount={inventoryAlerts.outOfStockCount}
         />
+
+        <PosDashboardCard metrics={posMetrics} />
 
         <div className="grid gap-6 xl:grid-cols-2">
           <DashboardScheduleList appointments={todayAppointments} timeZone={timeZone} />
