@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { parseEmployeeForm } from "@/features/employees/schemas";
 import { workingHoursToRpcPayload } from "@/features/employees/utils";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -22,7 +22,7 @@ export async function createEmployeeAction(
   _prevState: EmployeeActionState,
   formData: FormData,
 ): Promise<EmployeeActionState> {
-  await requireCompanyContext();
+  await requirePermission("employees.manage");
   const parsed = parseEmployeeForm(formData);
 
   if (!parsed.success) {
@@ -61,7 +61,7 @@ export async function updateEmployeeAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  await requirePermission("employees.manage");
   const parsed = parseEmployeeForm(formData);
 
   if (!parsed.success) {
@@ -101,7 +101,7 @@ export async function toggleEmployeeActiveAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("employees.manage");
   const supabase = await createSupabaseServerClient();
 
   const mutation = await supabase
@@ -131,7 +131,7 @@ export async function archiveEmployeeAction(employeeId: string): Promise<Employe
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("employees.manage");
   const supabase = await createSupabaseServerClient();
 
   const mutation = await supabase
@@ -157,7 +157,7 @@ export async function restoreEmployeeAction(employeeId: string): Promise<Employe
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("employees.manage");
   const supabase = await createSupabaseServerClient();
 
   const mutation = await supabase

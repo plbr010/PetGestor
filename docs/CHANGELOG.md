@@ -1,3 +1,18 @@
+## [0.27.0] — 2026-08-18
+
+### Adicionado — Permissões por funcionário
+
+- Perfis: Dono/Admin, Gerente, Recepção, Operacional, Financeiro, Estoque/Caixa
+- Permissões granulares por módulo/ação em `company_members.permissions`
+- Vínculo funcionário ↔ usuário (`employees.user_id`, `company_members.employee_id`)
+- Painel "Acesso ao sistema" na ficha do funcionário
+- Sidebar dinâmica, proteção de rotas e validação server-side (`requirePermission`)
+- Opção "Ver somente meus atendimentos" para perfis operacionais
+- Convites pendentes por e-mail (base — envio transacional pendente)
+- RLS reforçada em `financial_entries`
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260818180000_employee_permissions.sql`
+
 ## [0.26.0] — 2026-08-18
 
 ### Adicionado — Dashboard financeiro visual

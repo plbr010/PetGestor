@@ -13,7 +13,7 @@ import {
 } from "@/features/inventory/schemas";
 import { mapStockRpcError } from "@/features/inventory/utils";
 import { movementTypeFromExitReason } from "@/features/inventory/units";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -55,7 +55,7 @@ export async function createProductAction(
   _prevState: InventoryActionState,
   formData: FormData,
 ): Promise<InventoryActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("inventory.manage");
   const parsed = parseProductForm(formData);
 
   if (!parsed.success) {
@@ -110,7 +110,7 @@ export async function updateProductAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("inventory.manage");
   const parsed = parseProductForm(formData);
 
   if (!parsed.success) {
@@ -155,7 +155,7 @@ export async function archiveProductAction(productId: string): Promise<Inventory
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("inventory.manage");
   const supabase = await createSupabaseServerClient();
   const mutation = await supabase
     .from("products")
@@ -178,7 +178,7 @@ export async function createCategoryAction(
   _prevState: InventoryActionState,
   formData: FormData,
 ): Promise<InventoryActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("inventory.manage");
   const parsed = parseCategoryForm(formData);
 
   if (!parsed.success) {
@@ -218,7 +218,7 @@ export async function updateCategoryAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("inventory.manage");
   const parsed = parseCategoryForm(formData);
 
   if (!parsed.success) {
@@ -252,7 +252,7 @@ export async function archiveCategoryAction(categoryId: string): Promise<Invento
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("inventory.manage");
   const supabase = await createSupabaseServerClient();
   const mutation = await supabase
     .from("product_categories")
@@ -275,7 +275,7 @@ export async function createSupplierAction(
   _prevState: InventoryActionState,
   formData: FormData,
 ): Promise<InventoryActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("inventory.manage");
   const parsed = parseSupplierForm(formData);
 
   if (!parsed.success) {
@@ -321,7 +321,7 @@ export async function updateSupplierAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("inventory.manage");
   const parsed = parseSupplierForm(formData);
 
   if (!parsed.success) {
@@ -359,7 +359,7 @@ export async function archiveSupplierAction(supplierId: string): Promise<Invento
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("inventory.manage");
   const supabase = await createSupabaseServerClient();
   const mutation = await supabase
     .from("inventory_suppliers")
@@ -382,7 +382,7 @@ export async function registerStockEntryAction(
   _prevState: InventoryActionState,
   formData: FormData,
 ): Promise<InventoryActionState> {
-  await requireCompanyContext();
+  await requirePermission("inventory.manage");
   const parsed = parseStockEntryForm(formData);
 
   if (!parsed.success) {
@@ -414,7 +414,7 @@ export async function registerStockExitAction(
   _prevState: InventoryActionState,
   formData: FormData,
 ): Promise<InventoryActionState> {
-  await requireCompanyContext();
+  await requirePermission("inventory.manage");
   const parsed = parseStockExitForm(formData);
 
   if (!parsed.success) {
@@ -443,7 +443,7 @@ export async function registerStockAdjustmentAction(
   _prevState: InventoryActionState,
   formData: FormData,
 ): Promise<InventoryActionState> {
-  await requireCompanyContext();
+  await requirePermission("inventory.adjust");
   const parsed = parseStockAdjustmentForm(formData);
 
   if (!parsed.success) {

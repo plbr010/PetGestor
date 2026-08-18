@@ -1,3 +1,4 @@
+import type { AccessProfile, Permission } from "@/lib/auth/permissions";
 import type { CompanyRole } from "@/types/database.types";
 
 export type AuthUser = {
@@ -20,6 +21,11 @@ export type CompanySummary = {
 export type CompanyMembership = {
   role: CompanyRole;
   company: CompanySummary;
+  accessProfile: AccessProfile | null;
+  permissions: Permission[];
+  accessRevokedAt: string | null;
+  employeeId: string | null;
+  ownScheduleOnly: boolean;
 };
 
 export type UserContext = {

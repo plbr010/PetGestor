@@ -1,12 +1,14 @@
 import { ArchiveEmployeeButton } from "@/features/employees/components/archive-employee-button";
 import { ToggleEmployeeActiveButton } from "@/features/employees/components/toggle-employee-active-button";
+import { EmployeeAccessPanel } from "@/features/employees/access/components/employee-access-panel";
+import { getEmployeeAccessState } from "@/features/employees/access/queries";
 import { requireEmployeeById } from "@/features/employees/queries";
 import {
   formatWorkingHourRange,
   getWeekdayLabel,
   schedulableLabel,
 } from "@/features/employees/utils";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission, checkPermission } from "@/lib/auth/require-permission";
 import { formatPhoneDisplay } from "@/lib/phone";
 import { formatDateTimeDisplay } from "@/lib/pet-display";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
@@ -30,10 +32,14 @@ export default async function EmployeeDetailPage({
   params,
   searchParams,
 }: EmployeeDetailPageProps) {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("employees.view");
   const { id } = await params;
   const query = await searchParams;
   const employee = await requireEmployeeById(context.membership.company.id, id);
+  const canManageAccess = checkPermission(context, "employees.manage");
+  const access = canManageAccess
+    ? await getEmployeeAccessState(context.membership.company.id, id)
+    : null;
 
   return (
     <>
@@ -142,6 +148,14 @@ export default async function EmployeeDetailPage({
             ))}
           </CardContent>
         </Card>
+
+        {canManageAccess && access ? (
+          <EmployeeAccessPanel
+            employeeId={id}
+            employeeEmail={employee.email}
+            access={access}
+          />
+        ) : null}
       </main>
     </>
   );

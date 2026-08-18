@@ -209,12 +209,13 @@ export async function countAppointmentsForDay(
   companyId: string,
   date: string,
   timeZone: string,
+  filters: Pick<AppointmentFilters, "employeeId"> = {},
 ): Promise<number> {
   noStore();
   const { start, end } = getDayBoundsUtc(date, timeZone);
   const supabase = await createSupabaseServerClient();
 
-  const { count, error } = await supabase
+  let builder = supabase
     .from("appointments")
     .select("*", { count: "exact", head: true })
     .eq("company_id", companyId)
@@ -222,6 +223,12 @@ export async function countAppointmentsForDay(
     .in("status", ["scheduled", "confirmed", "in_progress"])
     .gte("scheduled_start", start)
     .lt("scheduled_start", end);
+
+  if (filters.employeeId && isValidUuid(filters.employeeId)) {
+    builder = builder.eq("employee_id", filters.employeeId);
+  }
+
+  const { count, error } = await builder;
 
   if (error) {
     return 0;
@@ -233,12 +240,13 @@ export async function countAppointmentsForDay(
 export async function getUpcomingAppointments(
   companyId: string,
   limit = 5,
+  filters: Pick<AppointmentFilters, "employeeId"> = {},
 ): Promise<AppointmentListItem[]> {
   noStore();
   const supabase = await createSupabaseServerClient();
   const now = new Date().toISOString();
 
-  const { data, error } = await supabase
+  let builder = supabase
     .from("appointments")
     .select(
       `id, scheduled_start, scheduled_end, status, service_name_snapshot, price_cents_snapshot,
@@ -253,6 +261,12 @@ export async function getUpcomingAppointments(
     .gte("scheduled_start", now)
     .order("scheduled_start", { ascending: true })
     .limit(limit);
+
+  if (filters.employeeId && isValidUuid(filters.employeeId)) {
+    builder = builder.eq("employee_id", filters.employeeId);
+  }
+
+  const { data, error } = await builder;
 
   if (error) {
     return [];

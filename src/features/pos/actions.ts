@@ -10,7 +10,8 @@ import {
 import { mapPosError } from "@/features/pos/utils";
 import { parseCancelSaleForm, parseCompleteSaleJson } from "@/features/pos/schemas";
 import type { CartLine, SalePaymentInput } from "@/features/pos/types";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { hasPermission } from "@/lib/auth/permissions";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -38,7 +39,7 @@ export async function completeSaleAction(
   _prevState: PosActionState,
   formData: FormData,
 ): Promise<PosActionState> {
-  await requireCompanyContext();
+  const context = await requirePermission("pos.use");
   const payloadRaw = formData.get("payload");
 
   if (typeof payloadRaw !== "string") {
@@ -49,6 +50,14 @@ export async function completeSaleAction(
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const hasDiscount =
+    parsed.data.discountType !== null &&
+    ((parsed.data.discountFixedCents ?? 0) > 0 || (parsed.data.discountPercent ?? 0) > 0);
+
+  if (hasDiscount && !hasPermission(context.membership, "pos.apply_discount")) {
+    return { error: "Você não tem permissão para aplicar desconto." };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -91,7 +100,7 @@ export async function cancelSaleAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  await requirePermission("pos.cancel_sale");
   const parsed = parseCancelSaleForm(formData);
 
   if (!parsed.success) {

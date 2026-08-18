@@ -15,6 +15,8 @@ import type { InventoryDashboardAlert } from "@/features/inventory/types";
 import { getPosDashboardMetrics } from "@/features/pos/queries";
 import type { PosDashboardMetrics } from "@/features/pos/types";
 import { countServiceOrdersByStatus } from "@/features/service-orders/queries";
+import type { CompanyMembership } from "@/features/auth/types";
+import { hasPermission } from "@/lib/auth/permissions";
 import type { ServiceOrderStatus } from "@/types/database.types";
 
 const EMPTY_FINANCIAL_SUMMARY: FinancialSummary = {
@@ -107,8 +109,15 @@ export async function loadDashboardHomeData(
   companyId: string,
   timeZone: string,
   today: string,
+  membership?: CompanyMembership,
 ): Promise<DashboardHomeData> {
   const partialErrors: string[] = [];
+  const canViewFinance = membership ? hasPermission(membership, "finance.view") : true;
+  const canViewInventory = membership ? hasPermission(membership, "inventory.view") : true;
+  const canViewPos = membership ? hasPermission(membership, "pos.use") : true;
+  const scheduleEmployeeId = membership?.ownScheduleOnly
+    ? membership.employeeId ?? undefined
+    : undefined;
 
   const [
     customersCount,
@@ -131,17 +140,26 @@ export async function loadDashboardHomeData(
     safeCount("employees", () => countActiveEmployees(companyId), partialErrors),
     safeCount(
       "appointments-count",
-      () => countAppointmentsForDay(companyId, today, timeZone),
+      () =>
+        countAppointmentsForDay(companyId, today, timeZone, {
+          employeeId: scheduleEmployeeId,
+        }),
       partialErrors,
     ),
     safeList(
       "appointments-today",
-      () => getAppointmentsForDay(companyId, today, timeZone),
+      () =>
+        getAppointmentsForDay(companyId, today, timeZone, {
+          employeeId: scheduleEmployeeId,
+        }),
       partialErrors,
     ),
     safeList(
       "appointments-upcoming",
-      () => getUpcomingAppointments(companyId, 5),
+      () =>
+        getUpcomingAppointments(companyId, 5, {
+          employeeId: scheduleEmployeeId,
+        }),
       partialErrors,
     ),
     safeCount(
@@ -177,30 +195,42 @@ export async function loadDashboardHomeData(
         ),
       partialErrors,
     ),
-    safeValue(
-      "finance",
-      () => getDashboardFinanceMetrics(companyId, timeZone),
-      {
-        incomePaidTodayCents: 0,
-        pendingReceivablesCents: 0,
-        expensePaidMonthCents: 0,
-        realizedResultMonthCents: 0,
-        monthlySummary: EMPTY_FINANCIAL_SUMMARY,
-      },
-      partialErrors,
-    ),
-    safeValue(
-      "inventory",
-      () => getInventoryDashboardAlerts(companyId),
-      EMPTY_INVENTORY_ALERTS,
-      partialErrors,
-    ),
-    safeValue(
-      "pos",
-      () => getPosDashboardMetrics(companyId, timeZone),
-      EMPTY_POS_METRICS,
-      partialErrors,
-    ),
+    canViewFinance
+      ? safeValue(
+          "finance",
+          () => getDashboardFinanceMetrics(companyId, timeZone),
+          {
+            incomePaidTodayCents: 0,
+            pendingReceivablesCents: 0,
+            expensePaidMonthCents: 0,
+            realizedResultMonthCents: 0,
+            monthlySummary: EMPTY_FINANCIAL_SUMMARY,
+          },
+          partialErrors,
+        )
+      : Promise.resolve({
+          incomePaidTodayCents: 0,
+          pendingReceivablesCents: 0,
+          expensePaidMonthCents: 0,
+          realizedResultMonthCents: 0,
+          monthlySummary: EMPTY_FINANCIAL_SUMMARY,
+        }),
+    canViewInventory
+      ? safeValue(
+          "inventory",
+          () => getInventoryDashboardAlerts(companyId),
+          EMPTY_INVENTORY_ALERTS,
+          partialErrors,
+        )
+      : Promise.resolve(EMPTY_INVENTORY_ALERTS),
+    canViewPos
+      ? safeValue(
+          "pos",
+          () => getPosDashboardMetrics(companyId, timeZone),
+          EMPTY_POS_METRICS,
+          partialErrors,
+        )
+      : Promise.resolve(EMPTY_POS_METRICS),
   ]);
 
   return {

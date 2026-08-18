@@ -1,6 +1,11 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 
+import {
+  isAccessProfile,
+  normalizeStoredPermissions,
+  type AccessProfile,
+} from "@/lib/auth/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   CompanyMembership,
@@ -31,17 +36,89 @@ export function mapProfile(row: ProfileRow | null): UserProfile | null {
   };
 }
 
+type MembershipRow = {
+  role: CompanyMembership["role"];
+  company_id: string;
+  access_profile: string | null;
+  permissions: unknown;
+  access_revoked_at: string | null;
+  employee_id: string | null;
+  own_schedule_only: boolean | null;
+};
+
+function mapMembershipRow(
+  memberRow: MembershipRow,
+  companyRow: { id: string; name: string; timezone: string | null },
+): CompanyMembership {
+  const accessProfile =
+    memberRow.access_profile && isAccessProfile(memberRow.access_profile)
+      ? (memberRow.access_profile as AccessProfile)
+      : memberRow.role === "owner" || memberRow.role === "admin"
+        ? "owner_admin"
+        : null;
+
+  return {
+    role: memberRow.role,
+    company: {
+      id: companyRow.id,
+      name: companyRow.name,
+      timezone: companyRow.timezone ?? "America/Sao_Paulo",
+    },
+    accessProfile,
+    permissions: normalizeStoredPermissions(memberRow.permissions),
+    accessRevokedAt: memberRow.access_revoked_at,
+    employeeId: memberRow.employee_id,
+    ownScheduleOnly: memberRow.own_schedule_only ?? false,
+  };
+}
+
 async function loadMembership(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
 ): Promise<CompanyMembership | null> {
-  const { data: memberRow, error: memberError } = await supabase
+  const withPermissions = await supabase
     .from("company_members")
-    .select("role, company_id")
+    .select(
+      "role, company_id, access_profile, permissions, access_revoked_at, employee_id, own_schedule_only",
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
+
+  let memberRow = withPermissions.data;
+  let memberError = withPermissions.error;
+
+  if (memberError) {
+    logMembershipDiagnostic(
+      "company_members_select_permissions",
+      memberError.code,
+      memberError.message,
+    );
+
+    const fallback = await supabase
+      .from("company_members")
+      .select("role, company_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    memberRow = fallback.data
+      ? {
+          ...fallback.data,
+          access_profile:
+            fallback.data.role === "owner" || fallback.data.role === "admin"
+              ? "owner_admin"
+              : "reception",
+          permissions: [],
+          access_revoked_at: null,
+          employee_id: null,
+          own_schedule_only: false,
+        }
+      : null;
+    memberError = fallback.error;
+  }
 
   if (memberError) {
     logMembershipDiagnostic("company_members_select", memberError.code, memberError.message);
@@ -68,14 +145,7 @@ async function loadMembership(
     return null;
   }
 
-  return {
-    role: memberRow.role,
-    company: {
-      id: companyRow.id,
-      name: companyRow.name,
-      timezone: companyRow.timezone ?? "America/Sao_Paulo",
-    },
-  };
+  return mapMembershipRow(memberRow as MembershipRow, companyRow);
 }
 
 function logMembershipDiagnostic(step: string, code: string, message: string): void {
