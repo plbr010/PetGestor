@@ -13,6 +13,18 @@
 
 **MIGRATION PENDENTE:** `supabase/migrations/20260818180000_employee_permissions.sql`
 
+### Corrigido — Fluxo de funcionário convidado
+
+- Convite pendente é aceito automaticamente ao criar conta ou fazer login
+- Funcionário convidado NÃO cria nova empresa
+- Onboarding "Configure seu pet shop" é pulado para quem tem convite
+- Banner "Bem-vindo(a) à [empresa]!" no dashboard após convite aceito
+- Convite expirado/cancelado ou funcionário arquivado não concede acesso
+- Idempotente: login repetido não duplica membership
+- Multiempresa: não apaga membership existente
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260819120000_accept_invite_flow.sql`
+
 ### Corrigido — Dashboard com dados reais
 
 - Removidos avisos enganosos de "dados demonstrativos" no app autenticado

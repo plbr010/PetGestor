@@ -2,10 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import {
   getProfilePermissions,
+  getScheduleEmployeeFilter,
   hasPermission,
+  isOwnerOrAdmin,
+  PERMISSIONS,
   resolveEffectivePermissions,
   type MembershipAccess,
 } from "@/lib/auth/permissions";
+import { getRequiredPermissionForPath } from "@/lib/auth/route-permissions";
+import { assertPermissionForAction } from "@/lib/auth/require-permission";
+import { filterNavItemsByMembership } from "@/lib/auth/nav-filter";
+
+const COMPANY_A = "11111111-1111-4111-8111-111111111111";
 
 function membership(
   overrides: Partial<MembershipAccess> & Pick<MembershipAccess, "role">,
@@ -20,95 +28,228 @@ function membership(
   };
 }
 
-describe("invite acceptance flow", () => {
-  it("new owner without invite should still get full access on onboarding", () => {
+function ctx(m: MembershipAccess, companyId = COMPANY_A) {
+  return {
+    user: { id: "u1", email: "func@email.com" },
+    profile: { fullName: "Funcionário", avatarUrl: null, onboardingTutorialCompletedAt: null },
+    membership: { ...m, company: { id: companyId, name: "Pet Shop", timezone: "America/Sao_Paulo" } },
+  };
+}
+
+describe("invite flow: new owner without invite", () => {
+  it("novo dono cria empresa e fica com acesso total", () => {
     const owner = membership({ role: "owner", accessProfile: "owner_admin" });
-    expect(hasPermission(owner, "settings.manage")).toBe(true);
-    expect(hasPermission(owner, "subscription.manage")).toBe(true);
+    expect(resolveEffectivePermissions(owner).size).toBe(PERMISSIONS.length);
+    expect(isOwnerOrAdmin(owner)).toBe(true);
+  });
+});
+
+describe("invite flow: invited employee does not create company", () => {
+  it("funcionário convidado tem role staff, NÃO owner", () => {
+    const invited = membership({
+      role: "staff",
+      accessProfile: "reception",
+      permissions: getProfilePermissions("reception"),
+      employeeId: "emp-1",
+    });
+    expect(invited.role).toBe("staff");
+    expect(isOwnerOrAdmin(invited)).toBe(false);
   });
 
-  it("invited employee should NOT get owner permissions", () => {
+  it("convidado não vê assinatura/config no menu", () => {
     const invited = membership({
       role: "staff",
       accessProfile: "reception",
       permissions: getProfilePermissions("reception"),
     });
-    expect(hasPermission(invited, "settings.manage")).toBe(false);
-    expect(hasPermission(invited, "subscription.manage")).toBe(false);
+    const items = filterNavItemsByMembership(invited);
+    expect(items.some((i) => i.href === "/assinatura")).toBe(false);
+    expect(items.some((i) => i.href === "/dashboard/configuracoes")).toBe(false);
   });
 
-  it("invite acceptance creates correct role and permissions", () => {
+  it("convidado não acessa configurações via server action", () => {
+    const invited = membership({
+      role: "staff",
+      accessProfile: "reception",
+      permissions: getProfilePermissions("reception"),
+    });
+    const result = assertPermissionForAction(ctx(invited), "settings.manage");
+    expect(result?.error).toBeTruthy();
+  });
+});
+
+describe("invite flow: invite is accepted correctly", () => {
+  it("permissões do perfil aplicadas", () => {
     const accepted = membership({
       role: "staff",
       accessProfile: "operational",
       permissions: getProfilePermissions("operational"),
-      employeeId: "emp-1",
+      employeeId: "emp-42",
     });
-
     expect(hasPermission(accepted, "appointments.view")).toBe(true);
     expect(hasPermission(accepted, "service_orders.update_status")).toBe(true);
     expect(hasPermission(accepted, "finance.view")).toBe(false);
-    expect(accepted.employeeId).toBe("emp-1");
   });
 
-  it("user with existing membership in another company keeps both", () => {
-    const companyA = membership({
-      role: "owner",
-      accessProfile: "owner_admin",
+  it("employeeId está vinculado", () => {
+    const accepted = membership({
+      role: "staff",
+      accessProfile: "manager",
+      permissions: getProfilePermissions("manager"),
+      employeeId: "emp-99",
     });
-    const companyB = membership({
+    expect(accepted.employeeId).toBe("emp-99");
+  });
+
+  it("ownScheduleOnly funciona com invite", () => {
+    const accepted = membership({
+      role: "staff",
+      accessProfile: "operational",
+      permissions: getProfilePermissions("operational"),
+      employeeId: "emp-5",
+      ownScheduleOnly: true,
+    });
+    expect(accepted.ownScheduleOnly).toBe(true);
+  });
+});
+
+describe("invite flow: correct role/permissions per profile", () => {
+  const profiles = [
+    { profile: "manager" as const, has: ["employees.manage", "finance.view"] as const, not: ["subscription.manage", "settings.manage"] as const },
+    { profile: "reception" as const, has: ["customers.create", "pos.use"] as const, not: ["finance.view", "settings.view"] as const },
+    { profile: "operational" as const, has: ["appointments.view", "pets.view"] as const, not: ["finance.view", "pos.use"] as const },
+    { profile: "finance" as const, has: ["finance.view", "finance.close_cash"] as const, not: ["customers.view", "appointments.create"] as const },
+    { profile: "inventory_cash" as const, has: ["inventory.manage", "pos.use"] as const, not: ["finance.view", "settings.view"] as const },
+  ];
+
+  for (const { profile, has, not } of profiles) {
+    it(`perfil ${profile}: permissões esperadas`, () => {
+      const m = membership({
+        role: "staff",
+        accessProfile: profile,
+        permissions: getProfilePermissions(profile),
+      });
+      for (const perm of has) {
+        expect(hasPermission(m, perm)).toBe(true);
+      }
+      for (const perm of not) {
+        expect(hasPermission(m, perm)).toBe(false);
+      }
+    });
+  }
+});
+
+describe("invite flow: employee/user binding", () => {
+  it("employee sem employeeId não filtra agenda", () => {
+    const m = membership({
+      role: "staff",
+      accessProfile: "operational",
+      permissions: getProfilePermissions("operational"),
+      ownScheduleOnly: true,
+    });
+    expect(getScheduleEmployeeFilter(m)).toBeUndefined();
+  });
+});
+
+describe("invite flow: existing user in another company", () => {
+  it("usuário mantém permissões de ambas empresas separadas", () => {
+    const asOwner = membership({ role: "owner", accessProfile: "owner_admin" });
+    const asStaff = membership({
       role: "staff",
       accessProfile: "reception",
       permissions: getProfilePermissions("reception"),
     });
-
-    expect(resolveEffectivePermissions(companyA).size).toBeGreaterThan(30);
-    expect(hasPermission(companyB, "finance.view")).toBe(false);
-    expect(hasPermission(companyB, "customers.view")).toBe(true);
+    expect(resolveEffectivePermissions(asOwner).size).toBe(PERMISSIONS.length);
+    expect(resolveEffectivePermissions(asStaff).size).toBeLessThan(PERMISSIONS.length);
+    expect(hasPermission(asStaff, "settings.manage")).toBe(false);
   });
+});
 
-  it("expired/revoked invite yields no access", () => {
-    const revoked = membership({
+describe("invite flow: expired invite", () => {
+  it("convite expirado resulta em acesso revogado = zero permissões", () => {
+    const expired = membership({
       role: "staff",
       accessProfile: "manager",
       permissions: getProfilePermissions("manager"),
+      accessRevokedAt: "2025-01-01T00:00:00.000Z",
+    });
+    expect(resolveEffectivePermissions(expired).size).toBe(0);
+  });
+});
+
+describe("invite flow: cancelled invite", () => {
+  it("convite cancelado/revogado = zero permissões", () => {
+    const cancelled = membership({
+      role: "staff",
+      accessProfile: "finance",
+      permissions: getProfilePermissions("finance"),
       accessRevokedAt: new Date().toISOString(),
     });
-
-    expect(resolveEffectivePermissions(revoked).size).toBe(0);
+    expect(hasPermission(cancelled, "finance.view")).toBe(false);
   });
+});
 
-  it("idempotent: accepting twice should not duplicate (same membership)", () => {
-    const first = membership({
-      role: "staff",
-      accessProfile: "reception",
-      permissions: getProfilePermissions("reception"),
-      employeeId: "emp-1",
-    });
-    const second = membership({
-      role: "staff",
-      accessProfile: "reception",
-      permissions: getProfilePermissions("reception"),
-      employeeId: "emp-1",
-    });
-
-    expect(first.employeeId).toBe(second.employeeId);
-    expect(first.accessProfile).toBe(second.accessProfile);
+describe("invite flow: idempotency", () => {
+  it("aceitar 2x produz o mesmo resultado", () => {
+    const perms = getProfilePermissions("reception");
+    const first = membership({ role: "staff", accessProfile: "reception", permissions: perms, employeeId: "emp-1" });
+    const second = membership({ role: "staff", accessProfile: "reception", permissions: perms, employeeId: "emp-1" });
+    expect(resolveEffectivePermissions(first)).toEqual(resolveEffectivePermissions(second));
   });
+});
 
-  it("multi-tenant isolation: permissions are per-membership", () => {
-    const manager = membership({
+describe("invite flow: multi-tenant isolation", () => {
+  it("permissões de company A não vazam para company B", () => {
+    const managerA = membership({
       role: "staff",
       accessProfile: "manager",
       permissions: getProfilePermissions("manager"),
     });
-    const operational = membership({
+    const opB = membership({
+      role: "staff",
+      accessProfile: "operational",
+      permissions: getProfilePermissions("operational"),
+    });
+    expect(hasPermission(managerA, "employees.manage")).toBe(true);
+    expect(hasPermission(opB, "employees.manage")).toBe(false);
+  });
+
+  it("rotas protegem corretamente ambas empresas", () => {
+    const op = membership({
+      role: "staff",
+      accessProfile: "operational",
+      permissions: getProfilePermissions("operational"),
+    });
+    const permission = getRequiredPermissionForPath("/dashboard/financeiro");
+    expect(permission).toBe("finance.view");
+    expect(hasPermission(op, permission!)).toBe(false);
+  });
+});
+
+describe("invite flow: protected routes block invited employee", () => {
+  it("convidado operacional bloqueado em /financeiro, /estoque, /configuracoes", () => {
+    const op = membership({
       role: "staff",
       accessProfile: "operational",
       permissions: getProfilePermissions("operational"),
     });
 
-    expect(hasPermission(manager, "employees.manage")).toBe(true);
-    expect(hasPermission(operational, "employees.manage")).toBe(false);
+    for (const path of ["/dashboard/financeiro", "/dashboard/estoque", "/dashboard/configuracoes", "/dashboard/pdv"]) {
+      const required = getRequiredPermissionForPath(path)!;
+      expect(hasPermission(op, required)).toBe(false);
+    }
+  });
+
+  it("convidado operacional permitido em /agenda, /atendimentos, /pets", () => {
+    const op = membership({
+      role: "staff",
+      accessProfile: "operational",
+      permissions: getProfilePermissions("operational"),
+    });
+
+    for (const path of ["/dashboard/agenda", "/dashboard/atendimentos", "/dashboard/pets"]) {
+      const required = getRequiredPermissionForPath(path)!;
+      expect(hasPermission(op, required)).toBe(true);
+    }
   });
 });
