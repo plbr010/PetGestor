@@ -20,6 +20,7 @@ import {
   validateAttachmentMeta,
 } from "@/features/attachments/validation";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { rethrowNavigationErrors } from "@/lib/server-action-errors";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -174,7 +175,8 @@ export async function uploadPetPhotoAction(
 
   revalidatePetPaths(petId);
   return { success: "Foto do pet atualizada." };
-  } catch {
+  } catch (error) {
+    rethrowNavigationErrors(error);
     return { error: mapAttachmentValidationError("storage_upload_failed") };
   }
 }

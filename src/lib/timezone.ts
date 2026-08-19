@@ -24,6 +24,17 @@ export function resolveCompanyTimeZone(timeZone: string | null | undefined): str
 }
 
 function getZonedParts(date: Date, timeZone: string) {
+  if (Number.isNaN(date.getTime())) {
+    const today = new Date();
+    return {
+      year: String(today.getUTCFullYear()),
+      month: String(today.getUTCMonth() + 1).padStart(2, "0"),
+      day: String(today.getUTCDate()).padStart(2, "0"),
+      hour: "00",
+      minute: "00",
+    };
+  }
+
   const safeTimeZone = resolveCompanyTimeZone(timeZone);
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: safeTimeZone,
