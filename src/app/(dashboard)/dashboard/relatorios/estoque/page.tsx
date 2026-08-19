@@ -4,7 +4,6 @@ import { requirePermission } from "@/lib/auth/require-permission";
 import { formatAmountCents } from "@/features/finance/utils";
 import { resolveReportPeriod } from "@/features/reports/period";
 import { getStockReport } from "@/features/reports/queries";
-import type { StockReport } from "@/features/reports/types";
 import { ReportKpiCard } from "@/features/reports/components/report-kpi-card";
 import { ReportPeriodNav } from "@/features/reports/components/report-period-nav";
 import { ReportSubnav } from "@/features/reports/components/report-subnav";
