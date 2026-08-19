@@ -5,7 +5,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { localDateTimeToUtcIso } from "@/lib/timezone";
 
-import { DEFAULT_TIMEZONE, isValidTimezone } from "@/lib/timezone";
+import { DEFAULT_TIMEZONE, resolveCompanyTimeZone } from "@/lib/timezone";
 
 import { getPreviousPeriod, resolveReportPeriod } from "./period";
 import { periodDayCount } from "@/features/finance/analytics/period";
@@ -34,7 +34,7 @@ import {
 } from "./engine";
 
 function normalizeTimeZone(timeZone: string): string {
-  return isValidTimezone(timeZone) ? timeZone : DEFAULT_TIMEZONE;
+  return resolveCompanyTimeZone(timeZone);
 }
 
 const EMPTY_APPOINTMENTS_REPORT: AppointmentsReport = {

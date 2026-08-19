@@ -64,4 +64,9 @@ describe("getTodayInTimezone", () => {
   it("retorna YYYY-MM-DD", () => {
     expect(getTodayInTimezone("America/Sao_Paulo")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
+
+  it("usa fallback para timezone inválido", () => {
+    expect(() => getTodayInTimezone("Invalid/Zone")).not.toThrow();
+    expect(getTodayInTimezone("Invalid/Zone")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
 });

@@ -20,7 +20,10 @@ export default function DashboardError({ error, reset }: DashboardErrorProps) {
       <div className="w-full max-w-lg space-y-4">
         <ErrorMessage
           title="Erro ao carregar o dashboard"
-          message="Ocorreu um problema inesperado. Tente novamente."
+          message={
+            error.message?.trim() ||
+            "Ocorreu um problema inesperado. Tente novamente."
+          }
         />
         <Button onClick={reset}>Tentar novamente</Button>
       </div>

@@ -213,6 +213,16 @@ export async function getPetGalleryPage(
       .order("created_at", { ascending: false }),
   ]);
 
+  if (serviceRows.error && petRows.error) {
+    return {
+      items: [],
+      page: safePage,
+      pageSize: GALLERY_PAGE_SIZE,
+      hasMore: false,
+      total: 0,
+    };
+  }
+
   const combined: PetGalleryItem[] = [
     ...(serviceRows.data ?? []).map((row) => ({
       id: row.id,

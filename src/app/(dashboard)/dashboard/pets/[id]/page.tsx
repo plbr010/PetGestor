@@ -17,7 +17,7 @@ import {
   getPetHistoryPage,
   getPetHistorySummary,
 } from "@/features/pets/history/queries";
-import { parsePetHistoryFilter } from "@/features/pets/history/types";
+import { parsePetHistoryFilter, PET_HISTORY_PAGE_SIZE } from "@/features/pets/history/types";
 import { PetPackagesPanel } from "@/features/service-packages/components/pet-packages-panel";
 import { SellPackageForm } from "@/features/service-packages/components/sell-package-form";
 import {
@@ -69,8 +69,15 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
 
   const pet = await requirePetById(context.membership.company.id, id);
 
-  const [packages, catalogPackages, summary, history, photo, attachments, gallery] =
-    await Promise.all([
+  const [
+    packagesResult,
+    catalogPackagesResult,
+    summaryResult,
+    historyResult,
+    photoResult,
+    attachmentsResult,
+    galleryResult,
+  ] = await Promise.allSettled([
     getCustomerPackagesForPet(context.membership.company.id, id, timeZone),
     getServicePackages({ companyId: context.membership.company.id, activeOnly: true }),
     getPetHistorySummary(context.membership.company.id, id),
@@ -79,6 +86,37 @@ export default async function PetDetailPage({ params, searchParams }: PetDetailP
     getPetAttachments(context.membership.company.id, id),
     getPetGalleryPage(context.membership.company.id, id, galleryPage),
   ]);
+
+  const packages = packagesResult.status === "fulfilled" ? packagesResult.value : [];
+  const catalogPackages =
+    catalogPackagesResult.status === "fulfilled" ? catalogPackagesResult.value : [];
+  const summary =
+    summaryResult.status === "fulfilled"
+      ? summaryResult.value
+      : {
+          lastServiceAt: null,
+          lastServiceName: null,
+          nextAppointmentAt: null,
+          nextAppointmentServiceName: null,
+          totalAppointments: 0,
+          totalCompletedServices: 0,
+          totalSpentCents: 0,
+          topServiceName: null,
+          topServiceCount: 0,
+        };
+  const history =
+    historyResult.status === "fulfilled"
+      ? historyResult.value
+      : { events: [], page: historyPage, pageSize: PET_HISTORY_PAGE_SIZE, hasMore: false, totalAppointments: 0 };
+  const photo =
+    photoResult.status === "fulfilled"
+      ? photoResult.value
+      : { photoUrl: null, thumbUrl: null, updatedAt: null };
+  const attachments = attachmentsResult.status === "fulfilled" ? attachmentsResult.value : [];
+  const gallery =
+    galleryResult.status === "fulfilled"
+      ? galleryResult.value
+      : { items: [], page: galleryPage, pageSize: 12, hasMore: false, total: 0 };
 
   return (
     <>

@@ -1,9 +1,8 @@
 import { resolveFinanceAnalyticsPeriod } from "@/features/finance/analytics/period";
 import {
   addDaysToDateString,
-  DEFAULT_TIMEZONE,
   getTodayInTimezone,
-  isValidTimezone,
+  resolveCompanyTimeZone,
 } from "@/lib/timezone";
 
 export type ReportPreset = "today" | "last7" | "month" | "prev_month" | "last30" | "year" | "custom";
@@ -12,7 +11,7 @@ export function resolveReportPeriod(
   params: { from?: string | null; to?: string | null; preset?: string | null },
   timeZone: string,
 ): { from: string; to: string; preset: ReportPreset } {
-  const safeTimeZone = isValidTimezone(timeZone) ? timeZone : DEFAULT_TIMEZONE;
+  const safeTimeZone = resolveCompanyTimeZone(timeZone);
 
   if (params.preset === "year") {
     const today = getTodayInTimezone(safeTimeZone);
