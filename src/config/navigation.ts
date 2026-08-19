@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Calendar,
   ClipboardList,
   CreditCard,
@@ -102,6 +103,12 @@ export const dashboardNavItems: DashboardNavItem[] = [
     icon: DollarSign,
     description: "Receitas e despesas",
     tourId: "nav-financeiro",
+  },
+  {
+    label: "Relatórios",
+    href: "/dashboard/relatorios",
+    icon: BarChart3,
+    description: "Análise de desempenho",
   },
   {
     label: "Configurações",

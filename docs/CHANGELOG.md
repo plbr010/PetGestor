@@ -1,3 +1,31 @@
+## [0.28.0] — 2026-08-19
+
+### Adicionado — Relatórios gerenciais avançados
+
+- Visão geral com KPIs: faturamento, receita, despesas, resultado, atendimentos, ticket médio, PDV, novos clientes, cancelamentos
+- Comparação com período anterior (↑ crescimento / ↓ queda)
+- Relatório de atendimentos: total, concluídos, cancelados, faltas, ticket médio, evolução diária
+- Serviços mais realizados: ranking com contagem, receita e percentual
+- Relatório de clientes: ativos, novos, recorrentes, inativos, top por gasto/visitas
+- Taxa de retorno com explicação documentada
+- Relatório de pets: atendidos, por espécie, top por visitas
+- Desempenho da equipe: atendimentos, faturamento, média/dia por funcionário
+- Taxa de ocupação: slots disponíveis vs utilizados, por dia da semana
+- Horários mais movimentados: distribuição por faixa horária
+- Dias da semana: gráfico de movimento por dia
+- Cancelamentos e faltas: evolução e clientes recorrentes
+- PDV: total vendido, ticket médio, lucro bruto, produtos mais vendidos
+- Estoque: valor estimado, baixo estoque, perdas, vencimentos próximos
+- Pacotes: vendidos, ativos, créditos restantes
+- Financeiro: link para análise completa (sem duplicar dashboard)
+- Exportar CSV nos relatórios principais
+- Filtro global: hoje, 7 dias, mês, mês anterior, 30 dias, ano, personalizado
+- Gráficos SVG inline (linha, barras) — sem biblioteca externa
+- Mobile-first: cards empilhados, accordions
+- Permissões: `reports.view` obrigatório + `finance.view` para dados sensíveis
+- Motor de cálculo puro (engine.ts) + queries server-side
+- Sem migration necessária
+
 ## [0.27.0] — 2026-08-18
 
 ### Adicionado — Permissões por funcionário
