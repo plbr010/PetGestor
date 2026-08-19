@@ -15,7 +15,7 @@ const SERVICE_ORDER_SELECT = `
   appointments!inner(
     id, scheduled_start, scheduled_end, status,
     service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot,
-    pets!inner(id, name, photo_thumb_path),
+    pets!inner(id, name, photo_thumb_path, photo_storage_path),
     customers!inner(id, name, phone),
     employees!inner(id, name)
   )
@@ -45,7 +45,7 @@ type AppointmentJoin = {
   service_name_snapshot: string;
   price_cents_snapshot: number;
   duration_minutes_snapshot: number;
-  pets: { id: string; name: string; photo_thumb_path?: string | null } | { id: string; name: string; photo_thumb_path?: string | null }[];
+  pets: { id: string; name: string; photo_thumb_path?: string | null; photo_storage_path?: string | null } | { id: string; name: string; photo_thumb_path?: string | null; photo_storage_path?: string | null }[];
   customers: { id: string; name: string; phone: string } | { id: string; name: string; phone: string }[];
   employees: { id: string; name: string } | { id: string; name: string }[];
 };
@@ -138,7 +138,11 @@ async function queryServiceOrders(
     companyId,
     rows.map((row) => {
       const pet = unwrapJoin(unwrapJoin(row.appointments).pets);
-      return { id: pet.id, photo_thumb_path: pet.photo_thumb_path ?? null };
+      return {
+        id: pet.id,
+        photo_thumb_path: pet.photo_thumb_path ?? null,
+        photo_storage_path: pet.photo_storage_path ?? null,
+      };
     }),
   );
 

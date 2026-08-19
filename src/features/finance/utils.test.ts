@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { FinancialEntryListItem } from "@/features/finance/types";
 import {
   computeFinancialSummary,
+  formatPaidAt,
   MAX_FINANCE_AMOUNT_CENTS,
   parseAmountToCents,
   resolveFinancialPeriod,
@@ -68,6 +69,13 @@ describe("computeFinancialSummary", () => {
 
     expect(summary.incomePaidCents).toBe(1000);
     expect(summary.realizedResultCents).toBe(1000);
+  });
+});
+
+describe("formatPaidAt", () => {
+  it("retorna traço para datas inválidas", () => {
+    expect(formatPaidAt("invalid-date", "America/Sao_Paulo")).toBe("—");
+    expect(formatPaidAt(null, "America/Sao_Paulo")).toBe("—");
   });
 });
 

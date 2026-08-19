@@ -29,12 +29,21 @@ function isInPeriod(iso: string, startIso: string, endIso: string): boolean {
 }
 
 function dateFromIso(iso: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: resolveCompanyTimeZone(timeZone),
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(iso));
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "1970-01-01";
+  }
+
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: resolveCompanyTimeZone(timeZone),
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  } catch {
+    return "1970-01-01";
+  }
 }
 
 function paymentsForEntry(entryId: string, payments: AnalyticsPaymentRow[]): AnalyticsPaymentRow[] {

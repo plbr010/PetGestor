@@ -122,6 +122,8 @@ export async function uploadPetPhoto(
     const thumbUpload = await uploadToCompanyStorage(paths.thumbPath, file, contentType);
     if (!thumbUpload.error) {
       thumbPath = paths.thumbPath;
+    } else {
+      thumbPath = paths.filePath;
     }
   }
 
