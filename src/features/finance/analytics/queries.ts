@@ -11,7 +11,7 @@ import type {
 } from "@/features/finance/analytics/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isValidUuid } from "@/lib/security/uuid";
-import { addDaysToDateString, localDateTimeToUtcIso } from "@/lib/timezone";
+import { addDaysToDateString, localDateTimeToUtcIso, resolveCompanyTimeZone } from "@/lib/timezone";
 import type { FinancialSourceType } from "@/types/database.types";
 
 const ANALYTICS_ENTRY_SELECT = `
@@ -219,7 +219,45 @@ export async function getFinancialAnalytics(
 ): Promise<FinanceAnalytics> {
   noStore();
 
-  if (!isValidUuid(companyId)) {
+  const safeTimeZone = resolveCompanyTimeZone(timeZone);
+  const emptyPeriod = { from, to, preset };
+
+  try {
+    if (!isValidUuid(companyId)) {
+      return buildFinancialAnalytics(
+        {
+          entries: [],
+          payments: [],
+          saleItems: [],
+          periodStartIso: new Date(0).toISOString(),
+          periodEndIso: new Date(0).toISOString(),
+        },
+        emptyPeriod,
+        safeTimeZone,
+      );
+    }
+
+    const { start, endIso } = getPeriodBounds(from, to, safeTimeZone);
+    const [entries, payments] = await Promise.all([
+      fetchAnalyticsEntries(companyId, start, endIso),
+      fetchAnalyticsPayments(companyId, start, endIso),
+    ]);
+
+    const saleIds = [...new Set(entries.filter((entry) => entry.saleId).map((entry) => entry.saleId as string))];
+    const saleItems = await fetchSaleItems(companyId, saleIds);
+
+    return buildFinancialAnalytics(
+      {
+        entries,
+        payments,
+        saleItems,
+        periodStartIso: start,
+        periodEndIso: endIso,
+      },
+      emptyPeriod,
+      safeTimeZone,
+    );
+  } catch {
     return buildFinancialAnalytics(
       {
         entries: [],
@@ -228,31 +266,10 @@ export async function getFinancialAnalytics(
         periodStartIso: new Date(0).toISOString(),
         periodEndIso: new Date(0).toISOString(),
       },
-      { from, to, preset },
-      timeZone,
+      emptyPeriod,
+      safeTimeZone,
     );
   }
-
-  const { start, endIso } = getPeriodBounds(from, to, timeZone);
-  const [entries, payments] = await Promise.all([
-    fetchAnalyticsEntries(companyId, start, endIso),
-    fetchAnalyticsPayments(companyId, start, endIso),
-  ]);
-
-  const saleIds = [...new Set(entries.filter((entry) => entry.saleId).map((entry) => entry.saleId as string))];
-  const saleItems = await fetchSaleItems(companyId, saleIds);
-
-  return buildFinancialAnalytics(
-    {
-      entries,
-      payments,
-      saleItems,
-      periodStartIso: start,
-      periodEndIso: endIso,
-    },
-    { from, to, preset },
-    timeZone,
-  );
 }
 
 export async function getFinancialAnalyticsFromSearchParams(

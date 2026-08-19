@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
 
 import type { PetDetail, PetListItem, PetSpeciesFilter } from "@/features/pets/types";
+import { buildPetPhotoThumbMap } from "@/features/pets/enrich-photo-thumbs";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   buildPaginatedResult,
@@ -43,7 +44,7 @@ export async function getPets({
   let builder = supabase
     .from("pets")
     .select(
-      "id, name, species, breed, birth_date, created_at, customer_id, customers!inner(name)",
+      "id, name, species, breed, birth_date, created_at, customer_id, photo_thumb_path, customers!inner(name)",
       { count: "exact" },
     )
     .eq("company_id", companyId)
@@ -65,11 +66,48 @@ export async function getPets({
     builder = builder.or(`name.ilike.%${search}%,breed.ilike.%${search}%`);
   }
 
-  const { data, error, count } = await builder.range(from, to);
+  let { data, error, count } = await builder.range(from, to);
+
+  if (error?.code === "42703") {
+    let fallbackBuilder = supabase
+      .from("pets")
+      .select(
+        "id, name, species, breed, birth_date, created_at, customer_id, customers!inner(name)",
+        { count: "exact" },
+      )
+      .eq("company_id", companyId)
+      .order("name", { ascending: true });
+
+    if (!includeArchived) {
+      fallbackBuilder = fallbackBuilder.is("deleted_at", null);
+    }
+    if (customerId && isValidUuid(customerId)) {
+      fallbackBuilder = fallbackBuilder.eq("customer_id", customerId);
+    }
+    if (species !== "all") {
+      fallbackBuilder = fallbackBuilder.eq("species", species as PetSpecies);
+    }
+    if (search) {
+      fallbackBuilder = fallbackBuilder.or(`name.ilike.%${search}%,breed.ilike.%${search}%`);
+    }
+
+    const fallback = await fallbackBuilder.range(from, to);
+    data = fallback.data?.map((row) => ({ ...row, photo_thumb_path: null })) ?? null;
+    error = fallback.error;
+    count = fallback.count;
+  }
 
   if (error) {
-    throw new Error("Não foi possível carregar os pets.");
+    return buildPaginatedResult([], 0, safePage, pageSize);
   }
+
+  const thumbMap = await buildPetPhotoThumbMap(
+    companyId,
+    (data ?? []).map((row) => ({
+      id: row.id,
+      photo_thumb_path: row.photo_thumb_path as string | null | undefined,
+    })),
+  );
 
   const rows =
     data?.map((row) => ({
@@ -82,6 +120,7 @@ export async function getPets({
       customer_id: row.customer_id,
       customerName:
         (row.customers as { name: string } | null)?.name ?? "Tutor não encontrado",
+      photoThumbUrl: thumbMap.get(row.id) ?? null,
     })) ?? [];
 
   return buildPaginatedResult(rows, count ?? 0, safePage, pageSize);

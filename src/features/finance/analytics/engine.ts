@@ -17,7 +17,7 @@ import type {
   FinanceBreakdownItem,
   FinanceRankingItem,
 } from "@/features/finance/analytics/types";
-import { addDaysToDateString } from "@/lib/timezone";
+import { addDaysToDateString, resolveCompanyTimeZone } from "@/lib/timezone";
 import type { FinancialSourceType } from "@/types/database.types";
 
 function isCancelled(entry: AnalyticsEntryRow): boolean {
@@ -30,7 +30,7 @@ function isInPeriod(iso: string, startIso: string, endIso: string): boolean {
 
 function dateFromIso(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
+    timeZone: resolveCompanyTimeZone(timeZone),
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
