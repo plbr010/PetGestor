@@ -5,7 +5,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { localDateTimeToUtcIso } from "@/lib/timezone";
 
-import { DEFAULT_TIMEZONE } from "@/lib/timezone";
+import { DEFAULT_TIMEZONE, isValidTimezone } from "@/lib/timezone";
 
 import { getPreviousPeriod, resolveReportPeriod } from "./period";
 import { periodDayCount } from "@/features/finance/analytics/period";
@@ -33,13 +33,18 @@ import {
   computeStockReport,
 } from "./engine";
 
+function normalizeTimeZone(timeZone: string): string {
+  return isValidTimezone(timeZone) ? timeZone : DEFAULT_TIMEZONE;
+}
+
 export function getReportPeriodBounds(
   from: string,
   to: string,
   timeZone: string,
 ): { utcFrom: string; utcTo: string } {
-  const utcFrom = localDateTimeToUtcIso(from, "00:00", timeZone);
-  const utcTo = localDateTimeToUtcIso(to, "23:59", timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const utcFrom = localDateTimeToUtcIso(from, "00:00", safeTimeZone);
+  const utcTo = localDateTimeToUtcIso(to, "23:59", safeTimeZone);
   return { utcFrom, utcTo };
 }
 
@@ -50,10 +55,11 @@ export async function getReportOverview(
 ): Promise<ReportOverview> {
   noStore();
   const supabase = await createSupabaseServerClient();
-  const period = resolveReportPeriod(params, timeZone);
-  const { utcFrom, utcTo } = getReportPeriodBounds(period.from, period.to, timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const period = resolveReportPeriod(params, safeTimeZone);
+  const { utcFrom, utcTo } = getReportPeriodBounds(period.from, period.to, safeTimeZone);
   const prev = getPreviousPeriod(period.from, period.to);
-  const { utcFrom: prevUtcFrom, utcTo: prevUtcTo } = getReportPeriodBounds(prev.from, prev.to, timeZone);
+  const { utcFrom: prevUtcFrom, utcTo: prevUtcTo } = getReportPeriodBounds(prev.from, prev.to, safeTimeZone);
 
   const [appointments, prevAppointments, income, prevIncome, expense, prevExpense, sales, prevSales, customers, prevCustomers] =
     await Promise.all([
@@ -409,8 +415,9 @@ export async function getAppointmentsReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<AppointmentsReport> {
-  const data = await getAppointmentsReportData(companyId, params.from, params.to, timeZone);
-  return computeAppointmentsReport(data, timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const data = await getAppointmentsReportData(companyId, params.from, params.to, safeTimeZone);
+  return computeAppointmentsReport(data, safeTimeZone);
 }
 
 export async function getServiceRankings(
@@ -418,7 +425,8 @@ export async function getServiceRankings(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<ServiceRanking[]> {
-  const data = await getAppointmentsReportData(companyId, params.from, params.to, timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const data = await getAppointmentsReportData(companyId, params.from, params.to, safeTimeZone);
   return computeServiceRanking(data);
 }
 
@@ -427,7 +435,8 @@ export async function getCustomerReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<CustomerReport> {
-  const { appointments, customers } = await getCustomersReportData(companyId, params.from, params.to, timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const { appointments, customers } = await getCustomersReportData(companyId, params.from, params.to, safeTimeZone);
   return computeCustomerReport(appointments, customers);
 }
 
@@ -436,7 +445,8 @@ export async function getRetentionReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<RetentionReport> {
-  const data = await getAppointmentsReportData(companyId, params.from, params.to, timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const data = await getAppointmentsReportData(companyId, params.from, params.to, safeTimeZone);
   return computeRetentionReport(data);
 }
 
@@ -445,7 +455,8 @@ export async function getEmployeePerformance(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<EmployeePerformance[]> {
-  const { appointments, employees } = await getEmployeesReportData(companyId, params.from, params.to, timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const { appointments, employees } = await getEmployeesReportData(companyId, params.from, params.to, safeTimeZone);
   const dayCount = periodDayCount(params.from, params.to);
   return computeEmployeePerformance(appointments, employees, dayCount);
 }
@@ -455,9 +466,10 @@ export async function getOccupancyReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<OccupancyReport> {
-  const { appointments, workingHours } = await getEmployeesReportData(companyId, params.from, params.to, timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const { appointments, workingHours } = await getEmployeesReportData(companyId, params.from, params.to, safeTimeZone);
   const dayCount = periodDayCount(params.from, params.to);
-  return computeOccupancy(appointments, workingHours, dayCount, timeZone);
+  return computeOccupancy(appointments, workingHours, dayCount, safeTimeZone);
 }
 
 export async function getPdvReport(
@@ -465,7 +477,8 @@ export async function getPdvReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<PdvReport> {
-  const { sales, saleItems } = await getPdvReportData(companyId, params.from, params.to, timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const { sales, saleItems } = await getPdvReportData(companyId, params.from, params.to, safeTimeZone);
   const mappedItems = saleItems.map((item) => ({
     product_name_snapshot: item.product_name_snapshot,
     unit_price_cents: item.unit_price_cents,
@@ -481,6 +494,7 @@ export async function getStockReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<StockReport> {
-  const data = await getStockReportData(companyId, params.from, params.to, timeZone);
+  const safeTimeZone = normalizeTimeZone(timeZone);
+  const data = await getStockReportData(companyId, params.from, params.to, safeTimeZone);
   return computeStockReport(data.products, data.movements, data.batches);
 }
