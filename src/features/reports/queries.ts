@@ -61,80 +61,104 @@ export async function getReportOverview(
   const prev = getPreviousPeriod(period.from, period.to);
   const { utcFrom: prevUtcFrom, utcTo: prevUtcTo } = getReportPeriodBounds(prev.from, prev.to, safeTimeZone);
 
-  const [appointments, prevAppointments, income, prevIncome, expense, prevExpense, sales, prevSales, customers, prevCustomers] =
-    await Promise.all([
-      supabase
-        .from("appointments")
-        .select("id, status, price_cents_snapshot")
-        .eq("company_id", companyId)
-        .gte("scheduled_start", utcFrom)
-        .lte("scheduled_start", utcTo),
-      supabase
-        .from("appointments")
-        .select("id, status, price_cents_snapshot")
-        .eq("company_id", companyId)
-        .gte("scheduled_start", prevUtcFrom)
-        .lte("scheduled_start", prevUtcTo),
-      supabase
-        .from("financial_payments")
-        .select("amount_cents, financial_entries!inner(entry_type, company_id)")
-        .eq("financial_entries.company_id", companyId)
-        .eq("financial_entries.entry_type", "income")
-        .gte("paid_at", utcFrom)
-        .lte("paid_at", utcTo),
-      supabase
-        .from("financial_payments")
-        .select("amount_cents, financial_entries!inner(entry_type, company_id)")
-        .eq("financial_entries.company_id", companyId)
-        .eq("financial_entries.entry_type", "income")
-        .gte("paid_at", prevUtcFrom)
-        .lte("paid_at", prevUtcTo),
-      supabase
-        .from("financial_payments")
-        .select("amount_cents, financial_entries!inner(entry_type, company_id)")
-        .eq("financial_entries.company_id", companyId)
-        .eq("financial_entries.entry_type", "expense")
-        .gte("paid_at", utcFrom)
-        .lte("paid_at", utcTo),
-      supabase
-        .from("financial_payments")
-        .select("amount_cents, financial_entries!inner(entry_type, company_id)")
-        .eq("financial_entries.company_id", companyId)
-        .eq("financial_entries.entry_type", "expense")
-        .gte("paid_at", prevUtcFrom)
-        .lte("paid_at", prevUtcTo),
-      supabase
-        .from("sales")
-        .select("id, status")
-        .eq("company_id", companyId)
-        .in("status", ["completed", "partially_paid"])
-        .gte("sold_at", utcFrom)
-        .lte("sold_at", utcTo),
-      supabase
-        .from("sales")
-        .select("id, status")
-        .eq("company_id", companyId)
-        .in("status", ["completed", "partially_paid"])
-        .gte("sold_at", prevUtcFrom)
-        .lte("sold_at", prevUtcTo),
-      supabase
-        .from("customers")
+  async function sumPaymentsForEntryType(
+    entryType: "income" | "expense",
+    paidStartIso: string,
+    paidEndIso: string,
+  ): Promise<number> {
+    // Evita JOINs frágeis em selects do Supabase (que podem falhar em runtime).
+    // Se algo der erro, retornamos 0 para não quebrar a tela de relatórios.
+    try {
+      const { data: entries, error: entriesError } = await supabase
+        .from("financial_entries")
         .select("id")
         .eq("company_id", companyId)
+        .eq("entry_type", entryType)
         .is("deleted_at", null)
-        .gte("created_at", utcFrom)
-        .lte("created_at", utcTo),
-      supabase
-        .from("customers")
-        .select("id")
-        .eq("company_id", companyId)
-        .is("deleted_at", null)
-        .gte("created_at", prevUtcFrom)
-        .lte("created_at", prevUtcTo),
-    ]);
+        .neq("status", "cancelled")
+        .not("paid_at", "is", null)
+        .gte("paid_at", paidStartIso)
+        .lte("paid_at", paidEndIso);
 
-  const sumPayments = (rows: { amount_cents: number }[] | null) =>
-    (rows ?? []).reduce((s, r) => s + r.amount_cents, 0);
+      if (entriesError) return 0;
+
+      const entryIds = (entries ?? []).map((e) => e.id);
+      if (entryIds.length === 0) return 0;
+
+      const { data: payments, error: paymentsError } = await supabase
+        .from("financial_payments")
+        .select("amount_cents")
+        .eq("company_id", companyId)
+        .is("cancelled_at", null)
+        .in("financial_entry_id", entryIds)
+        .gte("paid_at", paidStartIso)
+        .lte("paid_at", paidEndIso);
+
+      if (paymentsError) return 0;
+
+      return (payments ?? []).reduce((s, r) => s + (r.amount_cents ?? 0), 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  const [
+    appointments,
+    prevAppointments,
+    sales,
+    prevSales,
+    customers,
+    prevCustomers,
+    incomeReceivedCents,
+    expensePaidCents,
+    prevIncomeReceivedCents,
+    prevExpensePaidCents,
+  ] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select("id, status, price_cents_snapshot")
+      .eq("company_id", companyId)
+      .gte("scheduled_start", utcFrom)
+      .lte("scheduled_start", utcTo),
+    supabase
+      .from("appointments")
+      .select("id, status, price_cents_snapshot")
+      .eq("company_id", companyId)
+      .gte("scheduled_start", prevUtcFrom)
+      .lte("scheduled_start", prevUtcTo),
+    supabase
+      .from("sales")
+      .select("id, status")
+      .eq("company_id", companyId)
+      .in("status", ["completed", "partially_paid"])
+      .gte("sold_at", utcFrom)
+      .lte("sold_at", utcTo),
+    supabase
+      .from("sales")
+      .select("id, status")
+      .eq("company_id", companyId)
+      .in("status", ["completed", "partially_paid"])
+      .gte("sold_at", prevUtcFrom)
+      .lte("sold_at", prevUtcTo),
+    supabase
+      .from("customers")
+      .select("id")
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .gte("created_at", utcFrom)
+      .lte("created_at", utcTo),
+    supabase
+      .from("customers")
+      .select("id")
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .gte("created_at", prevUtcFrom)
+      .lte("created_at", prevUtcTo),
+    sumPaymentsForEntryType("income", utcFrom, utcTo),
+    sumPaymentsForEntryType("expense", utcFrom, utcTo),
+    sumPaymentsForEntryType("income", prevUtcFrom, prevUtcTo),
+    sumPaymentsForEntryType("expense", prevUtcFrom, prevUtcTo),
+  ]);
 
   const countByStatus = (rows: { status: string }[] | null, statuses: string[]) =>
     (rows ?? []).filter((r) => statuses.includes(r.status)).length;
@@ -144,8 +168,8 @@ export async function getReportOverview(
 
   const current = {
     revenueCents: completedAppts.reduce((s, a) => s + (a.price_cents_snapshot ?? 0), 0),
-    incomeReceivedCents: sumPayments(income.data as { amount_cents: number }[] | null),
-    expensePaidCents: sumPayments(expense.data as { amount_cents: number }[] | null),
+    incomeReceivedCents,
+    expensePaidCents,
     appointmentsCount: completedAppts.length,
     salesCount: (sales.data ?? []).length,
     newCustomersCount: (customers.data ?? []).length,
@@ -155,8 +179,8 @@ export async function getReportOverview(
 
   const prevData = {
     revenueCents: prevCompletedAppts.reduce((s, a) => s + (a.price_cents_snapshot ?? 0), 0),
-    incomeReceivedCents: sumPayments(prevIncome.data as { amount_cents: number }[] | null),
-    expensePaidCents: sumPayments(prevExpense.data as { amount_cents: number }[] | null),
+    incomeReceivedCents: prevIncomeReceivedCents,
+    expensePaidCents: prevExpensePaidCents,
     appointmentsCount: prevCompletedAppts.length,
     salesCount: (prevSales.data ?? []).length,
     newCustomersCount: (prevCustomers.data ?? []).length,
