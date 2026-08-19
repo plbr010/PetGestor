@@ -11,6 +11,7 @@ import {
   SPECIES_LABELS,
 } from "@/lib/pet-display";
 import { parsePageParam } from "@/lib/pagination";
+import { PetAvatar } from "@/components/shared/pet-avatar";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
   ClearSearchLink,
@@ -122,7 +123,12 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                     <tbody>
                       {result.data.map((pet) => (
                         <tr key={pet.id} className="border-t">
-                          <td className="px-4 py-3 font-medium">{pet.name}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <PetAvatar name={pet.name} photoUrl={pet.photoThumbUrl} size="sm" />
+                              <span className="font-medium">{pet.name}</span>
+                            </div>
+                          </td>
                           <td className="px-4 py-3">{pet.customerName}</td>
                           <td className="px-4 py-3">{SPECIES_LABELS[pet.species]}</td>
                           <td className="px-4 py-3">{pet.breed ?? "—"}</td>
@@ -146,17 +152,20 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                     <Link
                       key={pet.id}
                       href={`/dashboard/pets/${pet.id}`}
-                      className="rounded-xl border bg-card p-4 transition-colors hover:bg-muted/20"
+                      className="flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-muted/20"
                     >
-                      <p className="font-medium">{pet.name}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{pet.customerName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {SPECIES_LABELS[pet.species]}
-                        {pet.breed ? ` · ${pet.breed}` : ""}
-                      </p>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {calculateAgeLabel(pet.birth_date)} · {formatDateDisplay(pet.birth_date)}
-                      </p>
+                      <PetAvatar name={pet.name} photoUrl={pet.photoThumbUrl} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{pet.name}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{pet.customerName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {SPECIES_LABELS[pet.species]}
+                          {pet.breed ? ` · ${pet.breed}` : ""}
+                        </p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {calculateAgeLabel(pet.birth_date)} · {formatDateDisplay(pet.birth_date)}
+                        </p>
+                      </div>
                     </Link>
                   ))}
                 </div>

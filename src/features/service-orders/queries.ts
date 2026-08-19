@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import type { ServiceOrderStatusFilter } from "@/features/service-orders/status";
 import type { ServiceOrderDetail, ServiceOrderListItem } from "@/features/service-orders/types";
+import { buildPetPhotoThumbMap, withPetPhotoThumb } from "@/features/pets/enrich-photo-thumbs";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { addDaysToDateString, localDateTimeToUtcIso } from "@/lib/timezone";
 import { isValidUuid } from "@/lib/security/uuid";
@@ -14,7 +15,7 @@ const SERVICE_ORDER_SELECT = `
   appointments!inner(
     id, scheduled_start, scheduled_end, status,
     service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot,
-    pets!inner(id, name),
+    pets!inner(id, name, photo_thumb_path),
     customers!inner(id, name, phone),
     employees!inner(id, name)
   )
@@ -44,7 +45,7 @@ type AppointmentJoin = {
   service_name_snapshot: string;
   price_cents_snapshot: number;
   duration_minutes_snapshot: number;
-  pets: { id: string; name: string } | { id: string; name: string }[];
+  pets: { id: string; name: string; photo_thumb_path?: string | null } | { id: string; name: string; photo_thumb_path?: string | null }[];
   customers: { id: string; name: string; phone: string } | { id: string; name: string; phone: string }[];
   employees: { id: string; name: string } | { id: string; name: string }[];
 };
@@ -129,10 +130,28 @@ async function queryServiceOrders(
   const { data, error } = await builder;
 
   if (error) {
-    throw new Error("Não foi possível carregar os atendimentos.");
+    return [];
   }
 
-  return (data as ServiceOrderRow[] | null)?.map(mapServiceOrderRow) ?? [];
+  const rows = (data as ServiceOrderRow[] | null) ?? [];
+  const thumbMap = await buildPetPhotoThumbMap(
+    companyId,
+    rows.map((row) => {
+      const pet = unwrapJoin(unwrapJoin(row.appointments).pets);
+      return { id: pet.id, photo_thumb_path: pet.photo_thumb_path ?? null };
+    }),
+  );
+
+  return rows.map((row) => {
+    const item = mapServiceOrderRow(row);
+    return {
+      ...item,
+      appointment: {
+        ...item.appointment,
+        pet: withPetPhotoThumb(item.appointment.pet, thumbMap),
+      },
+    };
+  });
 }
 
 export async function getServiceOrders(

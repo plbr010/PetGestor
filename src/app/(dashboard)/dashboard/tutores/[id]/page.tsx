@@ -15,6 +15,7 @@ import {
   formatDateTimeDisplay,
   SPECIES_LABELS,
 } from "@/lib/pet-display";
+import { PetAvatar } from "@/components/shared/pet-avatar";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { FormFeedback } from "@/components/shared/form-feedback";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -124,9 +125,10 @@ export default async function CustomerDetailPage({
                   <Link
                     key={pet.id}
                     href={`/dashboard/pets/${pet.id}`}
-                    className="flex items-center justify-between rounded-xl border p-4 transition-colors hover:bg-muted/20"
+                    className="flex items-center gap-3 rounded-xl border p-4 transition-colors hover:bg-muted/20"
                   >
-                    <div>
+                    <PetAvatar name={pet.name} photoUrl={pet.photoThumbUrl} />
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium">{pet.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {SPECIES_LABELS[pet.species]}

@@ -1,11 +1,18 @@
 import type { CustomerOption } from "@/features/customers/types";
 import type { Pet, PetSpecies, PetSex } from "@/types/database.types";
 
+export type PetChip = {
+  id: string;
+  name: string;
+  photoThumbUrl?: string | null;
+};
+
 export type PetListItem = Pick<
   Pet,
   "id" | "name" | "species" | "breed" | "birth_date" | "created_at" | "customer_id"
 > & {
   customerName: string;
+  photoThumbUrl: string | null;
 };
 
 export type PetDetail = Pet & {

@@ -1,4 +1,5 @@
 import type { AppointmentStatus, PetSize } from "@/types/database.types";
+import type { PetChip } from "@/features/pets/types";
 
 export type AppointmentListItem = {
   id: string;
@@ -16,7 +17,7 @@ export type AppointmentListItem = {
   pet_id: string;
   service_id: string;
   employee_id: string;
-  pet: { id: string; name: string };
+  pet: PetChip;
   customer: { id: string; name: string; phone: string };
   employee: { id: string; name: string };
 };

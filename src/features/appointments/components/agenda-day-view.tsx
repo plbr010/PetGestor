@@ -1,5 +1,6 @@
 "use client";
 
+import { PetAvatar } from "@/components/shared/pet-avatar";
 import { AppointmentRecurrenceBadge } from "@/features/appointments/components/appointment-recurrence-badge";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
 import type { ScheduleTimeBlock } from "@/features/appointments/time-blocks/types";
@@ -196,7 +197,12 @@ export function AgendaDayView({
                 className="flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition hover:border-primary/40"
                 onClick={() => onAppointmentClick(appointment)}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <PetAvatar
+                    name={appointment.pet.name}
+                    photoUrl={appointment.pet.photoThumbUrl}
+                    size="sm"
+                  />
                   <div>
                     <p className="text-lg font-semibold text-primary">
                       {formatUtcInTimezone(appointment.scheduled_start, timeZone)}
@@ -207,7 +213,7 @@ export function AgendaDayView({
                     </p>
                     <p className="text-sm text-muted-foreground">{appointment.employee.name}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="ml-auto text-right">
                     <div className="flex flex-col items-end gap-1">
                       <AppointmentStatusBadge status={appointment.status} />
                       {appointment.recurrence_id ? <AppointmentRecurrenceBadge compact /> : null}
