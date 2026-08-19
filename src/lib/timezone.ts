@@ -14,9 +14,19 @@ export function isValidTimezone(timezone: string): boolean {
   }
 }
 
+/** Normaliza fuso da empresa — evita RangeError quando o valor salvo é inválido. */
+export function resolveCompanyTimeZone(timeZone: string | null | undefined): string {
+  const trimmed = timeZone?.trim();
+  if (trimmed && isValidTimezone(trimmed)) {
+    return trimmed;
+  }
+  return DEFAULT_TIMEZONE;
+}
+
 function getZonedParts(date: Date, timeZone: string) {
+  const safeTimeZone = resolveCompanyTimeZone(timeZone);
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
+    timeZone: safeTimeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -105,9 +115,10 @@ export function getWeekdayInTimezone(
   isoUtc: string,
   timeZone: string = DEFAULT_TIMEZONE,
 ): number {
+  const safeTimeZone = resolveCompanyTimeZone(timeZone);
   const date = new Date(isoUtc);
   const weekday = new Intl.DateTimeFormat("en-US", {
-    timeZone,
+    timeZone: safeTimeZone,
     weekday: "short",
   }).format(date);
 

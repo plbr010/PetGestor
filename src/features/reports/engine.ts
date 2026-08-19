@@ -1,6 +1,7 @@
 import {
   formatUtcDateInTimezone,
   getWeekdayInTimezone,
+  resolveCompanyTimeZone,
 } from "@/lib/timezone";
 
 import type {
@@ -369,7 +370,7 @@ export function computeOccupancy(
 
     const date = new Date(a.scheduled_start);
     const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone,
+      timeZone: resolveCompanyTimeZone(timeZone),
       hour: "2-digit",
       hour12: false,
     }).formatToParts(date);
@@ -479,7 +480,7 @@ export function computeHourDistribution(
   for (const a of valid) {
     const date = new Date(a.scheduled_start);
     const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone,
+      timeZone: resolveCompanyTimeZone(timeZone),
       hour: "2-digit",
       hour12: false,
     }).formatToParts(date);

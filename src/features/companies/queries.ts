@@ -6,6 +6,7 @@ import {
   normalizeStoredPermissions,
   type AccessProfile,
 } from "@/lib/auth/permissions";
+import { resolveCompanyTimeZone } from "@/lib/timezone";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   CompanyMembership,
@@ -62,7 +63,7 @@ function mapMembershipRow(
     company: {
       id: companyRow.id,
       name: companyRow.name,
-      timezone: companyRow.timezone ?? "America/Sao_Paulo",
+      timezone: resolveCompanyTimeZone(companyRow.timezone),
     },
     accessProfile,
     permissions: normalizeStoredPermissions(memberRow.permissions),
