@@ -44,6 +44,10 @@ export function mapAttachmentValidationError(code: string): string {
     return "Falha ao enviar o arquivo. Tente novamente.";
   }
 
+  if (code === "attachments_migration_required") {
+    return "Fotos e anexos ainda não estão disponíveis. Execute a migration de anexos no Supabase (20260818160000_pet_service_attachments.sql).";
+  }
+
   return "Não foi possível concluir o envio. Verifique o arquivo e tente novamente.";
 }
 
