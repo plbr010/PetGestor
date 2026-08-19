@@ -13,6 +13,13 @@
 
 **MIGRATION PENDENTE:** `supabase/migrations/20260818180000_employee_permissions.sql`
 
+### Corrigido — Dashboard com dados reais
+
+- Removidos avisos enganosos de "dados demonstrativos" no app autenticado
+- Lista "Tutores recentes" passa a usar cadastros reais do Supabase
+- Resumo financeiro e agenda não derrubam o dashboard quando um módulo falha
+- Alerta de erro só aparece quando falham dados principais (tutores, pets, agenda)
+
 ## [0.26.0] — 2026-08-18
 
 ### Adicionado — Dashboard financeiro visual

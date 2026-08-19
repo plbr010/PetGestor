@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentCompanyMembership } from "@/features/companies/queries";
+import { tryAcceptPendingInvite } from "@/features/employees/access/accept-invite";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 
 export async function redirectIfAuthenticated(options?: {
@@ -16,6 +17,12 @@ export async function redirectIfAuthenticated(options?: {
 
   if (membership) {
     redirect("/dashboard");
+  }
+
+  const inviteResult = await tryAcceptPendingInvite();
+
+  if (inviteResult.accepted) {
+    redirect("/dashboard?convite-aceito=1");
   }
 
   if (!options?.allowWithoutCompany) {

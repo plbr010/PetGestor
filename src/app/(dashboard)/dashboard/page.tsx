@@ -28,9 +28,15 @@ import { formatDashboardPartialErrors } from "@/features/dashboard/partial-error
 import { requireUser } from "@/lib/auth/require-user";
 import { getTodayInTimezone } from "@/lib/timezone";
 
-export default async function DashboardHomePage() {
+export default async function DashboardHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ "convite-aceito"?: string }>;
+}) {
   const user = await requireUser();
   const context = await requireCompany(user.id);
+  const query = await searchParams;
+  const justAcceptedInvite = query["convite-aceito"] === "1";
   const timeZone = context.membership.company.timezone;
   const today = getTodayInTimezone(timeZone);
 
@@ -156,6 +162,13 @@ export default async function DashboardHomePage() {
         description="resumo do pet shop"
       />
       <main className="flex-1 space-y-6 overflow-x-hidden p-4 sm:p-6">
+        {justAcceptedInvite ? (
+          <FormFeedback
+            message={`Bem-vindo(a) à ${context.membership.company.name}! Seu acesso foi configurado automaticamente.`}
+            variant="success"
+          />
+        ) : null}
+
         {partialErrorMessage ? (
           <FormFeedback message={partialErrorMessage} variant="error" />
         ) : null}

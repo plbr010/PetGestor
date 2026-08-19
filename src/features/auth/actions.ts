@@ -10,6 +10,7 @@ import {
   passwordRecoverySchema,
   signUpSchema,
 } from "@/features/auth/schemas";
+import { tryAcceptPendingInvite } from "@/features/employees/access/accept-invite";
 import { getSiteUrl } from "@/lib/auth/get-site-url";
 import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -98,6 +99,13 @@ export async function signUpAction(
   }
 
   if (data.session) {
+    const inviteResult = await tryAcceptPendingInvite();
+
+    if (inviteResult.accepted) {
+      revalidatePath("/", "layout");
+      redirect("/dashboard");
+    }
+
     const onboardingResult = await runCompleteOnboarding(
       parsed.data.fullName,
       parsed.data.companyName,
@@ -307,6 +315,12 @@ async function resolvePostLoginPath(): Promise<string> {
 
   if (!data?.claims?.sub) {
     return "/entrar";
+  }
+
+  const inviteResult = await tryAcceptPendingInvite();
+
+  if (inviteResult.accepted) {
+    return "/dashboard?convite-aceito=1";
   }
 
   const { data: membership } = await supabase

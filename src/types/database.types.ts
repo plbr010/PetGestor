@@ -2382,6 +2382,10 @@ export type Database = {
         };
         Returns: string;
       };
+      accept_pending_invite: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
       update_appointment: {
         Args: {
           p_appointment_id: string;
