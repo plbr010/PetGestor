@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PetAvatar } from "@/components/shared/pet-avatar";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
 import type { AppointmentListItem } from "@/features/appointments/types";
 import {
@@ -37,11 +38,14 @@ export function DashboardAppointmentsList({
                 href={`/dashboard/agenda/${item.id}`}
                 className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="min-w-0">
-                  <p className="font-medium">{item.pet.name}</p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {item.service_name_snapshot} · {item.customer.name}
-                  </p>
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <PetAvatar name={item.pet.name} photoUrl={item.pet.photoThumbUrl} size="sm" />
+                  <div className="min-w-0">
+                    <p className="font-medium">{item.pet.name}</p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {item.service_name_snapshot} · {item.customer.name}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="text-sm font-semibold text-primary">

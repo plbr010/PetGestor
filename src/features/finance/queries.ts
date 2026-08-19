@@ -190,7 +190,7 @@ export async function getFinancialEntries({
   const { data, error, count } = await builder;
 
   if (error) {
-    throw new Error("Não foi possível carregar os lançamentos financeiros.");
+    return buildPaginatedResult([], 0, page, pageSize);
   }
 
   return buildPaginatedResult(
@@ -220,7 +220,7 @@ async function fetchEntriesInPeriod(
     .lt("created_at", end);
 
   if (error) {
-    throw new Error("Não foi possível carregar o resumo financeiro.");
+    return [];
   }
 
   return (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [];
