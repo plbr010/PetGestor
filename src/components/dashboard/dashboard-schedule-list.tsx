@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PetAvatar } from "@/components/shared/pet-avatar";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
 import type { AppointmentListItem } from "@/features/appointments/types";
 import { formatPriceSnapshot } from "@/features/appointments/utils";
@@ -38,13 +39,14 @@ export function DashboardScheduleList({
                   href={`/dashboard/agenda/${item.id}`}
                   className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
                     <div className="flex size-12 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <span className="text-[10px] font-medium uppercase">Hora</span>
                       <span className="text-sm font-bold">
                         {formatUtcInTimezone(item.scheduled_start, timeZone)}
                       </span>
                     </div>
+                    <PetAvatar name={item.pet.name} photoUrl={item.pet.photoThumbUrl} size="sm" />
                     <div className="min-w-0">
                       <p className="font-medium">{item.pet.name}</p>
                       <p className="truncate text-sm text-muted-foreground">

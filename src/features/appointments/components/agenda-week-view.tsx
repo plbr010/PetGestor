@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PetAvatar } from "@/components/shared/pet-avatar";
 import { AppointmentRecurrenceBadge } from "@/features/appointments/components/appointment-recurrence-badge";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
 import type { AppointmentListItem } from "@/features/appointments/types";
@@ -57,8 +58,15 @@ export function AgendaWeekView({ appointments, weekDates, timeZone }: AgendaWeek
                     <Link
                       key={appointment.id}
                       href={`/dashboard/agenda/${appointment.id}`}
-                      className="block rounded-lg border bg-muted/20 p-2 text-xs transition hover:border-primary/40"
+                      className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2 text-xs transition hover:border-primary/40"
                     >
+                      <PetAvatar
+                        name={appointment.pet.name}
+                        photoUrl={appointment.pet.photoThumbUrl}
+                        size="sm"
+                        className="size-8"
+                      />
+                      <div className="min-w-0 flex-1">
                       <p className="font-semibold text-primary">
                         {formatUtcInTimezone(appointment.scheduled_start, timeZone)}
                       </p>
@@ -76,6 +84,7 @@ export function AgendaWeekView({ appointments, weekDates, timeZone }: AgendaWeek
                         <span className="font-medium">
                           {formatPriceSnapshot(appointment.price_cents_snapshot)}
                         </span>
+                      </div>
                       </div>
                     </Link>
                   ))
@@ -103,9 +112,14 @@ export function AgendaWeekView({ appointments, weekDates, timeZone }: AgendaWeek
                   <li key={appointment.id}>
                     <Link
                       href={`/dashboard/agenda/${appointment.id}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border p-3"
+                      className="flex items-center gap-3 rounded-xl border p-3"
                     >
-                      <div className="min-w-0">
+                      <PetAvatar
+                        name={appointment.pet.name}
+                        photoUrl={appointment.pet.photoThumbUrl}
+                        size="sm"
+                      />
+                      <div className="min-w-0 flex-1">
                         <p className="font-medium text-primary">
                           {formatUtcInTimezone(appointment.scheduled_start, timeZone)} ·{" "}
                           {appointment.pet.name}

@@ -1,4 +1,5 @@
 import type { AppointmentStatus, ServiceOrderStatus } from "@/types/database.types";
+import type { PetChip } from "@/features/pets/types";
 
 export type ServiceOrderAppointmentSnapshot = {
   id: string;
@@ -8,7 +9,7 @@ export type ServiceOrderAppointmentSnapshot = {
   service_name_snapshot: string;
   price_cents_snapshot: number;
   duration_minutes_snapshot: number;
-  pet: { id: string; name: string };
+  pet: PetChip;
   customer: { id: string; name: string; phone: string };
   employee: { id: string; name: string };
 };
