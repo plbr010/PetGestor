@@ -61,8 +61,60 @@ export async function getReportOverview(
   const prev = getPreviousPeriod(period.from, period.to);
   const { utcFrom: prevUtcFrom, utcTo: prevUtcTo } = getReportPeriodBounds(prev.from, prev.to, safeTimeZone);
 
-  const [appointments, prevAppointments, income, prevIncome, expense, prevExpense, sales, prevSales, customers, prevCustomers] =
-    await Promise.all([
+  async function sumPaymentsForEntryType(
+    entryType: "income" | "expense",
+    paidStartIso: string,
+    paidEndIso: string,
+  ): Promise<number> {
+    // Evita JOINs frágeis em selects do Supabase (que podem falhar em runtime).
+    // Se algo der erro, retornamos 0 para não quebrar a tela de relatórios.
+    try {
+      const { data: entries, error: entriesError } = await supabase
+        .from("financial_entries")
+        .select("id")
+        .eq("company_id", companyId)
+        .eq("entry_type", entryType)
+        .is("deleted_at", null)
+        .neq("status", "cancelled")
+        .not("paid_at", "is", null)
+        .gte("paid_at", paidStartIso)
+        .lte("paid_at", paidEndIso);
+
+      if (entriesError) return 0;
+
+      const entryIds = (entries ?? []).map((e) => e.id);
+      if (entryIds.length === 0) return 0;
+
+      const { data: payments, error: paymentsError } = await supabase
+        .from("financial_payments")
+        .select("amount_cents")
+        .eq("company_id", companyId)
+        .is("cancelled_at", null)
+        .in("financial_entry_id", entryIds)
+        .gte("paid_at", paidStartIso)
+        .lte("paid_at", paidEndIso);
+
+      if (paymentsError) return 0;
+
+      return (payments ?? []).reduce((s, r) => s + (r.amount_cents ?? 0), 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  try {
+    const [
+      appointments,
+      prevAppointments,
+      sales,
+      prevSales,
+      customers,
+      prevCustomers,
+      incomeReceivedCents,
+      expensePaidCents,
+      prevIncomeReceivedCents,
+      prevExpensePaidCents,
+    ] = await Promise.all([
       supabase
         .from("appointments")
         .select("id, status, price_cents_snapshot")
@@ -75,34 +127,6 @@ export async function getReportOverview(
         .eq("company_id", companyId)
         .gte("scheduled_start", prevUtcFrom)
         .lte("scheduled_start", prevUtcTo),
-      supabase
-        .from("financial_payments")
-        .select("amount_cents, financial_entries!inner(entry_type, company_id)")
-        .eq("financial_entries.company_id", companyId)
-        .eq("financial_entries.entry_type", "income")
-        .gte("paid_at", utcFrom)
-        .lte("paid_at", utcTo),
-      supabase
-        .from("financial_payments")
-        .select("amount_cents, financial_entries!inner(entry_type, company_id)")
-        .eq("financial_entries.company_id", companyId)
-        .eq("financial_entries.entry_type", "income")
-        .gte("paid_at", prevUtcFrom)
-        .lte("paid_at", prevUtcTo),
-      supabase
-        .from("financial_payments")
-        .select("amount_cents, financial_entries!inner(entry_type, company_id)")
-        .eq("financial_entries.company_id", companyId)
-        .eq("financial_entries.entry_type", "expense")
-        .gte("paid_at", utcFrom)
-        .lte("paid_at", utcTo),
-      supabase
-        .from("financial_payments")
-        .select("amount_cents, financial_entries!inner(entry_type, company_id)")
-        .eq("financial_entries.company_id", companyId)
-        .eq("financial_entries.entry_type", "expense")
-        .gte("paid_at", prevUtcFrom)
-        .lte("paid_at", prevUtcTo),
       supabase
         .from("sales")
         .select("id, status")
@@ -131,45 +155,60 @@ export async function getReportOverview(
         .is("deleted_at", null)
         .gte("created_at", prevUtcFrom)
         .lte("created_at", prevUtcTo),
+      sumPaymentsForEntryType("income", utcFrom, utcTo),
+      sumPaymentsForEntryType("expense", utcFrom, utcTo),
+      sumPaymentsForEntryType("income", prevUtcFrom, prevUtcTo),
+      sumPaymentsForEntryType("expense", prevUtcFrom, prevUtcTo),
     ]);
 
-  const sumPayments = (rows: { amount_cents: number }[] | null) =>
-    (rows ?? []).reduce((s, r) => s + r.amount_cents, 0);
+    const countByStatus = (rows: { status: string }[] | null, statuses: string[]) =>
+      (rows ?? []).filter((r) => statuses.includes(r.status)).length;
 
-  const countByStatus = (rows: { status: string }[] | null, statuses: string[]) =>
-    (rows ?? []).filter((r) => statuses.includes(r.status)).length;
+    const completedAppts = (appointments.data ?? []).filter((a) => a.status === "completed");
+    const prevCompletedAppts = (prevAppointments.data ?? []).filter((a) => a.status === "completed");
 
-  const completedAppts = (appointments.data ?? []).filter((a) => a.status === "completed");
-  const prevCompletedAppts = (prevAppointments.data ?? []).filter((a) => a.status === "completed");
+    const current = {
+      revenueCents: completedAppts.reduce((s, a) => s + (a.price_cents_snapshot ?? 0), 0),
+      incomeReceivedCents,
+      expensePaidCents,
+      appointmentsCount: completedAppts.length,
+      salesCount: (sales.data ?? []).length,
+      newCustomersCount: (customers.data ?? []).length,
+      cancellationsCount: countByStatus(appointments.data, ["cancelled"]),
+      noShowCount: countByStatus(appointments.data, ["no_show"]),
+    };
 
-  const current = {
-    revenueCents: completedAppts.reduce((s, a) => s + (a.price_cents_snapshot ?? 0), 0),
-    incomeReceivedCents: sumPayments(income.data as { amount_cents: number }[] | null),
-    expensePaidCents: sumPayments(expense.data as { amount_cents: number }[] | null),
-    appointmentsCount: completedAppts.length,
-    salesCount: (sales.data ?? []).length,
-    newCustomersCount: (customers.data ?? []).length,
-    cancellationsCount: countByStatus(appointments.data, ["cancelled"]),
-    noShowCount: countByStatus(appointments.data, ["no_show"]),
-  };
+    const prevData = {
+      revenueCents: prevCompletedAppts.reduce((s, a) => s + (a.price_cents_snapshot ?? 0), 0),
+      incomeReceivedCents: prevIncomeReceivedCents,
+      expensePaidCents: prevExpensePaidCents,
+      appointmentsCount: prevCompletedAppts.length,
+      salesCount: (prevSales.data ?? []).length,
+      newCustomersCount: (prevCustomers.data ?? []).length,
+      cancellationsCount: countByStatus(prevAppointments.data, ["cancelled"]),
+      noShowCount: countByStatus(prevAppointments.data, ["no_show"]),
+    };
 
-  const prevData = {
-    revenueCents: prevCompletedAppts.reduce((s, a) => s + (a.price_cents_snapshot ?? 0), 0),
-    incomeReceivedCents: sumPayments(prevIncome.data as { amount_cents: number }[] | null),
-    expensePaidCents: sumPayments(prevExpense.data as { amount_cents: number }[] | null),
-    appointmentsCount: prevCompletedAppts.length,
-    salesCount: (prevSales.data ?? []).length,
-    newCustomersCount: (prevCustomers.data ?? []).length,
-    cancellationsCount: countByStatus(prevAppointments.data, ["cancelled"]),
-    noShowCount: countByStatus(prevAppointments.data, ["no_show"]),
-  };
-
-  return computeOverview(
-    current,
-    prevData,
-    period,
-    { ...prev, preset: period.preset },
-  );
+    return computeOverview(current, prevData, period, { ...prev, preset: period.preset });
+  } catch {
+    // Se qualquer consulta/transform der erro, não quebrar a UI inteira:
+    // renderizamos um "overview" zerado para o usuário conseguir continuar.
+    return computeOverview(
+      {
+        revenueCents: 0,
+        incomeReceivedCents: 0,
+        expensePaidCents: 0,
+        appointmentsCount: 0,
+        salesCount: 0,
+        newCustomersCount: 0,
+        cancellationsCount: 0,
+        noShowCount: 0,
+      },
+      null,
+      period,
+      null,
+    );
+  }
 }
 
 export async function getAppointmentsReportData(
