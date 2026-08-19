@@ -1,9 +1,9 @@
 "use client";
 
-const DEFAULT_MAX_WIDTH = 1600;
-const THUMB_MAX_WIDTH = 480;
-const WEBP_QUALITY = 0.82;
-const THUMB_QUALITY = 0.75;
+const DEFAULT_MAX_WIDTH = 1024;
+const THUMB_MAX_WIDTH = 256;
+const WEBP_QUALITY = 0.78;
+const THUMB_QUALITY = 0.7;
 
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {

@@ -1,11 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 import { Camera, Loader2, Trash2 } from "lucide-react";
 
 import {
   removePetPhotoAction,
-  uploadPetPhotoAction,
   type AttachmentActionState,
 } from "@/features/attachments/actions";
 import { prepareImageUpload } from "@/features/attachments/image-client";
@@ -26,19 +26,19 @@ export function PetPhotoPanel({
   petName: string;
   photo: PetPhotoView;
 }) {
-  const [uploadState, uploadAction, isUploading] = useActionState(
-    uploadPetPhotoAction,
-    initialState,
-  );
+  const router = useRouter();
   const [removeState, removeAction, isRemoving] = useActionState(
     removePetPhotoAction.bind(null, petId),
     initialState,
   );
   const [localError, setLocalError] = useState<string | null>(null);
+  const [localSuccess, setLocalSuccess] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLocalError(null);
+    setLocalSuccess(null);
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -58,13 +58,48 @@ export function PetPhotoPanel({
     try {
       const prepared = await prepareImageUpload(file);
       formData.set("file", new File([prepared.optimized], "photo.webp", { type: "image/webp" }));
-      formData.set("thumbFile", new File([prepared.thumb], "thumb.webp", { type: "image/webp" }));
+      if (prepared.thumbSize > 0) {
+        formData.set("thumbFile", new File([prepared.thumb], "thumb.webp", { type: "image/webp" }));
+      }
     } catch {
       setLocalError("Não foi possível processar a imagem.");
       return;
     }
 
-    uploadAction(formData);
+    setIsUploading(true);
+
+    try {
+      const response = await fetch(`/api/pets/${petId}/photo`, {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+      });
+
+      let payload: { error?: string; success?: string } = {};
+      try {
+        payload = (await response.json()) as { error?: string; success?: string };
+      } catch {
+        payload = {};
+      }
+
+      if (!response.ok) {
+        setLocalError(
+          payload.error ??
+            (response.status === 413
+              ? "Arquivo muito grande. Tente outra foto."
+              : "Não foi possível enviar a foto. Tente novamente."),
+        );
+        return;
+      }
+
+      setLocalSuccess(payload.success ?? "Foto do pet atualizada.");
+      form.reset();
+      router.refresh();
+    } catch {
+      setLocalError("Falha de conexão ao enviar a foto. Verifique a internet e tente novamente.");
+    } finally {
+      setIsUploading(false);
+    }
   }
 
   const initials = petName
@@ -91,25 +126,24 @@ export function PetPhotoPanel({
           </p>
         </div>
 
-        {uploadState.error || removeState.error || localError ? (
+        {localError || removeState.error ? (
           <FormFeedback
-            message={uploadState.error ?? removeState.error ?? localError ?? ""}
+            message={localError ?? removeState.error ?? ""}
             variant="error"
           />
         ) : null}
-        {uploadState.success || removeState.success ? (
+        {localSuccess || removeState.success ? (
           <FormFeedback
-            message={uploadState.success ?? removeState.success ?? ""}
+            message={localSuccess ?? removeState.success ?? ""}
             variant="success"
           />
         ) : null}
 
         <form onSubmit={handleUpload} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <input type="hidden" name="petId" value={petId} />
           <Input
             name="file"
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/*"
             className="min-h-11"
           />
           <Button type="submit" className="min-h-11" disabled={isUploading}>
