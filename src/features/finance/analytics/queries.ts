@@ -19,9 +19,7 @@ const ANALYTICS_ENTRY_SELECT = `
   created_at, paid_at, service_order_id, sale_id, customer_service_package_id,
   service_orders(
     appointments(service_name_snapshot)
-  ),
-  sales(sale_number),
-  customer_service_packages(package_name_snapshot)
+  )
 `;
 
 type EntryQueryRow = {
@@ -40,11 +38,6 @@ type EntryQueryRow = {
   service_orders:
     | { appointments: { service_name_snapshot: string } | { service_name_snapshot: string }[] | null }
     | { appointments: { service_name_snapshot: string } | { service_name_snapshot: string }[] | null }[]
-    | null;
-  sales: { sale_number: number } | { sale_number: number }[] | null;
-  customer_service_packages:
-    | { package_name_snapshot: string }
-    | { package_name_snapshot: string }[]
     | null;
 };
 
@@ -65,16 +58,14 @@ function getPeriodBounds(from: string, to: string, timeZone: string) {
 function mapEntryRow(row: EntryQueryRow): AnalyticsEntryRow {
   const serviceOrder = unwrapJoin(row.service_orders);
   const appointment = serviceOrder ? unwrapJoin(serviceOrder.appointments) : null;
-  const sale = unwrapJoin(row.sales);
-  const pkg = unwrapJoin(row.customer_service_packages);
 
   let detailLabel: string | null = null;
   if (appointment?.service_name_snapshot) {
     detailLabel = appointment.service_name_snapshot;
-  } else if (pkg?.package_name_snapshot) {
-    detailLabel = pkg.package_name_snapshot;
-  } else if (sale?.sale_number != null) {
-    detailLabel = `Venda #${sale.sale_number}`;
+  } else if (row.description.trim()) {
+    detailLabel = row.description;
+  } else if (row.category?.trim()) {
+    detailLabel = row.category;
   }
 
   return {
@@ -123,8 +114,8 @@ async function fetchAnalyticsEntries(
   ]);
 
   for (const row of [
-    ...((createdResult.data as EntryQueryRow[] | null) ?? []),
-    ...((paidResult.data as EntryQueryRow[] | null) ?? []),
+    ...((createdResult.error ? [] : (createdResult.data as EntryQueryRow[] | null)) ?? []),
+    ...((paidResult.error ? [] : (paidResult.data as EntryQueryRow[] | null)) ?? []),
   ]) {
     byId.set(row.id, mapEntryRow(row));
   }
@@ -137,11 +128,15 @@ async function fetchAnalyticsEntries(
     .gte("paid_at", startIso)
     .lt("paid_at", endIso);
 
+  if (paymentLinked.error) {
+    return [...byId.values()];
+  }
+
   const missingEntryIds = [...new Set((paymentLinked.data ?? []).map((row) => row.financial_entry_id))]
     .filter((entryId) => !byId.has(entryId));
 
   if (missingEntryIds.length > 0) {
-    const { data: extraRows } = await supabase
+    const { data: extraRows, error: extraError } = await supabase
       .from("financial_entries")
       .select(ANALYTICS_ENTRY_SELECT)
       .eq("company_id", companyId)
@@ -149,8 +144,10 @@ async function fetchAnalyticsEntries(
       .neq("status", "cancelled")
       .in("id", missingEntryIds);
 
-    for (const row of (extraRows as EntryQueryRow[] | null) ?? []) {
-      byId.set(row.id, mapEntryRow(row));
+    if (!extraError) {
+      for (const row of (extraRows as EntryQueryRow[] | null) ?? []) {
+        byId.set(row.id, mapEntryRow(row));
+      }
     }
   }
 

@@ -11,6 +11,7 @@ import {
   getTodayInTimezone,
   getWeekDates,
   localDateTimeToUtcIso,
+  resolveCompanyTimeZone,
 } from "@/lib/timezone";
 import type {
   FinancialEntryStatus,
@@ -193,7 +194,7 @@ export function formatPaidAt(iso: string | null, timeZone: string): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone,
+    timeZone: resolveCompanyTimeZone(timeZone),
   }).format(new Date(iso));
 }
 
