@@ -4,7 +4,11 @@ import type { PetChip } from "@/features/pets/types";
 
 export async function buildPetPhotoThumbMap(
   companyId: string,
-  pets: Array<{ id: string; photo_thumb_path?: string | null }>,
+  pets: Array<{
+    id: string;
+    photo_thumb_path?: string | null;
+    photo_storage_path?: string | null;
+  }>,
 ): Promise<Map<string, string | null>> {
   const unique = [...new Map(pets.map((pet) => [pet.id, pet])).values()];
 
@@ -13,6 +17,7 @@ export async function buildPetPhotoThumbMap(
     unique.map((pet) => ({
       id: pet.id,
       photo_thumb_path: pet.photo_thumb_path ?? null,
+      photo_storage_path: pet.photo_storage_path ?? null,
     })),
   );
 }

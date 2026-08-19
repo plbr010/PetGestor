@@ -42,7 +42,7 @@ type AppointmentRow = {
   cancellation_reason: string | null;
   created_at: string;
   updated_at: string;
-  pets: { id: string; name: string; photo_thumb_path?: string | null } | { id: string; name: string; photo_thumb_path?: string | null }[];
+  pets: { id: string; name: string; photo_thumb_path?: string | null; photo_storage_path?: string | null } | { id: string; name: string; photo_thumb_path?: string | null; photo_storage_path?: string | null }[];
   customers: { id: string; name: string; phone: string } | { id: string; name: string; phone: string }[];
   employees: { id: string; name: string } | { id: string; name: string }[];
 };
@@ -90,7 +90,11 @@ async function mapAppointmentRows(
     companyId,
     rows.map((row) => {
       const pet = unwrapJoin(row.pets);
-      return { id: pet.id, photo_thumb_path: pet.photo_thumb_path ?? null };
+      return {
+        id: pet.id,
+        photo_thumb_path: pet.photo_thumb_path ?? null,
+        photo_storage_path: pet.photo_storage_path ?? null,
+      };
     }),
   );
 
@@ -126,7 +130,7 @@ async function queryAppointmentsInRange(
        duration_minutes_snapshot, pet_size, notes, recurrence_id, recurrence_index,
        customer_id, pet_id, service_id, employee_id,
        cancellation_reason, created_at, updated_at,
-       pets!inner(id, name, photo_thumb_path), customers!inner(id, name, phone), employees!inner(id, name)`,
+       pets!inner(id, name, photo_thumb_path, photo_storage_path), customers!inner(id, name, phone), employees!inner(id, name)`,
     )
     .eq("company_id", companyId)
     .is("deleted_at", null)
@@ -194,7 +198,7 @@ export async function getAppointmentById(
        duration_minutes_snapshot, pet_size, notes, recurrence_id, recurrence_index,
        customer_id, pet_id, service_id, employee_id,
        cancellation_reason, created_at, updated_at,
-       pets!inner(id, name, photo_thumb_path), customers!inner(id, name, phone), employees!inner(id, name)`,
+       pets!inner(id, name, photo_thumb_path, photo_storage_path), customers!inner(id, name, phone), employees!inner(id, name)`,
     )
     .eq("company_id", companyId)
     .eq("id", appointmentId)
@@ -206,10 +210,12 @@ export async function getAppointmentById(
   }
 
   const mapped = mapAppointmentRow(data as AppointmentRow);
+  const petRow = unwrapJoin((data as AppointmentRow).pets);
   const thumbMap = await buildPetPhotoThumbMap(companyId, [
     {
       id: mapped.pet.id,
-      photo_thumb_path: unwrapJoin((data as AppointmentRow).pets).photo_thumb_path ?? null,
+      photo_thumb_path: petRow.photo_thumb_path ?? null,
+      photo_storage_path: petRow.photo_storage_path ?? null,
     },
   ]);
   const row = data as AppointmentRow;
@@ -288,7 +294,7 @@ export async function getUpcomingAppointments(
        duration_minutes_snapshot, pet_size, notes, recurrence_id, recurrence_index,
        customer_id, pet_id, service_id, employee_id,
        cancellation_reason, created_at, updated_at,
-       pets!inner(id, name, photo_thumb_path), customers!inner(id, name, phone), employees!inner(id, name)`,
+       pets!inner(id, name, photo_thumb_path, photo_storage_path), customers!inner(id, name, phone), employees!inner(id, name)`,
     )
     .eq("company_id", companyId)
     .is("deleted_at", null)

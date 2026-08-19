@@ -34,6 +34,11 @@ const ENTRY_SELECT = `
   )
 `;
 
+const ENTRY_SELECT_FLAT = `
+  id, entry_type, status, source_type, service_order_id, description, category,
+  amount_cents, due_date, paid_at, payment_method, notes, created_at, updated_at, cancelled_at
+`;
+
 type FinancialEntryRow = {
   id: string;
   entry_type: FinancialEntryType;
@@ -113,6 +118,105 @@ function getPeriodBounds(from: string, to: string, timeZone: string) {
   return { start, end };
 }
 
+type FinancialEntryQueryParams = {
+  companyId: string;
+  start?: string;
+  end?: string;
+  type?: FinancialEntryTypeFilter;
+  status?: FinancialEntryStatusFilter;
+  payment?: PaymentMethodFilter;
+  source?: FinancialSourceFilter;
+  drillCategory?: string;
+  search?: string;
+  rangeFrom?: number;
+  rangeTo?: number;
+  limit?: number;
+  orderByCreatedDesc?: boolean;
+  orderByDueDateAsc?: boolean;
+};
+
+function applyFinancialEntryFilters(
+  // Supabase builder types are too strict for a shared filter helper.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  builder: any,
+  params: FinancialEntryQueryParams,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any {
+  let next = builder.eq("company_id", params.companyId).is("deleted_at", null);
+
+  if (params.start && params.end) {
+    next = next.gte("created_at", params.start).lt("created_at", params.end);
+  }
+
+  if (params.type && params.type !== "all") {
+    next = next.eq("entry_type", params.type);
+  }
+
+  if (params.status && params.status !== "all") {
+    next = next.eq("status", params.status);
+  }
+
+  if (params.source && params.source !== "all") {
+    next = next.eq("source_type", params.source);
+  }
+
+  if (params.drillCategory) {
+    next = next.eq("entry_type", "expense").ilike("category", params.drillCategory);
+  }
+
+  if (params.payment && params.payment !== "all") {
+    next = next.eq("payment_method", params.payment);
+  }
+
+  if (params.search) {
+    next = next.or(`description.ilike.%${params.search}%,category.ilike.%${params.search}%`);
+  }
+
+  if (params.orderByCreatedDesc) {
+    next = next.order("created_at", { ascending: false });
+  }
+
+  if (params.orderByDueDateAsc) {
+    next = next.order("due_date", { ascending: true, nullsFirst: false });
+  }
+
+  if (params.rangeFrom !== undefined && params.rangeTo !== undefined) {
+    next = next.range(params.rangeFrom, params.rangeTo);
+  }
+
+  if (params.limit !== undefined) {
+    next = next.limit(params.limit);
+  }
+
+  return next;
+}
+
+async function queryFinancialEntries(
+  select: string,
+  params: FinancialEntryQueryParams,
+  options?: { count?: "exact" },
+) {
+  const supabase = await createSupabaseServerClient();
+  const builder = applyFinancialEntryFilters(
+    supabase.from("financial_entries").select(select, options),
+    params,
+  );
+
+  return builder;
+}
+
+async function queryFinancialEntriesWithFallback(
+  params: FinancialEntryQueryParams,
+  options?: { count?: "exact" },
+) {
+  const joined = await queryFinancialEntries(ENTRY_SELECT, params, options);
+  if (!joined.error) {
+    return joined;
+  }
+
+  return queryFinancialEntries(ENTRY_SELECT_FLAT, params, options);
+}
+
 type GetFinancialEntriesParams = {
   companyId: string;
   from: string;
@@ -148,46 +252,27 @@ export async function getFinancialEntries({
     return buildPaginatedResult([], 0, 1, pageSize);
   }
 
-  const supabase = await createSupabaseServerClient();
   const { start, end } = getPeriodBounds(from, to, timeZone);
   const search = sanitizeSearchTerm(query);
   const { from: rangeFrom, to: rangeTo } = getPaginationRange(page, pageSize);
 
-  let builder = supabase
-    .from("financial_entries")
-    .select(ENTRY_SELECT, { count: "exact" })
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .gte("created_at", start)
-    .lt("created_at", end)
-    .order("created_at", { ascending: false })
-    .range(rangeFrom, rangeTo);
-
-  if (type !== "all") {
-    builder = builder.eq("entry_type", type);
-  }
-
-  if (status !== "all") {
-    builder = builder.eq("status", status);
-  }
-
-  if (source !== "all") {
-    builder = builder.eq("source_type", source);
-  }
-
-  if (drillCategory) {
-    builder = builder.eq("entry_type", "expense").ilike("category", drillCategory);
-  }
-
-  if (payment !== "all") {
-    builder = builder.eq("payment_method", payment);
-  }
-
-  if (search) {
-    builder = builder.or(`description.ilike.%${search}%,category.ilike.%${search}%`);
-  }
-
-  const { data, error, count } = await builder;
+  const { data, error, count } = await queryFinancialEntriesWithFallback(
+    {
+      companyId,
+      start,
+      end,
+      type,
+      status,
+      payment,
+      source,
+      drillCategory,
+      search,
+      rangeFrom,
+      rangeTo,
+      orderByCreatedDesc: true,
+    },
+    { count: "exact" },
+  );
 
   if (error) {
     return buildPaginatedResult([], 0, page, pageSize);
@@ -208,16 +293,13 @@ async function fetchEntriesInPeriod(
   timeZone: string,
 ): Promise<FinancialEntryListItem[]> {
   noStore();
-  const supabase = await createSupabaseServerClient();
   const { start, end } = getPeriodBounds(from, to, timeZone);
 
-  const { data, error } = await supabase
-    .from("financial_entries")
-    .select(ENTRY_SELECT)
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .gte("created_at", start)
-    .lt("created_at", end);
+  const { data, error } = await queryFinancialEntriesWithFallback({
+    companyId,
+    start,
+    end,
+  });
 
   if (error) {
     return [];
@@ -263,17 +345,14 @@ export async function getMonthlyFinancialSummary(
 
 export async function getPendingReceivables(companyId: string, limit = 10) {
   noStore();
-  const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase
-    .from("financial_entries")
-    .select(ENTRY_SELECT)
-    .eq("company_id", companyId)
-    .eq("entry_type", "income")
-    .eq("status", "pending")
-    .is("deleted_at", null)
-    .order("due_date", { ascending: true, nullsFirst: false })
-    .limit(limit);
+  const { data, error } = await queryFinancialEntriesWithFallback({
+    companyId,
+    type: "income",
+    status: "pending",
+    limit,
+    orderByDueDateAsc: true,
+  });
 
   if (error) {
     return [];

@@ -188,14 +188,23 @@ export function formatPaidAt(iso: string | null, timeZone: string): string {
     return "—";
   }
 
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: resolveCompanyTimeZone(timeZone),
-  }).format(new Date(iso));
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  try {
+    return new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: resolveCompanyTimeZone(timeZone),
+    }).format(date);
+  } catch {
+    return "—";
+  }
 }
 
 export function localDateTimeToUtcIsoFromInput(

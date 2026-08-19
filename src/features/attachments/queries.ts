@@ -291,19 +291,29 @@ export async function getPetGalleryPage(
 
 export async function getPetPhotoThumbMap(
   companyId: string,
-  pets: Array<{ id: string; photo_thumb_path: string | null }>,
+  pets: Array<{
+    id: string;
+    photo_thumb_path?: string | null;
+    photo_storage_path?: string | null;
+  }>,
 ): Promise<Map<string, string | null>> {
   noStore();
-  const signedUrls = await createSignedStorageUrls(
-    companyId,
-    pets.map((pet) => pet.photo_thumb_path),
-  );
+  const paths = pets.flatMap((pet) =>
+    [pet.photo_thumb_path, pet.photo_storage_path].filter(Boolean),
+  ) as string[];
+  const signedUrls = await createSignedStorageUrls(companyId, paths);
 
   return new Map(
-    pets.map((pet) => [
-      pet.id,
-      pet.photo_thumb_path ? (signedUrls.get(pet.photo_thumb_path) ?? null) : null,
-    ]),
+    pets.map((pet) => {
+      const thumbUrl = pet.photo_thumb_path
+        ? (signedUrls.get(pet.photo_thumb_path) ?? null)
+        : null;
+      const mainUrl = pet.photo_storage_path
+        ? (signedUrls.get(pet.photo_storage_path) ?? null)
+        : null;
+
+      return [pet.id, thumbUrl ?? mainUrl];
+    }),
   );
 }
 

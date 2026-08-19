@@ -16,10 +16,7 @@ import type { FinancialSourceType } from "@/types/database.types";
 
 const ANALYTICS_ENTRY_SELECT = `
   id, entry_type, status, source_type, amount_cents, category, description,
-  created_at, paid_at, service_order_id, sale_id, customer_service_package_id,
-  service_orders(
-    appointments(service_name_snapshot)
-  )
+  created_at, paid_at, service_order_id, sale_id, customer_service_package_id
 `;
 
 type EntryQueryRow = {
@@ -29,25 +26,13 @@ type EntryQueryRow = {
   source_type: FinancialSourceType;
   amount_cents: number;
   category: string | null;
-  description: string;
+  description: string | null;
   created_at: string;
   paid_at: string | null;
   service_order_id: string | null;
   sale_id: string | null;
   customer_service_package_id: string | null;
-  service_orders:
-    | { appointments: { service_name_snapshot: string } | { service_name_snapshot: string }[] | null }
-    | { appointments: { service_name_snapshot: string } | { service_name_snapshot: string }[] | null }[]
-    | null;
 };
-
-function unwrapJoin<T>(value: T | T[] | null | undefined): T | null {
-  if (!value) {
-    return null;
-  }
-
-  return Array.isArray(value) ? (value[0] ?? null) : value;
-}
 
 function getPeriodBounds(from: string, to: string, timeZone: string) {
   const start = localDateTimeToUtcIso(from, "00:00", timeZone);
@@ -56,16 +41,14 @@ function getPeriodBounds(from: string, to: string, timeZone: string) {
 }
 
 function mapEntryRow(row: EntryQueryRow): AnalyticsEntryRow {
-  const serviceOrder = unwrapJoin(row.service_orders);
-  const appointment = serviceOrder ? unwrapJoin(serviceOrder.appointments) : null;
-
   let detailLabel: string | null = null;
-  if (appointment?.service_name_snapshot) {
-    detailLabel = appointment.service_name_snapshot;
-  } else if (row.description.trim()) {
-    detailLabel = row.description;
-  } else if (row.category?.trim()) {
-    detailLabel = row.category;
+  const description = (row.description ?? "").trim();
+  const category = row.category?.trim();
+
+  if (description) {
+    detailLabel = description;
+  } else if (category) {
+    detailLabel = category;
   }
 
   return {
@@ -75,7 +58,7 @@ function mapEntryRow(row: EntryQueryRow): AnalyticsEntryRow {
     sourceType: row.source_type,
     amountCents: row.amount_cents,
     category: row.category,
-    description: row.description,
+    description: row.description ?? "",
     createdAt: row.created_at,
     paidAt: row.paid_at,
     serviceOrderId: row.service_order_id,

@@ -40,7 +40,12 @@ export function FinanceEntryList({ entries, timeZone }: FinanceEntryListProps) {
           <tbody>
             {entries.map((entry) => (
               <tr key={entry.id} className="border-b">
-                <td className="px-3 py-3">{formatDisplayDate(entry.due_date ?? entry.created_at.slice(0, 10))}</td>
+                <td className="px-3 py-3">
+                  {formatDisplayDate(
+                    entry.due_date ??
+                      (entry.created_at ? entry.created_at.slice(0, 10) : null),
+                  )}
+                </td>
                 <td className="px-3 py-3">
                   <div>
                     <p className="font-medium">{entry.description}</p>

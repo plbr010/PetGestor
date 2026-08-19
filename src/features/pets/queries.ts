@@ -14,6 +14,7 @@ import {
 } from "@/lib/pagination";
 import type { PetSpecies } from "@/types/database.types";
 import { isValidUuid } from "@/lib/security/uuid";
+import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 
 type GetPetsParams = {
   companyId: string;
@@ -44,7 +45,7 @@ export async function getPets({
   let builder = supabase
     .from("pets")
     .select(
-      "id, name, species, breed, birth_date, created_at, customer_id, photo_thumb_path, customers!inner(name)",
+      "id, name, species, breed, birth_date, created_at, customer_id, photo_thumb_path, photo_storage_path, customers!inner(name)",
       { count: "exact" },
     )
     .eq("company_id", companyId)
@@ -68,7 +69,7 @@ export async function getPets({
 
   let { data, error, count } = await builder.range(from, to);
 
-  if (error?.code === "42703") {
+  if (error && isMissingSchemaError(error)) {
     let fallbackBuilder = supabase
       .from("pets")
       .select(
@@ -92,7 +93,12 @@ export async function getPets({
     }
 
     const fallback = await fallbackBuilder.range(from, to);
-    data = fallback.data?.map((row) => ({ ...row, photo_thumb_path: null })) ?? null;
+    data =
+      fallback.data?.map((row) => ({
+        ...row,
+        photo_thumb_path: null,
+        photo_storage_path: null,
+      })) ?? null;
     error = fallback.error;
     count = fallback.count;
   }
@@ -106,6 +112,7 @@ export async function getPets({
     (data ?? []).map((row) => ({
       id: row.id,
       photo_thumb_path: row.photo_thumb_path as string | null | undefined,
+      photo_storage_path: row.photo_storage_path as string | null | undefined,
     })),
   );
 
