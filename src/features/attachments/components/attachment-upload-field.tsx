@@ -94,7 +94,6 @@ export function AttachmentUploadField({
             name="file"
             type="file"
             accept={accept}
-            capture={accept.includes("image") ? "environment" : undefined}
             className="min-h-11"
             onChange={(event) => setFileName(event.target.files?.[0]?.name ?? null)}
           />

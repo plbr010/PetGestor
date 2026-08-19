@@ -110,7 +110,6 @@ export function PetPhotoPanel({
             name="file"
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            capture="environment"
             className="min-h-11"
           />
           <Button type="submit" className="min-h-11" disabled={isUploading}>
