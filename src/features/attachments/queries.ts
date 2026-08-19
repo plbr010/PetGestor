@@ -94,7 +94,7 @@ export async function getPetAttachments(
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error("Não foi possível carregar os anexos do pet.");
+    return [];
   }
 
   const signedUrls = await createSignedStorageUrls(
@@ -123,7 +123,7 @@ export async function getServiceOrderAttachments(
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error("Não foi possível carregar os anexos do atendimento.");
+    return [];
   }
 
   const signedUrls = await createSignedStorageUrls(

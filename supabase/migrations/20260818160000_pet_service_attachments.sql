@@ -19,11 +19,19 @@ ALTER TABLE public.pets
 -- (id já é PK; par com company_id segue padrão multi-tenant do projeto)
 -- ---------------------------------------------------------------------------
 
-ALTER TABLE public.pets
-  DROP CONSTRAINT IF EXISTS pets_id_company_id_key;
-
-ALTER TABLE public.pets
-  ADD CONSTRAINT pets_id_company_id_key UNIQUE (id, company_id);
+-- Só cria a constraint se ainda não existir (re-run seguro quando anexos já existem)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'pets_id_company_id_key'
+      AND conrelid = 'public.pets'::regclass
+  ) THEN
+    ALTER TABLE public.pets
+      ADD CONSTRAINT pets_id_company_id_key UNIQUE (id, company_id);
+  END IF;
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- pet_attachments

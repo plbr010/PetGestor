@@ -37,6 +37,78 @@ function normalizeTimeZone(timeZone: string): string {
   return isValidTimezone(timeZone) ? timeZone : DEFAULT_TIMEZONE;
 }
 
+const EMPTY_APPOINTMENTS_REPORT: AppointmentsReport = {
+  total: 0,
+  completed: 0,
+  waiting: 0,
+  cancelled: 0,
+  noShow: 0,
+  avgTicketCents: null,
+  avgDurationMinutes: null,
+  byDay: [],
+};
+
+const EMPTY_CUSTOMER_REPORT: CustomerReport = {
+  activeCount: 0,
+  newCount: 0,
+  recurringCount: 0,
+  topBySpend: [],
+  topByVisits: [],
+  inactiveCount: 0,
+  inactiveDays: 60,
+};
+
+const EMPTY_RETENTION_REPORT: RetentionReport = {
+  returnRate: 0,
+  totalWithAppointments: 0,
+  totalReturning: 0,
+  explanation: "Nenhum dado disponível neste período.",
+};
+
+const EMPTY_OCCUPANCY_REPORT: OccupancyReport = {
+  overallPercent: 0,
+  totalSlotsAvailable: 0,
+  totalSlotsUsed: 0,
+  byWeekday: [],
+  byHourBand: [],
+};
+
+const EMPTY_PDV_REPORT: PdvReport = {
+  totalSoldCents: 0,
+  salesCount: 0,
+  avgTicketCents: null,
+  grossProfitCents: 0,
+  topProducts: [],
+};
+
+const EMPTY_STOCK_REPORT: StockReport = {
+  estimatedValueCents: 0,
+  lowStockCount: 0,
+  outOfStockCount: 0,
+  topExits: [],
+  topEntries: [],
+  losses: [],
+  expiringSoon: [],
+};
+
+function emptyOverview(period: { from: string; to: string; preset: string }): ReportOverview {
+  return computeOverview(
+    {
+      revenueCents: 0,
+      incomeReceivedCents: 0,
+      expensePaidCents: 0,
+      appointmentsCount: 0,
+      salesCount: 0,
+      newCustomersCount: 0,
+      cancellationsCount: 0,
+      noShowCount: 0,
+    },
+    null,
+    period,
+    null,
+  );
+}
+
 export function getReportPeriodBounds(
   from: string,
   to: string,
@@ -54,55 +126,58 @@ export async function getReportOverview(
   timeZone: string,
 ): Promise<ReportOverview> {
   noStore();
-  const supabase = await createSupabaseServerClient();
   const safeTimeZone = normalizeTimeZone(timeZone);
-  const period = resolveReportPeriod(params, safeTimeZone);
-  const { utcFrom, utcTo } = getReportPeriodBounds(period.from, period.to, safeTimeZone);
-  const prev = getPreviousPeriod(period.from, period.to);
-  const { utcFrom: prevUtcFrom, utcTo: prevUtcTo } = getReportPeriodBounds(prev.from, prev.to, safeTimeZone);
-
-  async function sumPaymentsForEntryType(
-    entryType: "income" | "expense",
-    paidStartIso: string,
-    paidEndIso: string,
-  ): Promise<number> {
-    // Evita JOINs frágeis em selects do Supabase (que podem falhar em runtime).
-    // Se algo der erro, retornamos 0 para não quebrar a tela de relatórios.
-    try {
-      const { data: entries, error: entriesError } = await supabase
-        .from("financial_entries")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("entry_type", entryType)
-        .is("deleted_at", null)
-        .neq("status", "cancelled")
-        .not("paid_at", "is", null)
-        .gte("paid_at", paidStartIso)
-        .lte("paid_at", paidEndIso);
-
-      if (entriesError) return 0;
-
-      const entryIds = (entries ?? []).map((e) => e.id);
-      if (entryIds.length === 0) return 0;
-
-      const { data: payments, error: paymentsError } = await supabase
-        .from("financial_payments")
-        .select("amount_cents")
-        .eq("company_id", companyId)
-        .is("cancelled_at", null)
-        .in("financial_entry_id", entryIds)
-        .gte("paid_at", paidStartIso)
-        .lte("paid_at", paidEndIso);
-
-      if (paymentsError) return 0;
-
-      return (payments ?? []).reduce((s, r) => s + (r.amount_cents ?? 0), 0);
-    } catch {
-      return 0;
-    }
-  }
 
   try {
+    const period = resolveReportPeriod(params, safeTimeZone);
+    const supabase = await createSupabaseServerClient();
+    const { utcFrom, utcTo } = getReportPeriodBounds(period.from, period.to, safeTimeZone);
+    const prev = getPreviousPeriod(period.from, period.to);
+    const { utcFrom: prevUtcFrom, utcTo: prevUtcTo } = getReportPeriodBounds(
+      prev.from,
+      prev.to,
+      safeTimeZone,
+    );
+
+    async function sumPaymentsForEntryType(
+      entryType: "income" | "expense",
+      paidStartIso: string,
+      paidEndIso: string,
+    ): Promise<number> {
+      try {
+        const { data: entries, error: entriesError } = await supabase
+          .from("financial_entries")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("entry_type", entryType)
+          .is("deleted_at", null)
+          .neq("status", "cancelled")
+          .not("paid_at", "is", null)
+          .gte("paid_at", paidStartIso)
+          .lte("paid_at", paidEndIso);
+
+        if (entriesError) return 0;
+
+        const entryIds = (entries ?? []).map((e) => e.id);
+        if (entryIds.length === 0) return 0;
+
+        const { data: payments, error: paymentsError } = await supabase
+          .from("financial_payments")
+          .select("amount_cents")
+          .eq("company_id", companyId)
+          .is("cancelled_at", null)
+          .in("financial_entry_id", entryIds)
+          .gte("paid_at", paidStartIso)
+          .lte("paid_at", paidEndIso);
+
+        if (paymentsError) return 0;
+
+        return (payments ?? []).reduce((s, r) => s + (r.amount_cents ?? 0), 0);
+      } catch {
+        return 0;
+      }
+    }
+
     const [
       appointments,
       prevAppointments,
@@ -191,23 +266,8 @@ export async function getReportOverview(
 
     return computeOverview(current, prevData, period, { ...prev, preset: period.preset });
   } catch {
-    // Se qualquer consulta/transform der erro, não quebrar a UI inteira:
-    // renderizamos um "overview" zerado para o usuário conseguir continuar.
-    return computeOverview(
-      {
-        revenueCents: 0,
-        incomeReceivedCents: 0,
-        expensePaidCents: 0,
-        appointmentsCount: 0,
-        salesCount: 0,
-        newCustomersCount: 0,
-        cancellationsCount: 0,
-        noShowCount: 0,
-      },
-      null,
-      period,
-      null,
-    );
+    const period = resolveReportPeriod(params, safeTimeZone);
+    return emptyOverview(period);
   }
 }
 
@@ -454,9 +514,13 @@ export async function getAppointmentsReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<AppointmentsReport> {
-  const safeTimeZone = normalizeTimeZone(timeZone);
-  const data = await getAppointmentsReportData(companyId, params.from, params.to, safeTimeZone);
-  return computeAppointmentsReport(data, safeTimeZone);
+  try {
+    const safeTimeZone = normalizeTimeZone(timeZone);
+    const data = await getAppointmentsReportData(companyId, params.from, params.to, safeTimeZone);
+    return computeAppointmentsReport(data, safeTimeZone);
+  } catch {
+    return EMPTY_APPOINTMENTS_REPORT;
+  }
 }
 
 export async function getServiceRankings(
@@ -464,9 +528,13 @@ export async function getServiceRankings(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<ServiceRanking[]> {
-  const safeTimeZone = normalizeTimeZone(timeZone);
-  const data = await getAppointmentsReportData(companyId, params.from, params.to, safeTimeZone);
-  return computeServiceRanking(data);
+  try {
+    const safeTimeZone = normalizeTimeZone(timeZone);
+    const data = await getAppointmentsReportData(companyId, params.from, params.to, safeTimeZone);
+    return computeServiceRanking(data);
+  } catch {
+    return [];
+  }
 }
 
 export async function getCustomerReport(
@@ -474,9 +542,18 @@ export async function getCustomerReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<CustomerReport> {
-  const safeTimeZone = normalizeTimeZone(timeZone);
-  const { appointments, customers } = await getCustomersReportData(companyId, params.from, params.to, safeTimeZone);
-  return computeCustomerReport(appointments, customers);
+  try {
+    const safeTimeZone = normalizeTimeZone(timeZone);
+    const { appointments, customers } = await getCustomersReportData(
+      companyId,
+      params.from,
+      params.to,
+      safeTimeZone,
+    );
+    return computeCustomerReport(appointments, customers);
+  } catch {
+    return EMPTY_CUSTOMER_REPORT;
+  }
 }
 
 export async function getRetentionReport(
@@ -484,9 +561,13 @@ export async function getRetentionReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<RetentionReport> {
-  const safeTimeZone = normalizeTimeZone(timeZone);
-  const data = await getAppointmentsReportData(companyId, params.from, params.to, safeTimeZone);
-  return computeRetentionReport(data);
+  try {
+    const safeTimeZone = normalizeTimeZone(timeZone);
+    const data = await getAppointmentsReportData(companyId, params.from, params.to, safeTimeZone);
+    return computeRetentionReport(data);
+  } catch {
+    return EMPTY_RETENTION_REPORT;
+  }
 }
 
 export async function getEmployeePerformance(
@@ -494,10 +575,19 @@ export async function getEmployeePerformance(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<EmployeePerformance[]> {
-  const safeTimeZone = normalizeTimeZone(timeZone);
-  const { appointments, employees } = await getEmployeesReportData(companyId, params.from, params.to, safeTimeZone);
-  const dayCount = periodDayCount(params.from, params.to);
-  return computeEmployeePerformance(appointments, employees, dayCount);
+  try {
+    const safeTimeZone = normalizeTimeZone(timeZone);
+    const { appointments, employees } = await getEmployeesReportData(
+      companyId,
+      params.from,
+      params.to,
+      safeTimeZone,
+    );
+    const dayCount = periodDayCount(params.from, params.to);
+    return computeEmployeePerformance(appointments, employees, dayCount);
+  } catch {
+    return [];
+  }
 }
 
 export async function getOccupancyReport(
@@ -505,10 +595,19 @@ export async function getOccupancyReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<OccupancyReport> {
-  const safeTimeZone = normalizeTimeZone(timeZone);
-  const { appointments, workingHours } = await getEmployeesReportData(companyId, params.from, params.to, safeTimeZone);
-  const dayCount = periodDayCount(params.from, params.to);
-  return computeOccupancy(appointments, workingHours, dayCount, safeTimeZone);
+  try {
+    const safeTimeZone = normalizeTimeZone(timeZone);
+    const { appointments, workingHours } = await getEmployeesReportData(
+      companyId,
+      params.from,
+      params.to,
+      safeTimeZone,
+    );
+    const dayCount = periodDayCount(params.from, params.to);
+    return computeOccupancy(appointments, workingHours, dayCount, safeTimeZone);
+  } catch {
+    return EMPTY_OCCUPANCY_REPORT;
+  }
 }
 
 export async function getPdvReport(
@@ -516,16 +615,20 @@ export async function getPdvReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<PdvReport> {
-  const safeTimeZone = normalizeTimeZone(timeZone);
-  const { sales, saleItems } = await getPdvReportData(companyId, params.from, params.to, safeTimeZone);
-  const mappedItems = saleItems.map((item) => ({
-    product_name_snapshot: item.product_name_snapshot,
-    unit_price_cents: item.unit_price_cents,
-    quantity: item.quantity,
-    total_cents: item.total_cents,
-    cost_price_cents_snapshot: item.cost_price_cents_snapshot,
-  }));
-  return computePdvReport(sales, mappedItems);
+  try {
+    const safeTimeZone = normalizeTimeZone(timeZone);
+    const { sales, saleItems } = await getPdvReportData(companyId, params.from, params.to, safeTimeZone);
+    const mappedItems = saleItems.map((item) => ({
+      product_name_snapshot: item.product_name_snapshot,
+      unit_price_cents: item.unit_price_cents,
+      quantity: item.quantity,
+      total_cents: item.total_cents,
+      cost_price_cents_snapshot: item.cost_price_cents_snapshot,
+    }));
+    return computePdvReport(sales, mappedItems);
+  } catch {
+    return EMPTY_PDV_REPORT;
+  }
 }
 
 export async function getStockReport(
@@ -533,7 +636,11 @@ export async function getStockReport(
   params: { from: string; to: string },
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<StockReport> {
-  const safeTimeZone = normalizeTimeZone(timeZone);
-  const data = await getStockReportData(companyId, params.from, params.to, safeTimeZone);
-  return computeStockReport(data.products, data.movements, data.batches);
+  try {
+    const safeTimeZone = normalizeTimeZone(timeZone);
+    const data = await getStockReportData(companyId, params.from, params.to, safeTimeZone);
+    return computeStockReport(data.products, data.movements, data.batches);
+  } catch {
+    return EMPTY_STOCK_REPORT;
+  }
 }

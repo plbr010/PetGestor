@@ -78,6 +78,8 @@ export async function uploadPetPhotoAction(
   formData: FormData,
 ): Promise<AttachmentActionState> {
   void prevState;
+
+  try {
   const context = await requireCompanyContext();
   const parsed = parsePetPhotoUploadForm(formData);
 
@@ -101,13 +103,30 @@ export async function uploadPetPhotoAction(
   const petId = parsed.data.petId;
   const supabase = await createSupabaseServerClient();
 
-  const { data: pet } = await supabase
+  const petWithPhoto = await supabase
     .from("pets")
     .select("id, photo_storage_path, photo_thumb_path")
     .eq("company_id", companyId)
     .eq("id", petId)
     .is("deleted_at", null)
     .maybeSingle();
+
+  const pet = petWithPhoto.data;
+  if (petWithPhoto.error) {
+    const petFallback = await supabase
+      .from("pets")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("id", petId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (petFallback.error || !petFallback.data) {
+      return { error: GENERIC_NOT_FOUND_MESSAGE };
+    }
+
+    return { error: mapAttachmentValidationError("attachments_migration_required") };
+  }
 
   if (!pet) {
     return { error: GENERIC_NOT_FOUND_MESSAGE };
@@ -143,6 +162,9 @@ export async function uploadPetPhotoAction(
 
   if (error) {
     await removeFromCompanyStorage([paths.filePath, paths.thumbPath]);
+    if (error.code === "42703" || error.message?.includes("photo_storage_path")) {
+      return { error: mapAttachmentValidationError("attachments_migration_required") };
+    }
     return { error: mapAttachmentValidationError("storage_upload_failed") };
   }
 
@@ -152,6 +174,9 @@ export async function uploadPetPhotoAction(
 
   revalidatePetPaths(petId);
   return { success: "Foto do pet atualizada." };
+  } catch {
+    return { error: mapAttachmentValidationError("storage_upload_failed") };
+  }
 }
 
 export async function removePetPhotoAction(
