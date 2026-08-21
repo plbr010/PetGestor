@@ -80,6 +80,14 @@ export function LoginForm() {
           >
             Testar grátis
           </Link>
+          {" · "}
+          Foi convidado?{" "}
+          <Link
+            href="/cadastro?modo=funcionario"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Cadastro de funcionário
+          </Link>
         </p>
       </CardFooter>
     </Card>

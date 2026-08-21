@@ -1,22 +1,26 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { tryAcceptPendingInvite } from "@/features/employees/access/accept-invite";
+import { peekPendingInvite } from "@/features/employees/access/accept-invite";
 import { requireAuthenticatedWithoutCompany } from "@/lib/auth/guards";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { OnboardingForm } from "@/components/auth/onboarding-form";
+import { redirect } from "next/navigation";
 
 export default async function OnboardingPage() {
   await requireAuthenticatedWithoutCompany();
 
-  const inviteResult = await tryAcceptPendingInvite();
+  const pending = await peekPendingInvite();
 
-  if (inviteResult.accepted) {
-    const { redirect } = await import("next/navigation");
-    redirect("/dashboard?convite-aceito=1");
+  if (pending.found) {
+    redirect("/convite");
   }
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getUser();
   const metadata = data.user?.user_metadata ?? {};
+
+  if (metadata.signup_mode === "staff") {
+    redirect("/convite");
+  }
 
   const defaultFullName =
     typeof metadata.full_name === "string" ? metadata.full_name : "";

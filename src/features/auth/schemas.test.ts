@@ -6,6 +6,7 @@ import {
   onboardingSchema,
   passwordRecoverySchema,
   signUpSchema,
+  staffSignUpSchema,
 } from "@/features/auth/schemas";
 
 const validPhone = "(32) 99999-9999";
@@ -95,6 +96,34 @@ describe("signUpSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("staffSignUpSchema", () => {
+  it("aceita cadastro de funcionário sem empresa", () => {
+    const result = staffSignUpSchema.safeParse({
+      fullName: "João Funcionário",
+      email: "JOAO@EXAMPLE.COM",
+      password: "senha1234",
+      confirmPassword: "senha1234",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.email).toBe("joao@example.com");
+    }
+  });
+
+  it("não exige companyName nem telefone", () => {
+    const result = staffSignUpSchema.safeParse({
+      fullName: "João",
+      email: "joao@example.com",
+      password: "senha1234",
+      confirmPassword: "senha1234",
+      companyName: undefined,
+    });
+
+    expect(result.success).toBe(true);
   });
 });
 

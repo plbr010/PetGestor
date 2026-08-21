@@ -1,3 +1,19 @@
+## [0.29.0] — 2026-08-21
+
+### Adicionado — Fluxo completo de convite e login de funcionários
+
+- Cadastro dedicado de funcionário (`/cadastro?modo=funcionario`) sem criar empresa
+- Tela `/convite` com “Você foi convidado” + botão Aceitar
+- RPC `peek_pending_invite` e hardening de `accept_pending_invite` / `grant_employee_access`
+- Status claros na ficha: Ativo / Pendente / Expirado / Removido / Sem acesso
+- Mensagem honesta: envio automático de e-mail ainda não configurado
+- Proteção contra sobrescrever vínculo employee↔user de outra conta
+- Onboarding de owner permanece separado do fluxo staff
+
+### Migration
+
+- `20260821140000_invite_flow_hardening.sql` (aplicar no Supabase)
+
 ## [0.28.0] — 2026-08-19
 
 ### Adicionado — Relatórios gerenciais avançados

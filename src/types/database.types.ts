@@ -2386,6 +2386,10 @@ export type Database = {
         Args: Record<string, never>;
         Returns: Json;
       };
+      peek_pending_invite: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
       update_appointment: {
         Args: {
           p_appointment_id: string;

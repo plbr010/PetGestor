@@ -77,48 +77,68 @@ async function loadMembership(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
 ): Promise<CompanyMembership | null> {
-  const withPermissions = await supabase
+  // Prefere membership ativa mais recentemente atualizada (ex.: convite aceito agora).
+  const preferred = await supabase
     .from("company_members")
     .select(
       "role, company_id, access_profile, permissions, access_revoked_at, employee_id, own_schedule_only",
     )
     .eq("user_id", userId)
-    .order("created_at", { ascending: true })
+    .is("access_revoked_at", null)
+    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  let memberRow = withPermissions.data;
-  let memberError = withPermissions.error;
+  let memberRow = preferred.data;
+  let memberError = preferred.error;
 
-  if (memberError) {
-    logMembershipDiagnostic(
-      "company_members_select_permissions",
-      memberError.code,
-      memberError.message,
-    );
+  if (memberError || !memberRow) {
+    if (memberError) {
+      logMembershipDiagnostic(
+        "company_members_select_permissions",
+        memberError.code,
+        memberError.message,
+      );
+    }
 
-    const fallback = await supabase
+    const byCreated = await supabase
       .from("company_members")
-      .select("role, company_id")
+      .select(
+        "role, company_id, access_profile, permissions, access_revoked_at, employee_id, own_schedule_only",
+      )
       .eq("user_id", userId)
+      .is("access_revoked_at", null)
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
 
-    memberRow = fallback.data
-      ? {
-          ...fallback.data,
-          access_profile:
-            fallback.data.role === "owner" || fallback.data.role === "admin"
-              ? "owner_admin"
-              : "reception",
-          permissions: [],
-          access_revoked_at: null,
-          employee_id: null,
-          own_schedule_only: false,
-        }
-      : null;
-    memberError = fallback.error;
+    if (!byCreated.error && byCreated.data) {
+      memberRow = byCreated.data;
+      memberError = null;
+    } else {
+      const minimal = await supabase
+        .from("company_members")
+        .select("role, company_id")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      memberRow = minimal.data
+        ? {
+            ...minimal.data,
+            access_profile:
+              minimal.data.role === "owner" || minimal.data.role === "admin"
+                ? "owner_admin"
+                : "reception",
+            permissions: [],
+            access_revoked_at: null,
+            employee_id: null,
+            own_schedule_only: false,
+          }
+        : null;
+      memberError = byCreated.error ?? minimal.error;
+    }
   }
 
   if (memberError) {
@@ -127,6 +147,11 @@ async function loadMembership(
   }
 
   if (!memberRow) {
+    return null;
+  }
+
+  // Membership revogada não conta como acesso ativo
+  if (memberRow.access_revoked_at) {
     return null;
   }
 

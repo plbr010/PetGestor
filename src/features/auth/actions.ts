@@ -9,8 +9,12 @@ import {
   onboardingSchema,
   passwordRecoverySchema,
   signUpSchema,
+  staffSignUpSchema,
 } from "@/features/auth/schemas";
-import { tryAcceptPendingInvite } from "@/features/employees/access/accept-invite";
+import {
+  peekPendingInvite,
+  resolveAuthLandingPath,
+} from "@/features/employees/access/accept-invite";
 import { getSiteUrl } from "@/lib/auth/get-site-url";
 import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -59,6 +63,12 @@ export async function signUpAction(
   _prevState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  const mode = formData.get("mode")?.toString() === "staff" ? "staff" : "owner";
+
+  if (mode === "staff") {
+    return signUpStaffAction(_prevState, formData);
+  }
+
   const parsed = signUpSchema.safeParse({
     fullName: formData.get("fullName"),
     companyName: formData.get("companyName"),
@@ -84,6 +94,7 @@ export async function signUpAction(
         full_name: parsed.data.fullName,
         company_name: parsed.data.companyName,
         phone: parsed.data.phone,
+        signup_mode: "owner",
       },
     },
   });
@@ -99,11 +110,11 @@ export async function signUpAction(
   }
 
   if (data.session) {
-    const inviteResult = await tryAcceptPendingInvite();
+    const pending = await peekPendingInvite();
 
-    if (inviteResult.accepted) {
+    if (pending.found) {
       revalidatePath("/", "layout");
-      redirect("/dashboard");
+      redirect("/convite");
     }
 
     const onboardingResult = await runCompleteOnboarding(
@@ -121,6 +132,57 @@ export async function signUpAction(
   }
 
   redirect("/verifique-email");
+}
+
+async function signUpStaffAction(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const parsed = staffSignUpSchema.safeParse({
+    fullName: formData.get("fullName"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const siteUrl = await getSiteUrl();
+
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    options: {
+      emailRedirectTo: `${siteUrl}/auth/confirm?next=/convite`,
+      data: {
+        full_name: parsed.data.fullName,
+        signup_mode: "staff",
+      },
+    },
+  });
+
+  if (error) {
+    return mapSignUpError(error.message);
+  }
+
+  if (data.session) {
+    const pending = await peekPendingInvite();
+
+    if (!pending.found) {
+      return {
+        error:
+          "Não encontramos um convite pendente para este e-mail. Confira com o administrador ou peça um novo convite.",
+      };
+    }
+
+    revalidatePath("/", "layout");
+    redirect("/convite");
+  }
+
+  redirect("/verifique-email?modo=funcionario");
 }
 
 export async function signInAction(
@@ -148,7 +210,7 @@ export async function signInAction(
   }
 
   revalidatePath("/", "layout");
-  redirect(await resolvePostLoginPath());
+  redirect(await resolveAuthLandingPath());
 }
 
 export async function signOutAction(): Promise<void> {
@@ -307,28 +369,4 @@ export async function runCompleteOnboarding(
   }
 
   return { ok: true, companyId };
-}
-
-async function resolvePostLoginPath(): Promise<string> {
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getClaims();
-
-  if (!data?.claims?.sub) {
-    return "/entrar";
-  }
-
-  const inviteResult = await tryAcceptPendingInvite();
-
-  if (inviteResult.accepted) {
-    return "/dashboard?convite-aceito=1";
-  }
-
-  const { data: membership } = await supabase
-    .from("company_members")
-    .select("company_id")
-    .eq("user_id", data.claims.sub)
-    .limit(1)
-    .maybeSingle();
-
-  return membership ? "/dashboard" : "/onboarding";
 }

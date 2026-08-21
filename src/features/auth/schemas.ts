@@ -50,6 +50,19 @@ export const signUpSchema = z
     path: ["confirmPassword"],
   });
 
+/** Cadastro de funcionário convidado — sem criar empresa. */
+export const staffSignUpSchema = z
+  .object({
+    fullName: personNameField,
+    email: emailField,
+    password: passwordField,
+    confirmPassword: z.string({ error: "Confirme sua senha." }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "As senhas não coincidem.",
+    path: ["confirmPassword"],
+  });
+
 export const loginSchema = z.object({
   email: emailField,
   password: z
@@ -79,6 +92,7 @@ export const onboardingSchema = z.object({
 });
 
 export type SignUpInput = z.infer<typeof signUpSchema>;
+export type StaffSignUpInput = z.infer<typeof staffSignUpSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PasswordRecoveryInput = z.infer<typeof passwordRecoverySchema>;
 export type NewPasswordInput = z.infer<typeof newPasswordSchema>;

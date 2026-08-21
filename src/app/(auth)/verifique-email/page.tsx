@@ -12,7 +12,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function VerifyEmailPage() {
+type VerifyEmailPageProps = {
+  searchParams: Promise<{ modo?: string }>;
+};
+
+export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
+  const params = await searchParams;
+  const isStaff = params.modo === "funcionario";
+
   return (
     <AuthShell>
       <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
@@ -22,8 +29,9 @@ export default function VerifyEmailPage() {
           </div>
           <CardTitle className="text-2xl">Verifique seu e-mail</CardTitle>
           <CardDescription>
-            Enviamos um link de confirmação para o endereço informado no cadastro. Abra
-            o e-mail e clique no link para ativar sua conta.
+            {isStaff
+              ? "Enviamos um link de confirmação. Depois de confirmar, você verá o convite da empresa — nenhuma empresa nova será criada."
+              : "Enviamos um link de confirmação para o endereço informado no cadastro. Abra o e-mail e clique no link para ativar sua conta."}
           </CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
@@ -34,13 +42,27 @@ export default function VerifyEmailPage() {
             Voltar para o login
           </ButtonLink>
           <p className="text-center text-sm text-muted-foreground">
-            Cadastrou-se por engano?{" "}
-            <Link
-              href="/cadastro"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Criar outra conta
-            </Link>
+            {isStaff ? (
+              <>
+                Já confirmou?{" "}
+                <Link
+                  href="/entrar"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Entrar e aceitar o convite
+                </Link>
+              </>
+            ) : (
+              <>
+                Cadastrou-se por engano?{" "}
+                <Link
+                  href="/cadastro"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Criar outra conta
+                </Link>
+              </>
+            )}
           </p>
         </CardFooter>
       </Card>
