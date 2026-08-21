@@ -1,3 +1,15 @@
+## [0.29.5] — 2026-08-21
+
+### Corrigido — Gmail que já tem conta no PetGestor
+
+- `lookup_pending_invite_by_email` retorna `account_exists_use_login` quando a conta Auth já está confirmada
+- Cadastro de funcionário mostra **Entrar / Recuperar senha** (não pede convite novo)
+- Script `docs/sql/CONTA-JA-EXISTE-genyvitalflex.sql` vincula o funcionário à conta existente
+
+### Migration
+
+- `20260821193000_lookup_account_exists_reason.sql`
+
 ## [0.29.4] — 2026-08-21
 
 ### Operação — SQL único para destravar convite
