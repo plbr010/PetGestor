@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { runCompleteOnboarding } from "@/features/auth/actions";
-import { tryAcceptPendingInvite } from "@/features/employees/access/accept-invite";
+import { peekPendingInvite } from "@/features/employees/access/accept-invite";
 import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
 import { isValidBrazilianPhone, toE164Brazil } from "@/lib/phone";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -28,8 +28,20 @@ export async function GET(request: Request) {
     redirect("/auth/erro?motivo=confirmacao-falhou");
   }
 
+  const pending = await peekPendingInvite();
+
+  if (pending.found) {
+    redirect("/convite");
+  }
+
   const { data: userData } = await supabase.auth.getUser();
   const metadata = userData.user?.user_metadata ?? {};
+  const signupMode = metadata.signup_mode === "staff" ? "staff" : "owner";
+
+  if (signupMode === "staff") {
+    redirect("/convite");
+  }
+
   const fullName =
     typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
   const companyName =
@@ -39,26 +51,14 @@ export async function GET(request: Request) {
     rawPhone && isValidBrazilianPhone(rawPhone) ? toE164Brazil(rawPhone) : "";
 
   if (fullName && companyName && phone) {
-    const inviteResult = await tryAcceptPendingInvite();
-
-    if (inviteResult.accepted) {
-      redirect("/dashboard?convite-aceito=1");
-    }
-
     const onboardingResult = await runCompleteOnboarding(fullName, companyName, phone);
 
     if (!onboardingResult.ok) {
       redirect("/onboarding");
     }
-  } else {
-    const inviteResult = await tryAcceptPendingInvite();
 
-    if (inviteResult.accepted) {
-      redirect("/dashboard?convite-aceito=1");
-    }
-
-    redirect("/onboarding");
+    redirect(next === "/convite" ? "/dashboard" : next);
   }
 
-  redirect(next);
+  redirect("/onboarding");
 }

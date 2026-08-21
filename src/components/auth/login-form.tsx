@@ -80,6 +80,14 @@ export function LoginForm() {
           >
             Testar grátis
           </Link>
+          {" · "}
+          Foi convidado?{" "}
+          <Link
+            href="/cadastro"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Criar conta
+          </Link>
         </p>
       </CardFooter>
     </Card>

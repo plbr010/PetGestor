@@ -1,3 +1,33 @@
+## [0.29.1] — 2026-08-21
+
+### Adicionado — Escolha inicial no cadastro (dono vs funcionário)
+
+- Tela “Como você vai usar o PetGestor?” com dois cards
+- Fluxo funcionário: e-mail → lookup seguro de convite → criar conta
+- RPC `lookup_pending_invite_by_email` (só nome da empresa + perfil; sem company_id)
+- Mensagens claras quando não há convite
+- Owner permanece no fluxo atual de criação de empresa
+
+### Migration
+
+- `20260821150000_lookup_pending_invite_by_email.sql`
+
+## [0.29.0] — 2026-08-21
+
+### Adicionado — Fluxo completo de convite e login de funcionários
+
+- Cadastro dedicado de funcionário (`/cadastro?modo=funcionario`) sem criar empresa
+- Tela `/convite` com “Você foi convidado” + botão Aceitar
+- RPC `peek_pending_invite` e hardening de `accept_pending_invite` / `grant_employee_access`
+- Status claros na ficha: Ativo / Pendente / Expirado / Removido / Sem acesso
+- Mensagem honesta: envio automático de e-mail ainda não configurado
+- Proteção contra sobrescrever vínculo employee↔user de outra conta
+- Onboarding de owner permanece separado do fluxo staff
+
+### Migration
+
+- `20260821140000_invite_flow_hardening.sql` (aplicar no Supabase)
+
 ## [0.28.0] — 2026-08-19
 
 ### Adicionado — Relatórios gerenciais avançados

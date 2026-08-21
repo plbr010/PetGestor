@@ -253,3 +253,58 @@ describe("invite flow: protected routes block invited employee", () => {
     }
   });
 });
+
+describe("invite acceptance reasons (UX)", () => {
+  it("mensagens de expiração e cancelamento são claras", async () => {
+    const { mapInviteAcceptReason } = await import("@/features/employees/access/invite-messages");
+
+    expect(mapInviteAcceptReason("invite_expired")).toContain("expirou");
+    expect(mapInviteAcceptReason("invite_revoked")).toContain("cancelado");
+    expect(mapInviteAcceptReason("employee_already_linked")).toContain("vinculado");
+    expect(mapInviteAcceptReason("no_pending_invite")).toContain("convite");
+  });
+
+  it("recepção recebe exatamente as permissões do perfil (K)", () => {
+    const reception = membership({
+      role: "staff",
+      accessProfile: "reception",
+      permissions: getProfilePermissions("reception"),
+    });
+
+    expect(hasPermission(reception, "customers.view")).toBe(true);
+    expect(hasPermission(reception, "pets.create")).toBe(true);
+    expect(hasPermission(reception, "appointments.create")).toBe(true);
+    expect(hasPermission(reception, "service_orders.view")).toBe(true);
+    expect(hasPermission(reception, "finance.view")).toBe(false);
+    expect(hasPermission(reception, "subscription.manage")).toBe(false);
+    expect(hasPermission(reception, "settings.manage")).toBe(false);
+  });
+
+  it("remover acesso zera permissões efetivas (I)", () => {
+    const revoked = membership({
+      role: "staff",
+      accessProfile: "reception",
+      permissions: getProfilePermissions("reception"),
+      accessRevokedAt: "2026-08-01T00:00:00.000Z",
+    });
+
+    expect(resolveEffectivePermissions(revoked).size).toBe(0);
+  });
+
+  it("memberships de empresas diferentes são independentes (H)", () => {
+    const shopA = membership({
+      role: "staff",
+      accessProfile: "manager",
+      permissions: getProfilePermissions("manager"),
+    });
+    const shopB = membership({
+      role: "staff",
+      accessProfile: "reception",
+      permissions: getProfilePermissions("reception"),
+    });
+
+    expect(hasPermission(shopA, "employees.manage")).toBe(true);
+    expect(hasPermission(shopB, "employees.manage")).toBe(false);
+    expect(hasPermission(shopB, "customers.create")).toBe(true);
+  });
+});

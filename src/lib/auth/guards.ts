@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentCompanyMembership } from "@/features/companies/queries";
-import { tryAcceptPendingInvite } from "@/features/employees/access/accept-invite";
+import { peekPendingInvite } from "@/features/employees/access/accept-invite";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 
 export async function redirectIfAuthenticated(options?: {
@@ -16,13 +16,17 @@ export async function redirectIfAuthenticated(options?: {
   const membership = await getCurrentCompanyMembership(user.id);
 
   if (membership) {
+    const pending = await peekPendingInvite();
+    if (pending.found) {
+      redirect("/convite");
+    }
     redirect("/dashboard");
   }
 
-  const inviteResult = await tryAcceptPendingInvite();
+  const pending = await peekPendingInvite();
 
-  if (inviteResult.accepted) {
-    redirect("/dashboard?convite-aceito=1");
+  if (pending.found) {
+    redirect("/convite");
   }
 
   if (!options?.allowWithoutCompany) {
@@ -46,6 +50,12 @@ export async function requireAuthenticatedWithoutCompany() {
 
   if (membership) {
     redirect("/dashboard");
+  }
+
+  const pending = await peekPendingInvite();
+
+  if (pending.found) {
+    redirect("/convite");
   }
 
   return user;

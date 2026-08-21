@@ -97,6 +97,74 @@ function PermissionGroupCard({
   );
 }
 
+function AccessStatusBanner({ access }: { access: EmployeeAccessState }) {
+  if (access.hasAccess) {
+    return (
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
+        <p className="font-medium text-emerald-800 dark:text-emerald-200">Ativo</p>
+        <p className="text-muted-foreground">
+          Acesso liberado
+          {access.linkedEmail ? ` — ${access.linkedEmail}` : ""}
+          {access.accessProfile
+            ? ` · Perfil ${ACCESS_PROFILE_LABELS[access.accessProfile]}`
+            : ""}
+        </p>
+      </div>
+    );
+  }
+
+  if (access.pendingInvite?.isExpired) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
+        <p className="font-medium">Convite expirado</p>
+        <p className="text-muted-foreground">
+          O convite para <strong>{access.pendingInvite.email}</strong> expirou. Crie um novo
+          convite para liberar o acesso.
+        </p>
+      </div>
+    );
+  }
+
+  if (access.pendingInvite) {
+    const expiresLabel = new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(new Date(access.pendingInvite.expiresAt));
+
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
+        <p className="font-medium text-amber-900 dark:text-amber-100">Convite pendente</p>
+        <p className="text-muted-foreground">
+          Convite para <strong>{access.pendingInvite.email}</strong> · válido até {expiresLabel}.
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Envio automático de e-mail ainda não configurado. Peça ao funcionário para criar conta
+          em <strong>/cadastro</strong> e escolher “Sou funcionário”, ou entrar se já tiver
+          conta.
+        </p>
+      </div>
+    );
+  }
+
+  if (access.accessRevokedAt) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
+        <p className="font-medium">Acesso removido</p>
+        <p className="text-muted-foreground">
+          O histórico do funcionário foi preservado. Você pode conceder acesso novamente.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+      Sem acesso ao PetGestor
+    </div>
+  );
+}
+
 export function EmployeeAccessPanel({
   employeeId,
   employeeEmail,
@@ -105,10 +173,14 @@ export function EmployeeAccessPanel({
   const initialProfile =
     access.accessProfile && access.accessProfile !== "owner_admin"
       ? access.accessProfile
-      : "reception";
+      : access.pendingInvite?.accessProfile && access.pendingInvite.accessProfile !== "owner_admin"
+        ? access.pendingInvite.accessProfile
+        : "reception";
 
   const [profile, setProfile] = useState<AccessProfile>(initialProfile);
-  const [email, setEmail] = useState(access.linkedEmail ?? employeeEmail ?? "");
+  const [email, setEmail] = useState(
+    access.linkedEmail ?? access.pendingInvite?.email ?? employeeEmail ?? "",
+  );
   const [ownScheduleOnly, setOwnScheduleOnly] = useState(access.ownScheduleOnly);
   const [selected, setSelected] = useState<Set<Permission>>(
     () =>
@@ -157,7 +229,13 @@ export function EmployeeAccessPanel({
     });
   }
 
-  const showGrantForm = !access.hasAccess && !access.pendingInvite;
+  const hasPendingInvite = Boolean(access.pendingInvite && !access.pendingInvite.isExpired);
+  const showEmailField = !access.hasAccess;
+  const submitLabel = access.hasAccess
+    ? "Salvar permissões"
+    : hasPendingInvite
+      ? "Atualizar / reenviar convite"
+      : "Dar acesso ao PetGestor";
 
   return (
     <Card>
@@ -170,22 +248,10 @@ export function EmployeeAccessPanel({
       <CardContent className="space-y-5">
         {feedback ? <FormFeedback message={feedback.message} variant={feedback.variant} /> : null}
 
-        {access.hasAccess ? (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
-            Acesso ativo
-            {access.linkedEmail ? ` — ${access.linkedEmail}` : ""}
-          </div>
-        ) : null}
-
-        {access.pendingInvite ? (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
-            Convite pendente para <strong>{access.pendingInvite.email}</strong>. O vínculo será
-            concluído quando o usuário criar conta com este e-mail.
-          </div>
-        ) : null}
+        <AccessStatusBanner access={access} />
 
         <form action={grantFormAction} className="space-y-5">
-          {showGrantForm ? (
+          {showEmailField ? (
             <div className="space-y-2">
               <Label htmlFor="employee-access-email">E-mail de acesso</Label>
               <Input
@@ -258,11 +324,11 @@ export function EmployeeAccessPanel({
           </div>
 
           <Button type="submit" disabled={grantPending} className="w-full sm:w-auto">
-            {access.hasAccess ? "Salvar permissões" : "Dar acesso ao PetGestor"}
+            {submitLabel}
           </Button>
         </form>
 
-        {access.hasAccess || access.pendingInvite ? (
+        {access.hasAccess || hasPendingInvite || access.pendingInvite?.isExpired ? (
           <form action={revokeFormAction}>
             <Button
               type="submit"

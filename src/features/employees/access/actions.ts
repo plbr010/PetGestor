@@ -64,22 +64,42 @@ export async function grantEmployeeAccessAction(
   });
 
   if (error) {
+    const message = error.message?.toLowerCase() ?? "";
+
+    if (message.includes("employee_already_linked")) {
+      return {
+        error:
+          "Este funcionário já está vinculado a outra conta. Remova o acesso atual antes de convidar outro e-mail.",
+      };
+    }
+
+    if (message.includes("employee_not_found")) {
+      return { error: "Funcionário não encontrado ou inativo." };
+    }
+
+    if (message.includes("cannot_modify_owner_access")) {
+      return { error: "Não é possível alterar o acesso do dono da empresa." };
+    }
+
     return { error: "Não foi possível conceder acesso. Verifique os dados e tente novamente." };
   }
 
   revalidateEmployeeAccess(employeeId);
 
-  const result = data as { status?: string } | null;
+  const result = data as { status?: string; email_delivery?: string } | null;
 
   if (result?.status === "invite_pending") {
     return {
       success:
-        "Convite registrado. Quando o funcionário criar conta com este e-mail, o acesso será vinculado automaticamente.",
+        "Convite criado. Envio automático de e-mail ainda não configurado. Peça ao funcionário para abrir /cadastro, escolher “Sou funcionário” e usar este e-mail (ou entrar, se já tiver conta).",
       invitePending: true,
     };
   }
 
-  return { success: "Acesso ao PetGestor concedido com sucesso." };
+  return {
+    success:
+      "Acesso ao PetGestor concedido. O funcionário já pode entrar com a conta deste e-mail.",
+  };
 }
 
 export async function updateEmployeeAccessAction(
@@ -134,7 +154,12 @@ export async function revokeEmployeeAccessAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requirePermission("employees.manage");
+  const context = await requirePermission("employees.manage");
+  const denied = assertPermissionForAction(context, "employees.manage");
+
+  if (denied) {
+    return denied;
+  }
 
   const supabase = await createSupabaseServerClient();
 
