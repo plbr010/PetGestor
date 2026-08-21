@@ -211,14 +211,34 @@ export function SignUpWizard({
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl">Convite não encontrado</CardTitle>
           <CardDescription>
-            Não encontramos um convite para <strong>{email || "este e-mail"}</strong>.
+            Não encontramos um convite pendente para <strong>{email || "este e-mail"}</strong>.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Peça ao administrador do seu pet shop para enviar um convite usando este endereço
-            de e-mail. Nenhuma empresa será criada automaticamente.
-          </p>
+          <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+            <li>
+              Peça ao administrador para abrir o funcionário → <strong>Dar acesso ao PetGestor</strong>{" "}
+              com exatamente este e-mail.
+            </li>
+            <li>
+              Se você já recebeu um link por WhatsApp ou e-mail do PetGestor, use esse link (não
+              este cadastro).
+            </li>
+            <li>
+              Se a conta já existe, vá em{" "}
+              <Link href="/entrar" className="font-medium text-primary underline-offset-4 hover:underline">
+                Entrar
+              </Link>{" "}
+              ou{" "}
+              <Link
+                href="/recuperar-senha"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Recuperar senha
+              </Link>
+              , depois abra <strong>/convite</strong>.
+            </li>
+          </ul>
           <Button type="button" variant="outline" className="w-full" onClick={() => setStep("staff-email")}>
             Voltar
           </Button>

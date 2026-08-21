@@ -1,3 +1,17 @@
+## [0.29.3] — 2026-08-21
+
+### Corrigido — Convite “não encontrado” após Dar acesso
+
+- `grant_employee_access` **não auto-vincula** mais usuários Auth sem e-mail confirmado (criados pelo `inviteUserByEmail`)
+- Reenvio reabre convite pendente e limpa vínculo prematuro de staff não confirmado
+- Após conceder acesso, o dono vê **link de convite copiável** (WhatsApp) se o Gmail não entregar
+- Mensagens do cadastro de funcionário orientam Entrar / Recuperar senha / link do admin
+
+### Migration
+
+- `20260821190000_grant_skip_unconfirmed_users.sql` (**aplicar no Supabase**)
+- Diagnóstico: `docs/sql/diagnose-employee-invite.sql`
+
 ## [0.29.2] — 2026-08-21
 
 ### Adicionado — E-mail automático ao conceder acesso

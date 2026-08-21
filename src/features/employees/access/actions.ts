@@ -24,6 +24,8 @@ export type EmployeeAccessActionState = {
   success?: string;
   invitePending?: boolean;
   emailDelivery?: "sent" | "account_exists" | "config_missing" | "send_failed";
+  /** Link Auth para compartilhar se o e-mail não chegar. */
+  shareLink?: string;
 };
 
 function revalidateEmployeeAccess(employeeId: string) {
@@ -101,6 +103,7 @@ export async function grantEmployeeAccessAction(
       success: mapSendEmployeeInviteMessage(delivery, inviteEmail),
       invitePending: true,
       emailDelivery: delivery.status,
+      shareLink: delivery.shareLink,
     };
   }
 

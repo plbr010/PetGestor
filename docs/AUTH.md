@@ -102,14 +102,25 @@ Limites nativos do Supabase Auth em desenvolvimento. Rate limiting adicional ser
 
 ## Convite de funcionário (e-mail)
 
-Ao conceder acesso em **Funcionários → Acesso ao sistema**, se ainda não existir conta Auth para o e-mail:
+Ao conceder acesso em **Funcionários → Acesso ao sistema**, se ainda **não** existir conta Auth **confirmada** para o e-mail:
 
-1. RPC `grant_employee_access` cria o convite pendente em `company_member_invites`.
+1. RPC `grant_employee_access` cria/reabre o convite pendente em `company_member_invites`.
 2. O servidor chama `auth.admin.inviteUserByEmail` (requer `SUPABASE_SERVICE_ROLE_KEY`).
-3. O funcionário abre o link no Gmail → confirma / define senha → cai em `/convite` e aceita o vínculo.
+3. O painel também gera um **link de convite** para o dono copiar e enviar no WhatsApp se o Gmail falhar.
+4. O funcionário abre o link → confirma / define senha → cai em `/convite` e aceita o vínculo.
 
-Se a conta Auth já existir, o RPC vincula na hora (sem e-mail de convite Auth). Alternativa manual: `/cadastro` → “Sou funcionário”.
+**Importante:** usuários Auth criados pelo convite (ainda sem `email_confirmed_at`) **não** são auto-vinculados. Só contas já confirmadas entram no caminho `linked`.
+
+Se a conta Auth já estiver confirmada, o RPC vincula na hora. Alternativa: `/cadastro` → “Sou funcionário”.
+
+**Migration obrigatória:** `20260821190000_grant_skip_unconfirmed_users.sql`
+
+Diagnóstico SQL: `docs/sql/diagnose-employee-invite.sql`
+
+No Supabase Dashboard → Authentication → URL Configuration, inclua o redirect:
+
+`https://SEU_DOMINIO/auth/confirm`
 
 ## SMTP
 
-Desenvolvimento usa e-mail padrão do Supabase (com limites). SMTP próprio será configurado antes de produção.
+Desenvolvimento usa e-mail padrão do Supabase (com limites; Gmail costuma cair em spam ou não entregar). SMTP próprio será configurado antes de produção. Use o link copiável no painel como fallback.
