@@ -140,7 +140,7 @@ function AccessStatusBanner({ access }: { access: EmployeeAccessState }) {
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
           Envio automático de e-mail ainda não configurado. Peça ao funcionário para criar conta
-          em <strong>/cadastro?modo=funcionario</strong> com este e-mail, ou entrar se já tiver
+          em <strong>/cadastro</strong> e escolher “Sou funcionário”, ou entrar se já tiver
           conta.
         </p>
       </div>

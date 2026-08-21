@@ -91,7 +91,7 @@ export async function grantEmployeeAccessAction(
   if (result?.status === "invite_pending") {
     return {
       success:
-        "Convite criado. Envio automático de e-mail ainda não configurado. Peça ao funcionário para criar conta em /cadastro?modo=funcionario com este e-mail (ou entrar, se já tiver conta).",
+        "Convite criado. Envio automático de e-mail ainda não configurado. Peça ao funcionário para abrir /cadastro, escolher “Sou funcionário” e usar este e-mail (ou entrar, se já tiver conta).",
       invitePending: true,
     };
   }

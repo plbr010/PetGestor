@@ -83,10 +83,10 @@ export function LoginForm() {
           {" · "}
           Foi convidado?{" "}
           <Link
-            href="/cadastro?modo=funcionario"
+            href="/cadastro"
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
-            Cadastro de funcionário
+            Criar conta
           </Link>
         </p>
       </CardFooter>

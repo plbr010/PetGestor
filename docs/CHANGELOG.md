@@ -1,3 +1,17 @@
+## [0.29.1] — 2026-08-21
+
+### Adicionado — Escolha inicial no cadastro (dono vs funcionário)
+
+- Tela “Como você vai usar o PetGestor?” com dois cards
+- Fluxo funcionário: e-mail → lookup seguro de convite → criar conta
+- RPC `lookup_pending_invite_by_email` (só nome da empresa + perfil; sem company_id)
+- Mensagens claras quando não há convite
+- Owner permanece no fluxo atual de criação de empresa
+
+### Migration
+
+- `20260821150000_lookup_pending_invite_by_email.sql`
+
 ## [0.29.0] — 2026-08-21
 
 ### Adicionado — Fluxo completo de convite e login de funcionários

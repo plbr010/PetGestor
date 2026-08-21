@@ -2390,6 +2390,10 @@ export type Database = {
         Args: Record<string, never>;
         Returns: Json;
       };
+      lookup_pending_invite_by_email: {
+        Args: { p_email: string };
+        Returns: Json;
+      };
       update_appointment: {
         Args: {
           p_appointment_id: string;
