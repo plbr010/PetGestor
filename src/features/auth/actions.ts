@@ -39,7 +39,7 @@ function mapSignUpError(message: string): AuthActionState {
   if (normalized.includes("already registered") || normalized.includes("already exists")) {
     return {
       error:
-        "Não foi possível concluir o cadastro. Verifique os dados ou tente entrar com sua conta.",
+        "Este e-mail já tem conta no PetGestor. Entre em /entrar (ou use Recuperar senha) e depois abra /convite para aceitar o acesso.",
     };
   }
 

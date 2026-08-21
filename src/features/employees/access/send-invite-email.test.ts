@@ -8,9 +8,11 @@ import {
 describe("isAlreadyRegisteredAuthError", () => {
   it("detecta mensagens comuns do Supabase Auth", () => {
     expect(isAlreadyRegisteredAuthError("User already registered")).toBe(true);
-    expect(isAlreadyRegisteredAuthError("A user with this email address has already been registered")).toBe(
-      true,
-    );
+    expect(
+      isAlreadyRegisteredAuthError(
+        "A user with this email address has already been registered",
+      ),
+    ).toBe(true);
     expect(isAlreadyRegisteredAuthError("email_exists")).toBe(true);
     expect(isAlreadyRegisteredAuthError("rate limit exceeded")).toBe(false);
   });
@@ -23,11 +25,20 @@ describe("mapSendEmployeeInviteMessage", () => {
       /não está configurado/i,
     );
     expect(mapSendEmployeeInviteMessage({ status: "send_failed" }, "a@b.com")).toMatch(
-      /não foi possível enviar/i,
+      /Gmail pode não ter recebido/i,
     );
     expect(mapSendEmployeeInviteMessage({ status: "account_exists" }, "a@b.com")).toMatch(
       /já tem conta/i,
     );
+  });
+
+  it("menciona WhatsApp quando há shareLink", () => {
+    expect(
+      mapSendEmployeeInviteMessage(
+        { status: "send_failed", shareLink: "https://example.com/invite" },
+        "a@b.com",
+      ),
+    ).toMatch(/WhatsApp/i);
   });
 });
 
@@ -71,6 +82,13 @@ describe("sendEmployeeInviteEmail", () => {
     isConfiguredMock.mockReset();
     getSiteUrlMock.mockResolvedValue("https://app.example.com");
     isConfiguredMock.mockReturnValue(true);
+    generateLinkMock.mockResolvedValue({
+      data: {
+        properties: { action_link: "https://app.example.com/invite-link" },
+        user: { id: "u1", email_confirmed_at: null },
+      },
+      error: null,
+    });
   });
 
   it("retorna config_missing sem service role", async () => {
@@ -84,13 +102,16 @@ describe("sendEmployeeInviteEmail", () => {
     expect(inviteUserByEmailMock).not.toHaveBeenCalled();
   });
 
-  it("envia convite Auth com redirect para /convite", async () => {
+  it("envia convite Auth com redirect para /convite e devolve shareLink", async () => {
     inviteUserByEmailMock.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
     const { sendEmployeeInviteEmail } = await import(
       "@/features/employees/access/send-invite-email"
     );
 
-    await expect(sendEmployeeInviteEmail("func@email.com")).resolves.toEqual({ status: "sent" });
+    await expect(sendEmployeeInviteEmail("func@email.com")).resolves.toEqual({
+      status: "sent",
+      shareLink: "https://app.example.com/invite-link",
+    });
     expect(inviteUserByEmailMock).toHaveBeenCalledWith(
       "func@email.com",
       expect.objectContaining({
@@ -107,7 +128,10 @@ describe("sendEmployeeInviteEmail", () => {
       })
       .mockResolvedValueOnce({ data: { user: { id: "u2" } }, error: null });
     generateLinkMock.mockResolvedValue({
-      data: { user: { id: "u1", email_confirmed_at: null } },
+      data: {
+        properties: { action_link: "https://app.example.com/invite-link" },
+        user: { id: "u1", email_confirmed_at: null },
+      },
       error: null,
     });
     deleteUserMock.mockResolvedValue({ data: { user: null }, error: null });
@@ -116,7 +140,9 @@ describe("sendEmployeeInviteEmail", () => {
       "@/features/employees/access/send-invite-email"
     );
 
-    await expect(sendEmployeeInviteEmail("func@email.com")).resolves.toEqual({ status: "sent" });
+    await expect(sendEmployeeInviteEmail("func@email.com")).resolves.toMatchObject({
+      status: "sent",
+    });
     expect(deleteUserMock).toHaveBeenCalledWith("u1");
     expect(inviteUserByEmailMock).toHaveBeenCalledTimes(2);
   });
@@ -127,7 +153,10 @@ describe("sendEmployeeInviteEmail", () => {
       error: { message: "User already registered" },
     });
     generateLinkMock.mockResolvedValue({
-      data: { user: { id: "u1", email_confirmed_at: "2026-01-01T00:00:00Z" } },
+      data: {
+        properties: { action_link: "https://app.example.com/invite-link" },
+        user: { id: "u1", email_confirmed_at: "2026-01-01T00:00:00Z" },
+      },
       error: null,
     });
 
@@ -137,6 +166,7 @@ describe("sendEmployeeInviteEmail", () => {
 
     await expect(sendEmployeeInviteEmail("func@email.com")).resolves.toEqual({
       status: "account_exists",
+      shareLink: "https://app.example.com/invite-link",
     });
     expect(deleteUserMock).not.toHaveBeenCalled();
   });

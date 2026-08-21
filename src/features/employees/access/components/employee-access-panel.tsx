@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useState, useTransition } from "react";
 
 import {
   grantEmployeeAccessAction,
@@ -36,6 +36,37 @@ type EmployeeAccessPanelProps = {
 };
 
 const INITIAL_STATE: EmployeeAccessActionState = {};
+
+function InviteShareLink({ shareLink }: { shareLink: string }) {
+  const [copied, setCopied] = useState(false);
+  const [copyPending, startCopy] = useTransition();
+
+  function handleCopy() {
+    startCopy(async () => {
+      try {
+        await navigator.clipboard.writeText(shareLink);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2500);
+      } catch {
+        setCopied(false);
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+      <p className="text-sm font-medium">Link de convite (enviar no WhatsApp)</p>
+      <p className="text-xs text-muted-foreground">
+        Se o Gmail não entregar, copie este link e mande para o funcionário. Ele define a senha e
+        aceita o acesso em /convite.
+      </p>
+      <Input readOnly value={shareLink} className="font-mono text-xs" aria-label="Link de convite" />
+      <Button type="button" variant="outline" size="sm" onClick={handleCopy} disabled={copyPending}>
+        {copied ? "Link copiado" : "Copiar link"}
+      </Button>
+    </div>
+  );
+}
 
 function PermissionGroupCard({
   profile,
@@ -139,9 +170,9 @@ function AccessStatusBanner({ access }: { access: EmployeeAccessState }) {
           Convite para <strong>{access.pendingInvite.email}</strong> · válido até {expiresLabel}.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Ao conceder ou reenviar o acesso, o PetGestor envia o convite para este Gmail. Se não
-          chegar, peça para verificar spam ou usar <strong>/cadastro</strong> → “Sou
-          funcionário”.
+          Clique em <strong>Atualizar / reenviar convite</strong> para disparar o e-mail de novo.
+          Se o Gmail não chegar, use o link de convite que aparece após o envio (WhatsApp) ou peça
+          para abrir <strong>/cadastro</strong> → “Sou funcionário” com este mesmo e-mail.
         </p>
       </div>
     );
@@ -247,6 +278,8 @@ export function EmployeeAccessPanel({
       </CardHeader>
       <CardContent className="space-y-5">
         {feedback ? <FormFeedback message={feedback.message} variant={feedback.variant} /> : null}
+
+        {grantState.shareLink ? <InviteShareLink shareLink={grantState.shareLink} /> : null}
 
         <AccessStatusBanner access={access} />
 
