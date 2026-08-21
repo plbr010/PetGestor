@@ -8,6 +8,19 @@ Após `trial_ends_at`, se não houver assinatura `active`, o **acesso operaciona
 
 Não há cobrança automática ao fim do trial. Sem meio de pagamento cadastrado, simplesmente não há cobrança.
 
+### Funcionários
+
+- Funcionários **não pagam** assinatura.
+- O acesso deles depende da assinatura (ou trial) **da empresa** em que trabalham.
+- Sem entitlement da empresa, o staff vai para `/assinatura-equipe` (mensagem), **não** para o checkout.
+- Só quem tem `subscription.manage` (dono/gestor) acessa `/assinatura` e Mercado Pago.
+
+### Conta admin da plataforma
+
+- Empresas com `companies.billing_exempt = true` têm assinatura **sempre ativa** (sem cobrança).
+- Owners na allowlist / `platform_admins` têm a empresa marcada como isenta na migration.
+- Platform admin também bypassa o gate no layout (já existente).
+
 ## Tabela `company_subscriptions`
 
 | Campo | Descrição |
@@ -66,12 +79,13 @@ Implementação: `src/features/subscription/entitlement.ts`
 
 ## Gate centralizado
 
-1. **Dashboard layout** — redireciona para `/assinatura` se sem entitlement
-2. **`requireCompanyContext()`** — protege Server Actions e queries operacionais
+1. **Dashboard layout** — sem entitlement: dono → `/assinatura`; funcionário → `/assinatura-equipe`
+2. **`requireCompanyContext()`** — protege Server Actions e queries operacionais (mesmo split)
 
 Rotas acessíveis sem entitlement:
 
-- `/assinatura`
+- `/assinatura` (só quem gerencia cobrança)
+- `/assinatura-equipe` (staff)
 - `/entrar`, logout, onboarding (sem company ainda)
 
 ## Dados preservados

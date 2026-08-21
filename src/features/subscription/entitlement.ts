@@ -55,8 +55,9 @@ export function computeEntitlement(
 ): CompanyEntitlement {
   const serverNowIso = serverNow.toISOString();
   const devBypass = options.devBypass ?? isBillingDevBypassEnabled();
+  const billingExempt = options.billingExempt === true;
 
-  if (devBypass) {
+  if (devBypass || billingExempt) {
     return {
       state: "active",
       hasOperationalAccess: true,

@@ -45,4 +45,6 @@ export type CompanyEntitlement = {
 
 export type EntitlementOptions = {
   devBypass?: boolean;
+  /** Empresa isenta (conta admin da plataforma) — acesso permanente. */
+  billingExempt?: boolean;
 };

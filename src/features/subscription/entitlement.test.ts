@@ -94,6 +94,14 @@ describe("computeEntitlement", () => {
     expect(entitlement.state).toBe("active");
   });
 
+  it("billingExempt (conta admin) mantém acesso permanente", () => {
+    const subscription = buildSubscription({ status: "trialing" });
+    const now = addHours(started, TRIAL_DURATION_HOURS + 48);
+    const entitlement = computeEntitlement(subscription, now, { billingExempt: true });
+    expect(entitlement.hasOperationalAccess).toBe(true);
+    expect(entitlement.state).toBe("active");
+  });
+
   it("sem subscription → bloqueado", () => {
     const entitlement = computeEntitlement(null, started);
     expect(entitlement.hasOperationalAccess).toBe(false);

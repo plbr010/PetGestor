@@ -9,7 +9,10 @@ export async function requireCompanyContext(): Promise<DashboardContext> {
   const context = await requireCompany(user.id);
 
   if (!(await isPlatformAdmin(user))) {
-    await requireOperationalEntitlement(context.membership.company.id);
+    await requireOperationalEntitlement(
+      context.membership.company.id,
+      context.membership,
+    );
   }
 
   return context;
