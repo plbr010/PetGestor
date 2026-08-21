@@ -53,6 +53,7 @@ export function SignUpWizard({
     null,
   );
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupReason, setLookupReason] = useState<string | null>(null);
   const [lookupPending, startLookup] = useTransition();
   const [phone, setPhone] = useState("");
   const [ownerState, ownerAction, ownerPending] = useActionState(signUpAction, initialState);
@@ -61,11 +62,13 @@ export function SignUpWizard({
   function goChoice() {
     setStep("choice");
     setLookupError(null);
+    setLookupReason(null);
   }
 
   function handleLookup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLookupError(null);
+    setLookupReason(null);
 
     startLookup(async () => {
       const result = await lookupPendingInviteByEmailAction(email);
@@ -73,12 +76,14 @@ export function SignUpWizard({
       if (result.found) {
         setInvite(result);
         setEmail(result.email);
+        setLookupReason(null);
         setStep("staff-found");
         return;
       }
 
       setInvite(null);
       setEmail(result.email);
+      setLookupReason(result.reason);
 
       if (result.reason === "invalid_email") {
         setLookupError("Informe um e-mail válido.");
@@ -206,39 +211,64 @@ export function SignUpWizard({
   }
 
   if (step === "staff-missing") {
+    const rpcMissing =
+      lookupReason === "rpc_unavailable" || lookupReason === "rpc_error" || lookupReason === "exception";
+
     return (
       <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
         <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl">Convite não encontrado</CardTitle>
+          <CardTitle className="text-2xl">
+            {rpcMissing ? "Convite indisponível no momento" : "Convite não encontrado"}
+          </CardTitle>
           <CardDescription>
-            Não encontramos um convite pendente para <strong>{email || "este e-mail"}</strong>.
+            {rpcMissing ? (
+              <>
+                O banco ainda não tem a função de busca de convite. O administrador precisa aplicar o
+                SQL <strong>docs/sql/FIX-CONVITE-AGORA.sql</strong> no Supabase.
+              </>
+            ) : (
+              <>
+                Não encontramos um convite pendente para{" "}
+                <strong>{email || "este e-mail"}</strong>.
+              </>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-            <li>
-              Peça ao administrador para abrir o funcionário → <strong>Dar acesso ao PetGestor</strong>{" "}
-              com exatamente este e-mail.
-            </li>
-            <li>
-              Se você já recebeu um link por WhatsApp ou e-mail do PetGestor, use esse link (não
-              este cadastro).
-            </li>
-            <li>
-              Se a conta já existe, vá em{" "}
-              <Link href="/entrar" className="font-medium text-primary underline-offset-4 hover:underline">
-                Entrar
-              </Link>{" "}
-              ou{" "}
-              <Link
-                href="/recuperar-senha"
-                className="font-medium text-primary underline-offset-4 hover:underline"
-              >
-                Recuperar senha
-              </Link>
-              , depois abra <strong>/convite</strong>.
-            </li>
-          </ul>
+          {rpcMissing ? (
+            <p className="text-sm text-muted-foreground">
+              Sem esse SQL no Supabase, o cadastro de funcionário nunca encontra o convite — mesmo
+              depois de clicar em “Dar acesso”.
+            </p>
+          ) : (
+            <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+              <li>
+                Peça ao administrador para abrir o funcionário →{" "}
+                <strong>Dar acesso ao PetGestor</strong> com exatamente este e-mail.
+              </li>
+              <li>
+                Se você já recebeu um link por WhatsApp ou e-mail do PetGestor, use esse link (não
+                este cadastro).
+              </li>
+              <li>
+                Se a conta já existe, vá em{" "}
+                <Link
+                  href="/entrar"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Entrar
+                </Link>{" "}
+                ou{" "}
+                <Link
+                  href="/recuperar-senha"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Recuperar senha
+                </Link>
+                , depois abra <strong>/convite</strong>.
+              </li>
+            </ul>
+          )}
           <Button type="button" variant="outline" className="w-full" onClick={() => setStep("staff-email")}>
             Voltar
           </Button>

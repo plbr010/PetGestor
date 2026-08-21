@@ -1,3 +1,10 @@
+## [0.29.4] — 2026-08-21
+
+### Operação — SQL único para destravar convite
+
+- Script `docs/sql/FIX-CONVITE-AGORA.sql`: instala funções de convite + reabre convite pendente para `genyvitalflexpddro@gmail.com`
+- Cadastro de funcionário diferencia “RPC ausente no banco” de “convite realmente inexistente”
+
 ## [0.29.3] — 2026-08-21
 
 ### Corrigido — Convite “não encontrado” após Dar acesso
