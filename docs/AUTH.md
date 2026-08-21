@@ -33,12 +33,27 @@ O link do e-mail aponta para:
 {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard
 ```
 
+### Se o celular abre `localhost` e falha
+
+O **Site URL** do Supabase ainda está como `http://localhost:3000`.
+
+1. **Supabase** → Authentication → URL Configuration  
+   - **Site URL:** `https://SEU-APP.vercel.app` (sem barra no final)  
+   - **Redirect URLs** (adicione):  
+     - `https://SEU-APP.vercel.app/**`  
+     - `https://*-seu-time.vercel.app/**` (previews, se usar)
+2. **Vercel** → Environment Variables (Production):  
+   - `APP_URL=https://SEU-APP.vercel.app`  
+   - `NEXT_PUBLIC_APP_URL=https://SEU-APP.vercel.app`
+3. Redeploy na Vercel após salvar as variáveis.
+4. Peça **novo** e-mail (recuperar senha / reenviar confirmação). Links antigos continuam com localhost.
+
 A rota `/auth/confirm`:
 
 1. Valida `token_hash` e `type`.
 2. Chama `verifyOtp`.
 3. Lê metadata do usuário (conveniência).
-4. Executa `complete_onboarding`.
+4. Executa `complete_onboarding` (fluxo owner, se aplicável).
 5. Redireciona para caminho seguro (`next`).
 
 ## Login
