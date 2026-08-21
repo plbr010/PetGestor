@@ -1,3 +1,11 @@
+## [0.30.1] — 2026-08-21
+
+### Corrigido — Links de e-mail Auth apontando para localhost
+
+- `getSiteUrl` usa `APP_URL` → `NEXT_PUBLIC_APP_URL` → host da request → `VERCEL_URL`
+- Em produção, ignora `localhost` no env e evita links quebrados no celular
+- Docs: checklist Supabase Site URL + Vercel para confirmação/reset de senha
+
 ## [0.30.0] — 2026-08-21
 
 ### Adicionado — Funcionário sem cobrança + admin sempre ativo

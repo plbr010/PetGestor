@@ -62,6 +62,15 @@ APP_URL=https://seudominio.com
 
 **Não** use `http://localhost:3000` nem túneis (`loca.lt`, etc.) em Production.
 
+### E-mails Auth (confirmação / reset) abrindo localhost no celular
+
+Isso **não** é bug do Safari: o link do Gmail aponta para `localhost` porque o Supabase Site URL (ou `APP_URL`) está errado.
+
+1. Supabase → **Authentication → URL Configuration → Site URL** = URL HTTPS da Vercel  
+2. Redirect URLs inclui `https://seu-app.vercel.app/**`  
+3. Vercel: `APP_URL` e `NEXT_PUBLIC_APP_URL` com a mesma URL HTTPS  
+4. Redeploy + peça um e-mail **novo**
+
 ### O que NÃO é necessário no build
 
 Estas secrets **não** precisam existir para o `next build` concluir. Continuam obrigatórias no **runtime** das features que as usam:
