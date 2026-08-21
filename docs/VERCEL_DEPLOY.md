@@ -29,7 +29,7 @@ Legenda:
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Sim | **Sim** | Sim | Obrigatória | Obrigatória | Obrigatória |
 | `APP_URL` | Não | Não | Sim (billing/auth redirects) | Obrigatória (URL HTTPS da Vercel) | Recomendada (URL do deploy Preview) | Opcional (`http://localhost:3000`) |
 | `NEXT_PUBLIC_APP_URL` | Sim | Não* | Fallback de `APP_URL` | Opcional se `APP_URL` estiver setada | Opcional | Opcional |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Não** | Não | Sim (webhook / sync admin) | Obrigatória para billing | Obrigatória para testar billing | Obrigatória para testar billing |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Não** | Não | Sim (webhook / sync admin / convite de funcionário) | Obrigatória (billing + e-mail de convite) | Obrigatória para testar billing/convite | Obrigatória para testar billing/convite |
 | `MERCADO_PAGO_ACCESS_TOKEN` | **Não** | Não | Sim (checkout/sync) | Obrigatória para cobrança | Obrigatória em sandbox | Obrigatória em sandbox |
 | `MERCADO_PAGO_WEBHOOK_SECRET` | **Não** | Não | Sim (só `/api/webhooks/mercado-pago`) | Obrigatória para webhooks | Obrigatória para webhooks | Obrigatória para webhooks |
 | `MERCADO_PAGO_ENVIRONMENT` | **Não** | Não | Sim | `production` | `test` | `test` |

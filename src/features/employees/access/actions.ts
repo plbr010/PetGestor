@@ -7,6 +7,10 @@ import {
   parseEmployeeAccessUpdateForm,
 } from "@/features/employees/access/schemas";
 import {
+  mapSendEmployeeInviteMessage,
+  sendEmployeeInviteEmail,
+} from "@/features/employees/access/send-invite-email";
+import {
   buildPermissionsPayload,
   permissionsToJson,
 } from "@/lib/auth/permissions";
@@ -19,6 +23,7 @@ export type EmployeeAccessActionState = {
   error?: string;
   success?: string;
   invitePending?: boolean;
+  emailDelivery?: "sent" | "account_exists" | "config_missing" | "send_failed";
 };
 
 function revalidateEmployeeAccess(employeeId: string) {
@@ -86,13 +91,16 @@ export async function grantEmployeeAccessAction(
 
   revalidateEmployeeAccess(employeeId);
 
-  const result = data as { status?: string; email_delivery?: string } | null;
+  const result = data as { status?: string; email?: string } | null;
 
   if (result?.status === "invite_pending") {
+    const inviteEmail = result.email ?? parsed.data.email;
+    const delivery = await sendEmployeeInviteEmail(inviteEmail);
+
     return {
-      success:
-        "Convite criado. Envio automático de e-mail ainda não configurado. Peça ao funcionário para abrir /cadastro, escolher “Sou funcionário” e usar este e-mail (ou entrar, se já tiver conta).",
+      success: mapSendEmployeeInviteMessage(delivery, inviteEmail),
       invitePending: true,
+      emailDelivery: delivery.status,
     };
   }
 
