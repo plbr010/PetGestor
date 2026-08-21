@@ -100,6 +100,16 @@ Helper `getSafeRedirectPath` aceita apenas caminhos internos iniciados por `/`.
 
 Limites nativos do Supabase Auth em desenvolvimento. Rate limiting adicional será adicionado antes de produção.
 
+## Convite de funcionário (e-mail)
+
+Ao conceder acesso em **Funcionários → Acesso ao sistema**, se ainda não existir conta Auth para o e-mail:
+
+1. RPC `grant_employee_access` cria o convite pendente em `company_member_invites`.
+2. O servidor chama `auth.admin.inviteUserByEmail` (requer `SUPABASE_SERVICE_ROLE_KEY`).
+3. O funcionário abre o link no Gmail → confirma / define senha → cai em `/convite` e aceita o vínculo.
+
+Se a conta Auth já existir, o RPC vincula na hora (sem e-mail de convite Auth). Alternativa manual: `/cadastro` → “Sou funcionário”.
+
 ## SMTP
 
 Desenvolvimento usa e-mail padrão do Supabase (com limites). SMTP próprio será configurado antes de produção.

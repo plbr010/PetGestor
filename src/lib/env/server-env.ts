@@ -77,6 +77,10 @@ export function getSupabaseServiceRoleKey(): string {
   return key;
 }
 
+export function isSupabaseServiceRoleConfigured(): boolean {
+  return Boolean(getServerEnv().SUPABASE_SERVICE_ROLE_KEY);
+}
+
 export function isMercadoPagoConfigured(): boolean {
   const env = serverEnvSchema.safeParse(readServerEnvSource());
   return Boolean(env.success && env.data.MERCADO_PAGO_ACCESS_TOKEN);

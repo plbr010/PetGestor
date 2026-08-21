@@ -1,3 +1,13 @@
+## [0.29.2] — 2026-08-21
+
+### Adicionado — E-mail automático ao conceder acesso
+
+- Ao clicar em **Dar acesso ao PetGestor**, o sistema envia o convite por e-mail (Supabase Auth `inviteUserByEmail`)
+- Redirect do link para `/auth/confirm?next=/convite`
+- Reenvio: se a conta Auth ainda não confirmou, apaga e reenvia o convite
+- Mensagens honestas quando falta `SUPABASE_SERVICE_ROLE_KEY` ou o envio falha (convite da empresa continua criado)
+- Fluxo `/cadastro` → “Sou funcionário” permanece como alternativa
+
 ## [0.29.1] — 2026-08-21
 
 ### Adicionado — Escolha inicial no cadastro (dono vs funcionário)

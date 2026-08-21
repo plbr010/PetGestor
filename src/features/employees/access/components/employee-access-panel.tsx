@@ -139,9 +139,9 @@ function AccessStatusBanner({ access }: { access: EmployeeAccessState }) {
           Convite para <strong>{access.pendingInvite.email}</strong> · válido até {expiresLabel}.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Envio automático de e-mail ainda não configurado. Peça ao funcionário para criar conta
-          em <strong>/cadastro</strong> e escolher “Sou funcionário”, ou entrar se já tiver
-          conta.
+          Ao conceder ou reenviar o acesso, o PetGestor envia o convite para este Gmail. Se não
+          chegar, peça para verificar spam ou usar <strong>/cadastro</strong> → “Sou
+          funcionário”.
         </p>
       </div>
     );
