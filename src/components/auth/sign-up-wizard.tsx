@@ -15,6 +15,7 @@ import {
 } from "@/features/employees/access/invite-profile-summary";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -213,18 +214,28 @@ export function SignUpWizard({
   if (step === "staff-missing") {
     const rpcMissing =
       lookupReason === "rpc_unavailable" || lookupReason === "rpc_error" || lookupReason === "exception";
+    const accountExists = lookupReason === "account_exists_use_login";
 
     return (
       <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl">
-            {rpcMissing ? "Convite indisponível no momento" : "Convite não encontrado"}
+            {rpcMissing
+              ? "Convite indisponível no momento"
+              : accountExists
+                ? "Este e-mail já tem conta"
+                : "Convite não encontrado"}
           </CardTitle>
           <CardDescription>
             {rpcMissing ? (
               <>
                 O banco ainda não tem a função de busca de convite. O administrador precisa aplicar o
                 SQL <strong>docs/sql/FIX-CONVITE-AGORA.sql</strong> no Supabase.
+              </>
+            ) : accountExists ? (
+              <>
+                <strong>{email || "Este e-mail"}</strong> já está cadastrado no PetGestor. Não é
+                preciso criar conta de novo.
               </>
             ) : (
               <>
@@ -240,6 +251,20 @@ export function SignUpWizard({
               Sem esse SQL no Supabase, o cadastro de funcionário nunca encontra o convite — mesmo
               depois de clicar em “Dar acesso”.
             </p>
+          ) : accountExists ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Peça ao administrador para clicar em <strong>Dar acesso ao PetGestor</strong> com
+                este e-mail (isso libera a empresa). Depois entre com a senha — ou recupere a senha
+                se não lembrar.
+              </p>
+              <ButtonLink href={`/entrar?email=${encodeURIComponent(email)}`} className="w-full">
+                Entrar
+              </ButtonLink>
+              <ButtonLink href="/recuperar-senha" variant="outline" className="w-full">
+                Recuperar senha
+              </ButtonLink>
+            </div>
           ) : (
             <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               <li>
