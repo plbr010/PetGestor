@@ -20,7 +20,7 @@ export default async function OperationalDashboardLayout({
 
   if (!platformAdmin) {
     const entitlement = await getCompanyEntitlement(context.membership.company.id);
-    assertOperationalEntitlement(entitlement);
+    assertOperationalEntitlement(entitlement, context.membership);
   }
 
   if (!platformAdmin) {

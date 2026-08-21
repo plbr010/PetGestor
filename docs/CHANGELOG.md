@@ -1,3 +1,17 @@
+## [0.30.0] — 2026-08-21
+
+### Adicionado — Funcionário sem cobrança + admin sempre ativo
+
+- Funcionários **não pagam**: acesso enquanto a assinatura/trial da empresa estiver ativa
+- Sem assinatura da empresa, staff vai para `/assinatura-equipe` (sem checkout Mercado Pago)
+- Só `subscription.manage` (dono/gestor) acessa `/assinatura` e ações de cobrança
+- Banner de trial só para quem gerencia assinatura
+- `companies.billing_exempt` + assinatura `active` permanente para conta admin da plataforma
+
+### Migration
+
+- `20260821200000_billing_exempt_platform_admin.sql` (**aplicar no Supabase**)
+
 ## [0.29.4] — 2026-08-21
 
 ### Operação — SQL único para destravar convite

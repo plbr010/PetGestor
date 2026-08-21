@@ -34,6 +34,25 @@ import {
   getServerEnv,
 } from "@/lib/env/server-env";
 import { requireCompanyBillingContext } from "@/lib/auth/require-company-context";
+import { hasPermission } from "@/lib/auth/permissions";
+import { isPlatformAdmin } from "@/lib/auth/require-platform-admin";
+import { requireUser } from "@/lib/auth/require-user";
+
+/** Só dono/gestor (ou platform admin) pode iniciar/cancelar cobrança. */
+async function requireSubscriptionManagerContext() {
+  const context = await requireCompanyBillingContext();
+  const user = await requireUser();
+
+  if (await isPlatformAdmin(user)) {
+    return context;
+  }
+
+  if (!hasPermission(context.membership, "subscription.manage")) {
+    redirect("/assinatura-equipe");
+  }
+
+  return context;
+}
 
 export type SubscriptionActionState = {
   error?: string;
@@ -129,7 +148,7 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
   logSubscriptionDevStage(stage);
 
   try {
-    const context = await requireCompanyBillingContext();
+    const context = await requireSubscriptionManagerContext();
     stage = "user_loaded";
     logSubscriptionDevStage(stage);
 
@@ -302,7 +321,7 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
 
 export async function refreshSubscriptionStatusAction(): Promise<SubscriptionActionState> {
   try {
-    const context = await requireCompanyBillingContext();
+    const context = await requireSubscriptionManagerContext();
     const subscription = await requireCompanySubscription(context.membership.company.id);
 
     if (!subscription.providerSubscriptionId) {
@@ -324,7 +343,7 @@ export async function refreshSubscriptionStatusAction(): Promise<SubscriptionAct
 
 export async function cancelSubscriptionAction(): Promise<SubscriptionActionState> {
   try {
-    const context = await requireCompanyBillingContext();
+    const context = await requireSubscriptionManagerContext();
     const subscription = await requireCompanySubscription(context.membership.company.id);
 
     if (!subscription.providerSubscriptionId) {

@@ -83,5 +83,24 @@ describe("assinatura authenticated shell", () => {
 
     expect(appLayout).not.toContain("assertOperationalEntitlement");
     expect(requireEntitlement).toContain('SUBSCRIPTION_REQUIRED_PATH = "/assinatura"');
+    expect(requireEntitlement).toContain('STAFF_SUBSCRIPTION_BLOCKED_PATH = "/assinatura-equipe"');
+  });
+
+  it("checkout de assinatura exige subscription.manage", () => {
+    const actions = readFileSync(
+      join(process.cwd(), "src/features/subscription/actions.ts"),
+      "utf8",
+    );
+    const assinaturaPage = readFileSync(
+      join(process.cwd(), "src/app/(dashboard)/assinatura/page.tsx"),
+      "utf8",
+    );
+
+    expect(actions).toContain("requireSubscriptionManagerContext");
+    expect(actions).toContain('subscription.manage');
+    expect(assinaturaPage).toContain('subscription.manage');
+    expect(
+      existsSync(join(process.cwd(), "src/app/(dashboard)/assinatura-equipe/page.tsx")),
+    ).toBe(true);
   });
 });

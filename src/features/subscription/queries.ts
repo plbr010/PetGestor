@@ -34,7 +34,26 @@ export async function getCompanySubscription(
 
 export async function getCompanyEntitlement(companyId: string): Promise<CompanyEntitlement> {
   const subscription = await getCompanySubscription(companyId);
-  return computeEntitlement(subscription, new Date());
+
+  if (!isValidUuid(companyId)) {
+    return computeEntitlement(subscription, new Date());
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: company, error } = await supabase
+    .from("companies")
+    .select("billing_exempt")
+    .eq("id", companyId)
+    .maybeSingle();
+
+  // Coluna ainda não migrada → trata como não isenta.
+  if (error) {
+    return computeEntitlement(subscription, new Date());
+  }
+
+  return computeEntitlement(subscription, new Date(), {
+    billingExempt: Boolean(company?.billing_exempt),
+  });
 }
 
 export async function requireCompanySubscription(

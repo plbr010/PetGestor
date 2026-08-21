@@ -122,6 +122,7 @@ export type Database = {
           name: string;
           timezone: string;
           created_by: string;
+          billing_exempt: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -130,6 +131,7 @@ export type Database = {
           name: string;
           timezone?: string;
           created_by: string;
+          billing_exempt?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -138,6 +140,7 @@ export type Database = {
           name?: string;
           timezone?: string;
           created_by?: string;
+          billing_exempt?: boolean;
           created_at?: string;
           updated_at?: string;
         };
