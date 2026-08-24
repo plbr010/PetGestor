@@ -9,7 +9,10 @@ import {
   type SubscriptionActionState,
 } from "@/features/subscription/actions";
 import type { CompanyEntitlement, CompanySubscriptionRecord } from "@/features/subscription/types";
-import { resolveSubscriptionPageState } from "@/features/subscription/subscription-ui";
+import {
+  canShowPlanPicker,
+  resolveSubscriptionPageState,
+} from "@/features/subscription/subscription-ui";
 import { formatDateTimeInTimezone } from "@/features/subscription/utils";
 import { formatAdminTrialRemaining } from "@/features/admin/utils";
 import {
@@ -20,7 +23,6 @@ import {
 import { getPlanMarketingLabel } from "@/features/subscription/providers/mercado-pago-types";
 import {
   resolveSubscriberBadge,
-  PAYMENT_METHOD_MANAGED_BY_MP,
   type SubscriberBadge,
 } from "@/features/subscription/subscriber-view";
 import { SubscriptionPlanPicker } from "@/features/subscription/components/subscription-plan-picker";
@@ -37,26 +39,11 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-const PLAN_BENEFITS = [
-  "Tutores e pets",
-  "Serviços",
-  "Funcionários",
-  "Agenda",
-  "Atendimentos",
-  "Financeiro",
-] as const;
-
 type SubscriptionPageContentProps = {
   subscription: CompanySubscriptionRecord;
   entitlement: CompanyEntitlement;
   timeZone: string;
 };
-
-function resolveBadge(
-  pageState: ReturnType<typeof resolveSubscriptionPageState>,
-): SubscriberBadge {
-  return resolveSubscriberBadge(pageState);
-}
 
 function badgeClass(badge: SubscriberBadge): string {
   switch (badge) {
@@ -75,17 +62,13 @@ function badgeClass(badge: SubscriberBadge): string {
   }
 }
 
-function displayValue(value: string | null | undefined): string {
-  return value && value.trim().length > 0 ? value : "Não disponível";
-}
-
 export function SubscriptionPageContent({
   subscription,
   entitlement,
   timeZone,
 }: SubscriptionPageContentProps) {
   const pageState = resolveSubscriptionPageState(subscription, entitlement);
-  const badge = resolveBadge(pageState);
+  const badge = resolveSubscriberBadge(pageState);
   const serverNow = new Date(entitlement.serverNowIso);
   const interval = subscription.billingInterval;
   const [checkoutState, checkoutAction, isStartingCheckout] = useActionState(
@@ -112,92 +95,45 @@ export function SubscriptionPageContent({
   function confirmCancel(event: FormEvent<HTMLFormElement>) {
     const confirmed = window.confirm(
       interval === "annual"
-        ? "Cancelar a renovação anual? O acesso permanece até o fim do período já pago, se houver."
-        : "Tem certeza que deseja cancelar a assinatura? O acesso pode continuar até o fim do período já pago.",
+        ? "Cancelar a renovação anual? O acesso permanece até o fim do período já pago."
+        : "Cancelar a renovação mensal? O acesso permanece até o fim do período já pago, se houver.",
     );
     if (!confirmed) {
       event.preventDefault();
     }
   }
 
-  const infoRows = [
-    { label: "Plano atual", value: planDisplayName(interval) },
-    {
-      label: "Valor",
-      value: `${priceLabelForInterval(interval)}/${interval === "annual" ? "ano" : "mês"}`,
-    },
-    { label: "Código do plano", value: subscription.planCode },
-    {
-      label: "Status da assinatura",
-      value: badge,
-    },
-    {
-      label: "Status do pagamento",
-      value: displayValue(subscription.lastPaymentStatus),
-    },
-    {
-      label: "Acesso operacional",
-      value: entitlement.hasOperationalAccess ? "Liberado" : "Bloqueado",
-    },
-    {
-      label: "Início do trial",
-      value: formatDateTimeInTimezone(subscription.trialStartedAt, timeZone),
-    },
-    {
-      label: "Fim do trial",
-      value: formatDateTimeInTimezone(subscription.trialEndsAt, timeZone),
-    },
-    {
-      label: "Tempo do trial",
-      value:
-        pageState === "trial_active"
-          ? formatAdminTrialRemaining(subscription.trialEndsAt, serverNow)
-          : displayValue(null),
-    },
-    {
-      label: "Ativação da assinatura",
-      value: subscription.subscribedAt
-        ? formatDateTimeInTimezone(subscription.subscribedAt, timeZone)
-        : "Não disponível",
-    },
-    {
-      label: "Início do período",
-      value: subscription.currentPeriodStart
-        ? formatDateTimeInTimezone(subscription.currentPeriodStart, timeZone)
-        : "Não disponível",
-    },
-    {
-      label: interval === "annual" ? "Fim do período / vencimento" : "Fim do período",
-      value: subscription.currentPeriodEnd
-        ? formatDateTimeInTimezone(subscription.currentPeriodEnd, timeZone)
-        : "Não disponível",
-    },
-    {
-      label: "Último pagamento",
-      value: subscription.lastPaymentAt
-        ? formatDateTimeInTimezone(subscription.lastPaymentAt, timeZone)
-        : "Não disponível",
-    },
-    {
-      label: "Próxima cobrança",
-      value: subscription.nextPaymentAt
-        ? formatDateTimeInTimezone(subscription.nextPaymentAt, timeZone)
-        : "Não disponível",
-    },
-    {
-      label: "Valor da próxima cobrança",
-      value: subscription.nextPaymentAt
-        ? priceLabelForInterval(interval)
-        : "Não disponível",
-    },
-    {
-      label: "Forma de pagamento",
-      value: PAYMENT_METHOD_MANAGED_BY_MP,
-    },
-  ];
+  function confirmAnnualUpgrade(event: FormEvent) {
+    const form = event.target instanceof HTMLFormElement
+      ? event.target
+      : event.currentTarget instanceof HTMLFormElement
+        ? event.currentTarget
+        : null;
+    if (!form) {
+      return;
+    }
 
-  const showPlanPicker =
-    pageState === "trial_expired" || pageState === "cancelled" || pageState === "past_due";
+    const plan = new FormData(form).get("plan");
+    if (pageState !== "active" || interval !== "monthly" || plan !== "annual") {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Ao mudar para o anual, a renovação mensal é encerrada e você paga R$ 799 no Mercado Pago. O plano anual só ativa após a confirmação do pagamento. Continuar?",
+    );
+    if (!confirmed) {
+      event.preventDefault();
+    }
+  }
+
+  const periodEndLabel = subscription.currentPeriodEnd
+    ? formatDateTimeInTimezone(subscription.currentPeriodEnd, timeZone)
+    : null;
+  const nextChargeLabel = subscription.nextPaymentAt
+    ? formatDateTimeInTimezone(subscription.nextPaymentAt, timeZone)
+    : null;
+
+  const showPlans = canShowPlanPicker(pageState) && pageState !== "trial_active";
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -209,7 +145,7 @@ export function SubscriptionPageContent({
               {badge}
             </Badge>
           </div>
-          <CardDescription>{getDescription(pageState)}</CardDescription>
+          <CardDescription>{getDescription(pageState, interval)}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {feedback ? (
@@ -228,14 +164,12 @@ export function SubscriptionPageContent({
           {pageState === "trial_active" ? (
             <div className="rounded-lg border bg-primary/5 p-4 text-sm">
               <p className="font-medium">
-                Seu teste termina em{" "}
-                {formatAdminTrialRemaining(subscription.trialEndsAt, serverNow).replace(
-                  " restantes",
-                  "",
-                )}
+                Teste grátis até{" "}
+                {formatDateTimeInTimezone(subscription.trialEndsAt, timeZone)}
               </p>
-              <p className="mt-2 text-muted-foreground">
-                Sem cartão e sem cobrança durante as 72 horas. Depois você escolhe mensal ou anual.
+              <p className="mt-1 text-muted-foreground">
+                Restam {formatAdminTrialRemaining(subscription.trialEndsAt, serverNow)}. Sem cartão
+                durante o teste.
               </p>
             </div>
           ) : null}
@@ -249,66 +183,86 @@ export function SubscriptionPageContent({
                 {planPeriodLabel(interval)}
               </span>
             </p>
-            {subscription.offerCode ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Oferta: {subscription.offerCode}
-              </p>
-            ) : null}
+
+            <dl className="mt-4 space-y-2 text-sm">
+              {pageState === "active" || pageState === "checkout_pending" ? (
+                <>
+                  {periodEndLabel ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">
+                        {interval === "annual" ? "Válido até" : "Fim do período"}
+                      </dt>
+                      <dd className="font-medium text-right">{periodEndLabel}</dd>
+                    </div>
+                  ) : null}
+                  {nextChargeLabel && !subscription.cancelAtPeriodEnd ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Próxima cobrança</dt>
+                      <dd className="font-medium text-right">{nextChargeLabel}</dd>
+                    </div>
+                  ) : null}
+                  {subscription.cancelAtPeriodEnd ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">Renovação</dt>
+                      <dd className="font-medium text-right">Cancelada</dd>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+            </dl>
           </div>
-
-          <dl className="space-y-3 rounded-lg border bg-muted/20 p-4 text-sm">
-            {infoRows.map((row) => (
-              <div
-                key={row.label}
-                className="flex flex-col gap-1 border-b border-border/60 pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
-              >
-                <dt className="text-muted-foreground">{row.label}</dt>
-                <dd className="font-medium sm:text-right">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <ul className="space-y-2 text-sm">
-            {PLAN_BENEFITS.map((benefit) => (
-              <li key={benefit} className="flex items-center gap-2">
-                <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
-                {benefit}
-              </li>
-            ))}
-          </ul>
-
-          {showPlanPicker ? (
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Escolha o plano</p>
-              <SubscriptionPlanPicker
-                formAction={checkoutAction}
-                pending={isStartingCheckout}
-              />
-              <p className="text-center text-xs text-muted-foreground">
-                Você será redirecionado ao Mercado Pago. O plano só ativa após confirmação do
-                pagamento.
-              </p>
-            </div>
-          ) : null}
 
           {pageState === "checkout_pending" ? (
             <form action={checkoutAction} className="space-y-3">
               <input type="hidden" name="plan" value={interval} />
               <p className="text-sm text-muted-foreground">
-                Checkout {interval === "annual" ? "anual" : "mensal"} pendente (
-                {getPlanMarketingLabel(interval)}).
+                Pagamento {interval === "annual" ? "anual" : "mensal"} pendente (
+                {getPlanMarketingLabel(interval)}). O plano só ativa após confirmação.
               </p>
               <Button type="submit" className="h-11 w-full" disabled={isStartingCheckout}>
-                {isStartingCheckout ? "Abrindo checkout…" : "Concluir assinatura"}
+                {isStartingCheckout ? "Abrindo checkout…" : "Concluir pagamento"}
               </Button>
             </form>
           ) : null}
 
-          {pageState === "active" ? (
-            <div className="flex flex-col gap-2">
+          {showPlans ? (
+            <div className="space-y-3" onSubmitCapture={confirmAnnualUpgrade}>
+              <div>
+                <p className="text-sm font-medium">
+                  {pageState === "active" ? "Mudar plano" : "Escolha o plano"}
+                </p>
+                {pageState === "active" && interval === "monthly" ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Mudar para anual encerra a renovação mensal e cobra R$ 799 após o pagamento no
+                    Mercado Pago.
+                  </p>
+                ) : null}
+                {pageState === "active" && interval === "annual" ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    O anual já pago vale até o fim do período. Para ir ao mensal depois, cancele a
+                    renovação e assine o mensal quando o período acabar.
+                  </p>
+                ) : null}
+              </div>
+              <SubscriptionPlanPicker
+                formAction={checkoutAction}
+                pending={isStartingCheckout}
+                currentInterval={
+                  pageState === "active" || pageState === "checkout_pending" ? interval : null
+                }
+                hideCurrentPlanAction
+              />
+            </div>
+          ) : null}
+
+          <div className="flex flex-col gap-2">
+            {pageState === "active" || entitlement.hasOperationalAccess ? (
               <ButtonLink href="/dashboard" className="h-11 w-full">
                 Ir para o painel
               </ButtonLink>
+            ) : null}
+
+            {pageState === "active" && !subscription.cancelAtPeriodEnd ? (
               <form action={cancelAction} onSubmit={confirmCancel}>
                 <Button
                   type="submit"
@@ -319,24 +273,23 @@ export function SubscriptionPageContent({
                   {isCancelling ? "Cancelando…" : "Cancelar renovação"}
                 </Button>
               </form>
-            </div>
-          ) : null}
+            ) : null}
 
-          {(pageState === "checkout_pending" ||
-            pageState === "trial_expired" ||
+            {pageState === "checkout_pending" ||
             pageState === "past_due" ||
-            pageState === "active") && (
-            <form action={refreshAction}>
-              <Button
-                type="submit"
-                variant="outline"
-                className="h-11 w-full"
-                disabled={isRefreshing}
-              >
-                {isRefreshing ? "Verificando…" : "Atualizar status da assinatura"}
-              </Button>
-            </form>
-          )}
+            pageState === "active" ? (
+              <form action={refreshAction}>
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  className="h-11 w-full text-muted-foreground"
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? "Verificando…" : "Atualizar status"}
+                </Button>
+              </form>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -345,34 +298,37 @@ export function SubscriptionPageContent({
 
 function getTitle(state: ReturnType<typeof resolveSubscriptionPageState>): string {
   switch (state) {
-    case "trial_active":
-      return "Sua assinatura";
-    case "active":
-      return "Sua assinatura";
     case "past_due":
       return "Pagamento pendente";
     case "cancelled":
       return "Assinatura cancelada";
     case "checkout_pending":
-      return "Conclua sua assinatura";
+      return "Conclua o pagamento";
+    case "trial_expired":
+      return "Escolha um plano";
     default:
-      return "Seu período de teste terminou";
+      return "Sua assinatura";
   }
 }
 
-function getDescription(state: ReturnType<typeof resolveSubscriptionPageState>): string {
+function getDescription(
+  state: ReturnType<typeof resolveSubscriptionPageState>,
+  interval: "monthly" | "annual",
+): string {
   switch (state) {
     case "trial_active":
-      return "Acompanhe o teste gratuito. Depois escolha mensal ou anual.";
+      return "Acompanhe o teste. Depois escolha mensal ou anual.";
     case "active":
-      return "Acompanhe cobranças, vencimento e status da sua assinatura.";
+      return interval === "annual"
+        ? "Gerencie renovação e, se quiser, troque de plano no fim do período."
+        : "Gerencie renovação ou mude para o plano anual.";
     case "past_due":
-      return "Regularize com o plano mensal ou anual para voltar a usar o PetGestor.";
+      return "Regularize com mensal ou anual para voltar a usar o PetGestor.";
     case "cancelled":
-      return "Você pode assinar novamente no plano mensal ou anual.";
+      return "Você pode assinar novamente quando quiser.";
     case "checkout_pending":
-      return "Finalize o pagamento no Mercado Pago.";
+      return "Finalize no Mercado Pago. Nada é ativado antes da confirmação.";
     default:
-      return "Continue usando o PetGestor assinando o plano mensal ou anual.";
+      return "Assine o plano mensal ou anual para continuar.";
   }
 }

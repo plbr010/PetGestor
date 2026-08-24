@@ -11,17 +11,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const SHARED_BENEFITS = [
-  "Acesso completo ao PetGestor",
-  "Cancelamento conforme as regras do plano",
-] as const;
-
 type PlanPickerProps = {
   formAction: (payload: FormData) => void;
   pending?: boolean;
+  /** Plano atual (mostra “Plano atual” e ajusta CTAs de troca). */
+  currentInterval?: BillingInterval | null;
+  /** Quando true, esconde o botão do plano atual. */
+  hideCurrentPlanAction?: boolean;
 };
 
-export function SubscriptionPlanPicker({ formAction, pending = false }: PlanPickerProps) {
+export function SubscriptionPlanPicker({
+  formAction,
+  pending = false,
+  currentInterval = null,
+  hideCurrentPlanAction = false,
+}: PlanPickerProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <PlanCard
@@ -30,8 +34,25 @@ export function SubscriptionPlanPicker({ formAction, pending = false }: PlanPick
         title="Mensal"
         price={PLAN_MONTHLY_PRICE_LABEL}
         period="por mês"
-        bullets={["Cobrança mensal", ...SHARED_BENEFITS]}
-        cta="Assinar mensal"
+        bullets={["Cobrança mensal", "Acesso completo ao PetGestor"]}
+        cta={
+          currentInterval === "monthly"
+            ? "Plano atual"
+            : currentInterval === "annual"
+              ? "Mudar para mensal"
+              : "Assinar mensal"
+        }
+        isCurrent={currentInterval === "monthly"}
+        disabled={
+          pending ||
+          (hideCurrentPlanAction && currentInterval === "monthly") ||
+          currentInterval === "annual"
+        }
+        disabledHint={
+          currentInterval === "annual"
+            ? "Disponível só no fim do período anual já pago."
+            : undefined
+        }
         pending={pending}
       />
       <PlanCard
@@ -43,11 +64,17 @@ export function SubscriptionPlanPicker({ formAction, pending = false }: PlanPick
         highlight
         bullets={[
           `Equivale a ${PLAN_ANNUAL_MONTHLY_EQUIVALENT_LABEL}/mês`,
-          `Economize ${PLAN_ANNUAL_SAVINGS_LABEL} em comparação ao plano mensal durante 12 meses.`,
-          "Cobrança anual",
-          ...SHARED_BENEFITS,
+          `Economize ${PLAN_ANNUAL_SAVINGS_LABEL} em 12 meses`,
         ]}
-        cta="Assinar anual"
+        cta={
+          currentInterval === "annual"
+            ? "Plano atual"
+            : currentInterval === "monthly"
+              ? "Mudar para anual"
+              : "Assinar anual"
+        }
+        isCurrent={currentInterval === "annual"}
+        disabled={pending || (hideCurrentPlanAction && currentInterval === "annual")}
         pending={pending}
       />
     </div>
@@ -63,6 +90,9 @@ function PlanCard({
   bullets,
   cta,
   highlight = false,
+  isCurrent = false,
+  disabled = false,
+  disabledHint,
   pending,
 }: {
   formAction: (payload: FormData) => void;
@@ -73,6 +103,9 @@ function PlanCard({
   bullets: string[];
   cta: string;
   highlight?: boolean;
+  isCurrent?: boolean;
+  disabled?: boolean;
+  disabledHint?: string;
   pending: boolean;
 }) {
   return (
@@ -80,15 +113,20 @@ function PlanCard({
       action={formAction}
       className={cn(
         "flex flex-col rounded-2xl border p-4",
-        highlight ? "border-primary bg-primary/5 shadow-sm" : "bg-card",
+        highlight || isCurrent ? "border-primary bg-primary/5 shadow-sm" : "bg-card",
       )}
     >
       <input type="hidden" name="plan" value={interval} />
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <p className="text-base font-semibold">{title}</p>
-        {highlight ? (
+        {highlight && !isCurrent ? (
           <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
             Melhor oferta
+          </Badge>
+        ) : null}
+        {isCurrent ? (
+          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-900">
+            Plano atual
           </Badge>
         ) : null}
       </div>
@@ -107,8 +145,16 @@ function PlanCard({
           </li>
         ))}
       </ul>
-      <Button type="submit" className="mt-5 h-11 w-full" disabled={pending}>
-        {pending ? "Redirecionando…" : cta}
+      {disabledHint ? (
+        <p className="mt-3 text-xs text-muted-foreground">{disabledHint}</p>
+      ) : null}
+      <Button
+        type="submit"
+        className="mt-5 h-11 w-full"
+        variant={isCurrent || disabled ? "outline" : "default"}
+        disabled={disabled || isCurrent}
+      >
+        {pending && !disabled && !isCurrent ? "Redirecionando…" : cta}
       </Button>
     </form>
   );

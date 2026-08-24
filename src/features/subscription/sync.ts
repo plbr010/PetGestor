@@ -57,12 +57,32 @@ function resolveBillingInterval(row: {
   return "monthly";
 }
 
+function periodCoversAnnualCycle(
+  startIso: string | null | undefined,
+  endIso: string | null | undefined,
+): boolean {
+  if (!startIso || !endIso) {
+    return false;
+  }
+
+  const start = new Date(startIso).getTime();
+  const end = new Date(endIso).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return false;
+  }
+
+  return end - start >= 300 * 24 * 60 * 60 * 1000;
+}
+
 /**
- * Define período pago só na primeira ativação (idempotente em webhooks duplicados).
+ * Define período pago na primeira ativação (ou no upgrade mensal→anual).
+ * Idempotente: não alonga de novo se o período anual já estiver definido.
  */
 function buildPeriodUpdateOnFirstActivation(params: {
   alreadySubscribed: boolean;
   hasPeriodStart: boolean;
+  currentPeriodStart: string | null | undefined;
+  currentPeriodEnd: string | null | undefined;
   billingInterval: BillingInterval;
   now: Date;
   nextPaymentAt: string | null | undefined;
@@ -72,13 +92,19 @@ function buildPeriodUpdateOnFirstActivation(params: {
   current_period_end?: string;
   cancel_at_period_end?: boolean;
 } {
-  if (params.alreadySubscribed && params.hasPeriodStart) {
+  const existingCoversAnnual =
+    params.billingInterval === "annual" &&
+    periodCoversAnnualCycle(params.currentPeriodStart, params.currentPeriodEnd);
+
+  const skipPeriodReset =
+    params.hasPeriodStart &&
+    (params.billingInterval === "monthly" || existingCoversAnnual);
+
+  if (params.alreadySubscribed && skipPeriodReset) {
     return {};
   }
 
   const start = params.now;
-  // Anual: calendário de 12 meses (não confiar só em +365 dias via API).
-  // Mensal: next_payment_date do MP quando disponível.
   const periodEnd =
     params.billingInterval === "annual"
       ? computePaidPeriodEnd(start, "annual")
@@ -97,7 +123,7 @@ function buildPeriodUpdateOnFirstActivation(params: {
     update.subscribed_at = start.toISOString();
   }
 
-  if (!params.hasPeriodStart) {
+  if (!skipPeriodReset) {
     update.current_period_start = start.toISOString();
     update.current_period_end = periodEnd.toISOString();
     update.cancel_at_period_end = false;
@@ -192,6 +218,8 @@ export async function syncSubscriptionFromProvider(params: {
       buildPeriodUpdateOnFirstActivation({
         alreadySubscribed: Boolean(existing?.subscribed_at),
         hasPeriodStart: Boolean(existing?.current_period_start),
+        currentPeriodStart: existing?.current_period_start,
+        currentPeriodEnd: existing?.current_period_end,
         billingInterval,
         now,
         nextPaymentAt: preapproval.next_payment_date,
@@ -277,12 +305,21 @@ export async function syncAuthorizedPaymentFromProvider(authorizedPaymentId: str
     update.status = paymentMapping.localStatus;
   }
 
-  // Pagamento aprovado reforça período só se ainda não houver (idempotente).
-  if (paymentMapping.localStatus === "active" && !local.current_period_start) {
+  // Pagamento aprovado: define/renova período (inclui upgrade mensal→anual).
+  if (paymentMapping.localStatus === "active") {
     const interval = resolveBillingInterval(local);
     const start = paymentApprovedAt ? new Date(paymentApprovedAt) : new Date();
-    update.current_period_start = start.toISOString();
-    update.current_period_end = computePaidPeriodEnd(start, interval).toISOString();
+    const coversAnnual = periodCoversAnnualCycle(
+      local.current_period_start,
+      local.current_period_end,
+    );
+
+    if (!local.current_period_start || (interval === "annual" && !coversAnnual)) {
+      update.current_period_start = start.toISOString();
+      update.current_period_end = computePaidPeriodEnd(start, interval).toISOString();
+      update.cancel_at_period_end = false;
+    }
+
     if (!local.subscribed_at) {
       update.subscribed_at = start.toISOString();
     }
