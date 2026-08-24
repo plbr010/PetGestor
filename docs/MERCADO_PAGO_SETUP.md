@@ -68,13 +68,16 @@ SUPABASE_SERVICE_ROLE_KEY=SUA_SERVICE_ROLE
 
 **Nunca** prefixe com `NEXT_PUBLIC_`.
 
-## 5. Aplicar migration
+## 5. Aplicar migrations
 
-Execute no SQL Editor do Supabase:
+No SQL Editor do Supabase, nesta ordem:
 
-`supabase/migrations/20260806084500_mercado_pago_billing.sql`
+1. Trial + billing base (se ainda não aplicadas)
+2. **Plano anual (obrigatório para mudar para R$ 799):**  
+   `docs/sql/APPLY-annual-subscription-plan.sql`  
+   (ou `supabase/migrations/20260824200000_annual_subscription_plan.sql`)
 
-(após a migration de trial)
+Sem essa migration, trocar para o anual / gravar `billing_interval` pode falhar no checkout.
 
 ## 6. Testar fluxo
 
