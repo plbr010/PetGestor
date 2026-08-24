@@ -26,40 +26,118 @@ export type BillingSubscriptionUpdate = {
 const SUBSCRIPTION_COLUMNS =
   "company_id, plan_code, billing_interval, offer_code, status, trial_started_at, trial_ends_at, provider, provider_subscription_id, provider_status, provider_checkout_url, checkout_started_at, subscribed_at, next_payment_at, last_payment_at, last_payment_status, cancelled_at, current_period_start, current_period_end, cancel_at_period_end";
 
+const SUBSCRIPTION_COLUMNS_LEGACY =
+  "company_id, plan_code, status, trial_started_at, trial_ends_at, provider, provider_subscription_id, provider_status, provider_checkout_url, checkout_started_at, subscribed_at, next_payment_at, last_payment_at, last_payment_status, cancelled_at, current_period_start, current_period_end, cancel_at_period_end";
+
+function isMissingAnnualColumnError(message: string | undefined): boolean {
+  if (!message) {
+    return false;
+  }
+
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("billing_interval") ||
+    normalized.includes("offer_code") ||
+    normalized.includes("schema cache")
+  );
+}
+
+function stripAnnualColumns(update: BillingSubscriptionUpdate): BillingSubscriptionUpdate {
+  const rest = { ...update };
+  delete rest.billing_interval;
+  delete rest.offer_code;
+  return rest;
+}
+
 export async function updateCompanySubscriptionBilling(
   companyId: string,
   update: BillingSubscriptionUpdate,
 ) {
   const admin = createSupabaseAdminClient();
 
-  const { data, error } = await admin
+  const primary = await admin
     .from("company_subscriptions")
     .update(update)
     .eq("company_id", companyId)
     .select(SUBSCRIPTION_COLUMNS)
     .maybeSingle();
 
-  if (error || !data) {
-    throw new Error("billing_subscription_update_failed");
+  if (!primary.error && primary.data) {
+    return primary.data;
   }
 
-  return data;
+  const shouldRetryWithoutAnnualColumns =
+    Boolean(update.billing_interval || update.offer_code !== undefined) ||
+    isMissingAnnualColumnError(primary.error?.message);
+
+  // Migration anual ainda não aplicada: grava o restante sem billing_interval/offer_code.
+  if (shouldRetryWithoutAnnualColumns) {
+    const legacyUpdate = stripAnnualColumns(update);
+    const legacy = await admin
+      .from("company_subscriptions")
+      .update(legacyUpdate)
+      .eq("company_id", companyId)
+      .select(SUBSCRIPTION_COLUMNS_LEGACY)
+      .maybeSingle();
+
+    if (!legacy.error && legacy.data) {
+      console.warn(
+        "[Billing] update sem colunas anuais — aplique docs/sql/APPLY-annual-subscription-plan.sql",
+        {
+          companyId,
+          primaryError: primary.error?.message,
+        },
+      );
+      return {
+        ...legacy.data,
+        billing_interval: update.billing_interval ?? "monthly",
+        offer_code: update.offer_code ?? null,
+      };
+    }
+
+    console.error("[Billing] subscription update failed", {
+      companyId,
+      primaryError: primary.error?.message,
+      legacyError: legacy.error?.message,
+    });
+  } else {
+    console.error("[Billing] subscription update failed", {
+      companyId,
+      primaryError: primary.error?.message,
+    });
+  }
+
+  throw new Error("billing_subscription_update_failed");
 }
 
 export async function getCompanySubscriptionByProviderId(providerSubscriptionId: string) {
   const admin = createSupabaseAdminClient();
 
-  const { data, error } = await admin
+  const primary = await admin
     .from("company_subscriptions")
     .select(SUBSCRIPTION_COLUMNS)
     .eq("provider_subscription_id", providerSubscriptionId)
     .maybeSingle();
 
-  if (error) {
+  if (!primary.error) {
+    return primary.data;
+  }
+
+  const legacy = await admin
+    .from("company_subscriptions")
+    .select(SUBSCRIPTION_COLUMNS_LEGACY)
+    .eq("provider_subscription_id", providerSubscriptionId)
+    .maybeSingle();
+
+  if (legacy.error || !legacy.data) {
     return null;
   }
 
-  return data;
+  return {
+    ...legacy.data,
+    billing_interval: "monthly" as const,
+    offer_code: null,
+  };
 }
 
 export type WebhookEventRecord = {

@@ -148,6 +148,24 @@ function mapCheckoutError(error: unknown): string {
     return "Mercado Pago ainda não está configurado neste ambiente.";
   }
 
+  if (error instanceof Error) {
+    if (error.message === "mercado_pago_checkout_failed") {
+      return "O Mercado Pago recusou iniciar o checkout. Verifique a conta MP ou tente de novo em instantes.";
+    }
+    if (error.message === "billing_subscription_update_failed") {
+      return "Não foi possível salvar a assinatura. Confirme se a migration anual foi aplicada no Supabase.";
+    }
+    if (error.message === "checkout_not_allowed") {
+      return "Neste momento não é possível iniciar um novo checkout para esta conta.";
+    }
+    if (error.message === "missing_init_point") {
+      return "O Mercado Pago não retornou o link de pagamento. Tente novamente.";
+    }
+    if (error.message === "missing_payer_email") {
+      return "Sua conta não tem e-mail para cobrança. Atualize o e-mail e tente de novo.";
+    }
+  }
+
   return "Não foi possível iniciar a assinatura. Tente novamente.";
 }
 
@@ -165,14 +183,31 @@ async function prepareMonthlyToAnnualUpgrade(params: {
   if (subscription.providerSubscriptionId) {
     try {
       await cancelMercadoPagoSubscription(subscription.providerSubscriptionId);
-    } catch {
-      // Melhor esforço — sync abaixo tenta refletir o estado.
+    } catch (error) {
+      console.error("[Subscription] cancel monthly before annual upgrade failed", {
+        companyId,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
     }
 
-    await syncSubscriptionFromProvider({
-      companyId,
-      providerSubscriptionId: subscription.providerSubscriptionId,
-    });
+    try {
+      await syncSubscriptionFromProvider({
+        companyId,
+        providerSubscriptionId: subscription.providerSubscriptionId,
+      });
+    } catch (error) {
+      console.error("[Subscription] sync after monthly cancel failed", {
+        companyId,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      // Continua: ainda precisamos abrir o checkout anual.
+      await updateCompanySubscriptionBilling(companyId, {
+        status: "cancelled",
+        provider_status: "canceled",
+        cancel_at_period_end: true,
+        cancelled_at: new Date().toISOString(),
+      });
+    }
   }
 
   const refreshed = await requireCompanySubscription(companyId);
@@ -266,12 +301,23 @@ export async function createSubscriptionCheckoutAction(
       isReusablePendingCheckout(subscription.providerStatus) &&
       subscription.providerCheckoutUrl
     ) {
-      stage = "redirecting";
-      logSubscriptionDevStage(stage, {
-        destination: "provider_checkout_url",
-        reason: "reusable_pending_checkout",
-      });
-      redirect(subscription.providerCheckoutUrl);
+      // Valida se o checkout ainda existe no MP; se expirou, recria abaixo.
+      try {
+        const existing = await getSubscription(subscription.providerSubscriptionId);
+        if (existing.init_point && isReusablePendingCheckout(existing.status)) {
+          stage = "redirecting";
+          logSubscriptionDevStage(stage, {
+            destination: "provider_checkout_url",
+            reason: "reusable_pending_checkout",
+          });
+          redirect(existing.init_point);
+        }
+      } catch (error) {
+        console.error("[Subscription] pending checkout invalid; recreating", {
+          companyId,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     if (
@@ -279,18 +325,22 @@ export async function createSubscriptionCheckoutAction(
       subscription.providerSubscriptionId &&
       isReusablePendingCheckout(subscription.providerStatus)
     ) {
-      const existing = await getSubscription(subscription.providerSubscriptionId);
-      if (existing.init_point) {
-        await updateCompanySubscriptionBilling(companyId, {
-          provider_checkout_url: existing.init_point,
-          provider_status: existing.status,
-        });
-        stage = "redirecting";
-        logSubscriptionDevStage(stage, {
-          destination: "init_point",
-          reason: "existing_pending_init_point",
-        });
-        redirect(existing.init_point);
+      try {
+        const existing = await getSubscription(subscription.providerSubscriptionId);
+        if (existing.init_point && isReusablePendingCheckout(existing.status)) {
+          await updateCompanySubscriptionBilling(companyId, {
+            provider_checkout_url: existing.init_point,
+            provider_status: existing.status,
+          });
+          stage = "redirecting";
+          logSubscriptionDevStage(stage, {
+            destination: "init_point",
+            reason: "existing_pending_init_point",
+          });
+          redirect(existing.init_point);
+        }
+      } catch {
+        // Recria preapproval abaixo.
       }
     }
 
@@ -519,6 +569,15 @@ export async function createSubscriptionCheckoutFormAction(
       }
       if (error.message === "invalid_billing_interval") {
         return { error: "Plano inválido. Escolha mensal ou anual." };
+      }
+      if (
+        error.message === "mercado_pago_checkout_failed" ||
+        error.message === "billing_subscription_update_failed" ||
+        error.message === "checkout_not_allowed" ||
+        error.message === "missing_init_point" ||
+        error.message === "missing_payer_email"
+      ) {
+        return { error: mapCheckoutError(error) };
       }
       if (error.message.includes("Mercado Pago")) {
         return { error: error.message };
