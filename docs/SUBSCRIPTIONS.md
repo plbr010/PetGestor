@@ -66,9 +66,9 @@ Migration: `20260824200000_annual_subscription_plan.sql` (**aplicar no Supabase*
 
 ### Trocas de plano (escopo atual)
 
-- **Mensal → anual** com assinatura já `active`: **não implementado** (risco de cobrança dupla / prorrata)
-- **Anual → mensal** no fim do período: **não implementado**
-- Escolha mensal/anual só no checkout quando ainda não há assinatura ativa (trial expirado, cancelado, past_due)
+- **Mensal ativo → anual:** permitido na área `/assinatura`. Cancela a renovação mensal no MP (acesso permanece até o fim do período mensal já pago), abre checkout anual de R$ 799; o anual **só ativa após pagamento**.
+- **Anual ativo → mensal:** **bloqueado** enquanto o período anual já pago estiver vigente. O cliente cancela a renovação e, no fim do período, assina o mensal.
+- Escolha mensal/anual também no checkout quando não há assinatura ativa (trial expirado, cancelado, past_due)
 
 ## Trial de 72 horas
 

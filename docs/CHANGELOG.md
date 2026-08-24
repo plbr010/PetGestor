@@ -8,7 +8,9 @@
 - Checkout só após trial; ativação só via webhook/sync; preço só no servidor
 - UI assinante (cards mensal/anual), admin (plano/valor) e landing (#preços)
 - Cancelar renovação preserva acesso até `current_period_end` quando já pago
-- Troca mensal→anual / anual→mensal com assinatura ativa: **adiada** (risco de cobrança dupla)
+- Troca **mensal→anual** na área do assinante (cancela renovação mensal; anual só após pagamento)
+- Troca **anual→mensal** imediata: bloqueada (só após fim do período / cancelar renovação)
+- UI `/assinatura` simplificada: plano, valor, vencimento, mudar plano, cancelar renovação
 
 ### Migration
 

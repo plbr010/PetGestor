@@ -27,8 +27,10 @@ import { syncSubscriptionFromProvider } from "@/features/subscription/sync";
 import {
   canStartMercadoPagoCheckout,
   isTrialStillActiveServerSide,
+  resolvePlanChangeKind,
 } from "@/features/subscription/subscription-ui";
 import {
+  computePaidPeriodEnd,
   parseBillingInterval,
   type BillingInterval,
 } from "@/config/subscription";
@@ -149,6 +151,48 @@ function mapCheckoutError(error: unknown): string {
   return "Não foi possível iniciar a assinatura. Tente novamente.";
 }
 
+/**
+ * Se o cliente mensal ativo escolhe anual: cancela renovação mensal no MP
+ * (acesso continua até current_period_end) e segue para checkout anual.
+ * Não ativa o anual antes do pagamento.
+ */
+async function prepareMonthlyToAnnualUpgrade(params: {
+  companyId: string;
+  subscription: Awaited<ReturnType<typeof requireCompanySubscription>>;
+}): Promise<Awaited<ReturnType<typeof requireCompanySubscription>>> {
+  const { companyId, subscription } = params;
+
+  if (subscription.providerSubscriptionId) {
+    try {
+      await cancelMercadoPagoSubscription(subscription.providerSubscriptionId);
+    } catch {
+      // Melhor esforço — sync abaixo tenta refletir o estado.
+    }
+
+    await syncSubscriptionFromProvider({
+      companyId,
+      providerSubscriptionId: subscription.providerSubscriptionId,
+    });
+  }
+
+  const refreshed = await requireCompanySubscription(companyId);
+
+  // Garante período pago para não cortar acesso entre o cancelamento e o pagamento anual.
+  if (!refreshed.currentPeriodEnd) {
+    const startIso =
+      refreshed.currentPeriodStart ?? refreshed.subscribedAt ?? new Date().toISOString();
+    const start = new Date(startIso);
+    await updateCompanySubscriptionBilling(companyId, {
+      current_period_start: startIso,
+      current_period_end: computePaidPeriodEnd(start, "monthly").toISOString(),
+      cancel_at_period_end: true,
+    });
+    return requireCompanySubscription(companyId);
+  }
+
+  return refreshed;
+}
+
 export async function createSubscriptionCheckoutAction(
   billingIntervalInput: BillingInterval = "monthly",
 ): Promise<void> {
@@ -166,7 +210,7 @@ export async function createSubscriptionCheckoutAction(
     stage = "company_loaded";
     logSubscriptionDevStage(stage, { companyId, billingInterval });
 
-    const subscription = await requireCompanySubscription(companyId);
+    let subscription = await requireCompanySubscription(companyId);
     stage = "subscription_loaded";
     logSubscriptionDevStage(stage, {
       subscriptionStatus: subscription.status,
@@ -185,7 +229,28 @@ export async function createSubscriptionCheckoutAction(
     stage = "trial_validated";
     logSubscriptionDevStage(stage);
 
-    if (subscription.status === "active" || isActiveProviderSubscription(subscription.providerStatus)) {
+    const changeKind = resolvePlanChangeKind(subscription, billingInterval);
+
+    if (changeKind === "same_plan") {
+      stage = "redirecting";
+      logSubscriptionDevStage(stage, { destination: "/assinatura", reason: "same_plan" });
+      redirect("/assinatura");
+    }
+
+    if (changeKind === "annual_to_monthly_blocked") {
+      throw new Error("annual_to_monthly_blocked");
+    }
+
+    if (changeKind === "upgrade_to_annual") {
+      stage = "upgrade_monthly_to_annual";
+      logSubscriptionDevStage(stage);
+      subscription = await prepareMonthlyToAnnualUpgrade({ companyId, subscription });
+    }
+
+    if (
+      changeKind === "subscribe" &&
+      (subscription.status === "active" || isActiveProviderSubscription(subscription.providerStatus))
+    ) {
       stage = "redirecting";
       logSubscriptionDevStage(stage, { destination: "/dashboard", reason: "already_active" });
       redirect("/dashboard");
@@ -243,6 +308,7 @@ export async function createSubscriptionCheckoutAction(
     }
 
     if (
+      changeKind === "subscribe" &&
       subscription.providerSubscriptionId &&
       !isCancelledProviderSubscription(subscription.providerStatus) &&
       !isReusablePendingCheckout(subscription.providerStatus)
@@ -256,8 +322,19 @@ export async function createSubscriptionCheckoutAction(
       }
     }
 
-    if (!canStartMercadoPagoCheckout(subscription, serverNow)) {
+    // Após upgrade, status pode ser cancelled com período — checkout permitido.
+    if (
+      changeKind === "subscribe" &&
+      !canStartMercadoPagoCheckout(subscription, serverNow)
+    ) {
       throw new Error("checkout_not_allowed");
+    }
+
+    if (
+      changeKind === "upgrade_to_annual" &&
+      isTrialStillActiveServerSide(subscription, serverNow)
+    ) {
+      throw new Error("trial_still_active");
     }
 
     const authenticatedEmail = context.user.email;
@@ -331,7 +408,8 @@ export async function createSubscriptionCheckoutAction(
       throw new Error("missing_init_point");
     }
 
-    // Persiste plano escolhido ANTES do pagamento — status continua pending até webhook.
+    // Persiste plano escolhido ANTES do pagamento — status local não vira active aqui.
+    // Em upgrade, preserva current_period_* do mensal até o webhook anual ativar.
     await updateCompanySubscriptionBilling(companyId, {
       plan_code: planCodeForInterval(billingInterval),
       billing_interval: billingInterval,
@@ -341,7 +419,7 @@ export async function createSubscriptionCheckoutAction(
       provider_status: preapproval.status,
       provider_checkout_url: preapproval.init_point,
       checkout_started_at: new Date().toISOString(),
-      cancel_at_period_end: false,
+      cancel_at_period_end: changeKind === "upgrade_to_annual" ? true : false,
     });
 
     stage = "local_subscription_updated";
@@ -432,6 +510,12 @@ export async function createSubscriptionCheckoutFormAction(
     if (error instanceof Error) {
       if (error.message === "trial_still_active") {
         return { error: "Seu período de teste gratuito ainda está ativo." };
+      }
+      if (error.message === "annual_to_monthly_blocked") {
+        return {
+          error:
+            "O plano anual já pago vale até o fim do período. Cancele a renovação e, quando o período acabar, assine o mensal.",
+        };
       }
       if (error.message === "invalid_billing_interval") {
         return { error: "Plano inválido. Escolha mensal ou anual." };

@@ -130,7 +130,6 @@ describe("subscriber area security surface", () => {
       "utf8",
     );
 
-    expect(source).toContain("PAYMENT_METHOD_MANAGED_BY_MP");
     expect(source).not.toMatch(/access[_-]?token/i);
     expect(source).not.toMatch(/\bcvv\b/i);
     expect(source).not.toMatch(/card_number|cardNumber/i);
