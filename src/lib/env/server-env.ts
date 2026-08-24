@@ -2,6 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
+import { getAppUrl as resolveAppUrl } from "@/lib/env/app-url";
+
 const optionalNonEmpty = z
   .string()
   .trim()
@@ -42,9 +44,7 @@ export function getServerEnv() {
 }
 
 export function getAppUrl(): string {
-  const env = getServerEnv();
-  const url = env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return url.replace(/\/$/, "");
+  return resolveAppUrl();
 }
 
 export function getMercadoPagoAccessToken(): string {

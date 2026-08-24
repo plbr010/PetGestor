@@ -16,7 +16,7 @@
 |----------|-----|
 | `NEXT_PUBLIC_SUPABASE_URL` | URL pública do projeto |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Chave publicável (browser-safe) |
-| `NEXT_PUBLIC_APP_URL` | URL base da app (opcional, redirects) |
+| `NEXT_PUBLIC_APP_URL` | URL base da app (auth redirects; alinhar com `APP_URL`) |
 
 ## Variáveis NÃO utilizadas
 
