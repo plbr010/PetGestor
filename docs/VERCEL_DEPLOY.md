@@ -27,8 +27,8 @@ Legenda:
 |---|---|---|---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Sim | **Sim** | Sim | Obrigatória | Obrigatória | Obrigatória |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Sim | **Sim** | Sim | Obrigatória | Obrigatória | Obrigatória |
-| `APP_URL` | Não | Não | Sim (billing/auth redirects) | Obrigatória (URL HTTPS da Vercel) | Recomendada (URL do deploy Preview) | Opcional (`http://localhost:3000`) |
-| `NEXT_PUBLIC_APP_URL` | Sim | Não* | Fallback de `APP_URL` | Opcional se `APP_URL` estiver setada | Opcional | Opcional |
+| `APP_URL` | Não | Não | Sim (billing/auth redirects) | **Obrigatória** `https://pet-gestor-sepia.vercel.app` | Recomendada (URL do deploy Preview) | Opcional (`http://localhost:3000`) |
+| `NEXT_PUBLIC_APP_URL` | Sim | Não* | Mesma origem que `APP_URL` (auth no client/SSR) | **Recomendada** (igual a `APP_URL`) | Opcional | Opcional |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Não** | Não | Sim (webhook / sync admin / convite de funcionário) | Obrigatória (billing + e-mail de convite) | Obrigatória para testar billing/convite | Obrigatória para testar billing/convite |
 | `MERCADO_PAGO_ACCESS_TOKEN` | **Não** | Não | Sim (checkout/sync) | Obrigatória para cobrança | Obrigatória em sandbox | Obrigatória em sandbox |
 | `MERCADO_PAGO_WEBHOOK_SECRET` | **Não** | Não | Sim (só `/api/webhooks/mercado-pago`) | Obrigatória para webhooks | Obrigatória para webhooks | Obrigatória para webhooks |
@@ -44,23 +44,27 @@ Legenda:
 | `META_GRAPH_API_VERSION` | **Não** | Não | Sim | Opcional (`v22.0`) | Opcional | Opcional |
 | `WHATSAPP_SEND_ENABLED` | **Não** | Não | Sim | `true` só com templates aprovados | `false` | `false` |
 
-\* `NEXT_PUBLIC_APP_URL` é lida em runtime; preferir `APP_URL` no servidor.
+\* `NEXT_PUBLIC_APP_URL` é lida em runtime; no servidor a ordem é `APP_URL` → `NEXT_PUBLIC_APP_URL` → `VERCEL_URL`. Em produção, alinhe as duas com o domínio real.
 
 ### `APP_URL` em produção
 
-Use a URL HTTPS real do projeto, por exemplo:
+Use a URL HTTPS real do projeto:
 
 ```env
-APP_URL=https://petgestor-xxx.vercel.app
+APP_URL=https://pet-gestor-sepia.vercel.app
+NEXT_PUBLIC_APP_URL=https://pet-gestor-sepia.vercel.app
 ```
 
 Ou o domínio customizado:
 
 ```env
 APP_URL=https://seudominio.com
+NEXT_PUBLIC_APP_URL=https://seudominio.com
 ```
 
 **Não** use `http://localhost:3000` nem túneis (`loca.lt`, etc.) em Production.
+
+Também configure **Supabase → Authentication → URL Configuration** (Site URL + Redirect URLs) com o mesmo domínio — detalhes em `docs/AUTH.md`.
 
 ### O que NÃO é necessário no build
 

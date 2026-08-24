@@ -1,3 +1,11 @@
+## [0.30.1] — 2026-08-24
+
+### Corrigido — Links de auth/convite apontando para localhost
+
+- `getSiteUrl()` e `getAppUrl()` passam a compartilhar a mesma resolução: `APP_URL` → `NEXT_PUBLIC_APP_URL` → `VERCEL_URL` → host da request → localhost só em dev
+- Em Vercel/produção, valores `localhost` nas envs são ignorados (não quebram mais redirects)
+- Documentação de Site URL / Redirect URLs do Supabase Auth em `docs/AUTH.md`
+
 ## [0.30.0] — 2026-08-21
 
 ### Adicionado — Funcionário sem cobrança + admin sempre ativo

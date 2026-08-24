@@ -117,10 +117,50 @@ Se a conta Auth já estiver confirmada, o RPC vincula na hora. Alternativa: `/ca
 
 Diagnóstico SQL: `docs/sql/diagnose-employee-invite.sql`
 
-No Supabase Dashboard → Authentication → URL Configuration, inclua o redirect:
+## Redirecionamentos de e-mail (Site URL)
 
-`https://SEU_DOMINIO/auth/confirm`
+Todos os links de confirmação, convite e recuperação usam a origem resolvida por `getSiteUrl()` / `getAppUrl()`:
 
-## SMTP
+1. `APP_URL` (preferida no servidor)
+2. `NEXT_PUBLIC_APP_URL` (fallback)
+3. `VERCEL_URL` (https, em deploy Vercel)
+4. Host da request (dev)
+5. `http://localhost:3000` **somente** em desenvolvimento local
+
+Em produção na Vercel, configure **as duas** (ou pelo menos `APP_URL`):
+
+```env
+APP_URL=https://pet-gestor-sepia.vercel.app
+NEXT_PUBLIC_APP_URL=https://pet-gestor-sepia.vercel.app
+```
+
+**Nunca** use `http://localhost:3000` em Production na Vercel.
+
+### Supabase → Authentication → URL Configuration
+
+Configure manualmente no Dashboard do projeto Supabase:
+
+| Campo | Valor |
+|-------|--------|
+| **Site URL** | `https://pet-gestor-sepia.vercel.app` |
+| **Redirect URLs** | ver lista abaixo |
+
+**Redirect URLs** (uma por linha; wildcards `/**` são aceitos):
+
+```text
+https://pet-gestor-sepia.vercel.app/**
+https://pet-gestor-sepia.vercel.app/auth/confirm
+https://pet-gestor-sepia.vercel.app/auth/callback
+http://localhost:3000/**
+http://localhost:3000/auth/confirm
+http://localhost:3000/auth/callback
+```
+
+- **Site URL** é o fallback quando o `redirect_to` do e-mail não está na allowlist — se ficar em localhost, o usuário volta para localhost mesmo com a app em produção.
+- **Redirect URLs** deve incluir os caminhos usados por `emailRedirectTo` / `redirectTo` (`/auth/confirm`, `/auth/callback`).
+- Mantenha `localhost` na allowlist só para desenvolvimento local.
+
+Após alterar Site URL / Redirect URLs, reenvie o e-mail de convite/confirmação (links antigos podem ainda apontar para a URL antiga).
+
 
 Desenvolvimento usa e-mail padrão do Supabase (com limites; Gmail costuma cair em spam ou não entregar). SMTP próprio será configurado antes de produção. Use o link copiável no painel como fallback.
