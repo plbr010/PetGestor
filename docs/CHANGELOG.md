@@ -1,3 +1,19 @@
+## [0.31.0] — 2026-08-24
+
+### Adicionado — Plano anual R$ 799 (Mercado Pago)
+
+- Mantém mensal R$ 89,90; adiciona anual R$ 799/ano (equivalente R$ 66,58/mês; economia R$ 279,80)
+- Preapproval MP: mensal `frequency: 1`; anual `frequency: 12` months × R$ 799
+- `billing_interval` + `offer_code` (`annual_launch_799`) — oferta de lançamento sem countdown falso
+- Checkout só após trial; ativação só via webhook/sync; preço só no servidor
+- UI assinante (cards mensal/anual), admin (plano/valor) e landing (#preços)
+- Cancelar renovação preserva acesso até `current_period_end` quando já pago
+- Troca mensal→anual / anual→mensal com assinatura ativa: **adiada** (risco de cobrança dupla)
+
+### Migration
+
+- `20260824200000_annual_subscription_plan.sql` (**aplicar no Supabase**)
+
 ## [0.30.0] — 2026-08-21
 
 ### Adicionado — Funcionário sem cobrança + admin sempre ativo

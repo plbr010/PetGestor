@@ -1,4 +1,8 @@
-import { isBillingDevBypassEnabled } from "@/config/subscription";
+import {
+  billingIntervalFromPlanCode,
+  isBillingDevBypassEnabled,
+  type BillingInterval,
+} from "@/config/subscription";
 import type {
   CompanyEntitlement,
   CompanySubscriptionRecord,
@@ -9,6 +13,8 @@ import type { SubscriptionStatus } from "@/types/database.types";
 export function mapSubscriptionRow(row: {
   company_id: string;
   plan_code: string;
+  billing_interval?: string | null;
+  offer_code?: string | null;
   status: SubscriptionStatus;
   trial_started_at: string;
   trial_ends_at: string;
@@ -26,9 +32,16 @@ export function mapSubscriptionRow(row: {
   current_period_end: string | null;
   cancel_at_period_end: boolean;
 }): CompanySubscriptionRecord {
+  const billingInterval: BillingInterval =
+    row.billing_interval === "annual" || row.billing_interval === "monthly"
+      ? row.billing_interval
+      : billingIntervalFromPlanCode(row.plan_code);
+
   return {
     companyId: row.company_id,
     planCode: row.plan_code,
+    billingInterval,
+    offerCode: row.offer_code ?? null,
     status: row.status,
     trialStartedAt: row.trial_started_at,
     trialEndsAt: row.trial_ends_at,

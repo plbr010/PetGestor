@@ -28,6 +28,9 @@ export type AdminCompanyListItem = {
   nextPaymentAt: string | null;
   lastPaymentAt: string | null;
   lastPaymentStatus: string | null;
+  /** Preço do plano atual em centavos (mensal ou anual). */
+  planPriceCents: number;
+  billingInterval: "monthly" | "annual" | null;
   monthlyPriceCents: number;
   providerSubscriptionId: string | null;
   providerStatus: string | null;

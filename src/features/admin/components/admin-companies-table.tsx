@@ -63,6 +63,7 @@ export function AdminCompaniesTable({ items }: AdminCompaniesTableProps) {
             <th className="px-4 py-3 font-medium">Últ. pagamento</th>
             <th className="px-4 py-3 font-medium">Status pag.</th>
             <th className="px-4 py-3 font-medium">Acesso</th>
+            <th className="px-4 py-3 font-medium">Plano</th>
             <th className="px-4 py-3 font-medium">Valor</th>
           </tr>
         </thead>
@@ -119,7 +120,14 @@ export function AdminCompaniesTable({ items }: AdminCompaniesTableProps) {
                 )}
               </td>
               <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                {formatAdminCurrencyFromCents(item.monthlyPriceCents)}
+                {item.billingInterval === "annual"
+                  ? "Anual"
+                  : item.billingInterval === "monthly"
+                    ? "Mensal"
+                    : "—"}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                {formatAdminCurrencyFromCents(item.planPriceCents ?? item.monthlyPriceCents)}
               </td>
             </tr>
           ))}

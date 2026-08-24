@@ -1,6 +1,6 @@
 import "server-only";
 
-import { PLAN_MONTHLY_PRICE_CENTS } from "@/config/subscription";
+import { PLAN_MONTHLY_PRICE_CENTS, priceCentsForInterval } from "@/config/subscription";
 import type {
   AdminAccountStatusFilter,
   AdminCompanyDetail,
@@ -39,6 +39,8 @@ type CompanyAdminRow = {
 type SubscriptionJoin = {
   company_id: string;
   plan_code: string;
+  billing_interval?: string | null;
+  offer_code?: string | null;
   status: SubscriptionStatus;
   trial_started_at: string;
   trial_ends_at: string;
@@ -150,7 +152,16 @@ function toListItem(
     nextPaymentAt: subscription?.nextPaymentAt ?? null,
     lastPaymentAt: subscription?.lastPaymentAt ?? null,
     lastPaymentStatus: subscription?.lastPaymentStatus ?? null,
-    monthlyPriceCents: PLAN_MONTHLY_PRICE_CENTS,
+    billingInterval: subscription?.billingInterval ?? null,
+    planPriceCents: subscription
+      ? priceCentsForInterval(subscription.billingInterval)
+      : PLAN_MONTHLY_PRICE_CENTS,
+    // MRR: mensal = preço cheio; anual = equivalente mensal (não o valor anual).
+    monthlyPriceCents: subscription
+      ? subscription.billingInterval === "annual"
+        ? Math.round(priceCentsForInterval("annual") / 12)
+        : PLAN_MONTHLY_PRICE_CENTS
+      : PLAN_MONTHLY_PRICE_CENTS,
     providerSubscriptionId: subscription?.providerSubscriptionId ?? null,
     providerStatus: subscription?.providerStatus ?? null,
     subscription,
@@ -211,6 +222,8 @@ async function fetchCompanyAdminRows(companyId?: string): Promise<CompanyAdminRo
       company_subscriptions (
         company_id,
         plan_code,
+        billing_interval,
+        offer_code,
         status,
         trial_started_at,
         trial_ends_at,

@@ -1,6 +1,14 @@
 import {
+  ANNUAL_OFFER_CODE_LAUNCH,
+  PLAN_ANNUAL_PRICE_CENTS,
+  PLAN_ANNUAL_PRICE_LABEL,
+  PLAN_CODES,
   PLAN_MONTHLY_PRICE_CENTS,
   PLAN_MONTHLY_PRICE_LABEL,
+  planCodeForInterval,
+  planDisplayName,
+  priceCentsForInterval,
+  type BillingInterval,
 } from "@/config/subscription";
 
 export const MERCADO_PAGO_PROVIDER = "mercado_pago" as const;
@@ -9,7 +17,11 @@ export const MP_API_BASE = "https://api.mercadopago.com";
 
 export const EXTERNAL_REFERENCE_PREFIX = "petgestor_company_" as const;
 
-export const MP_SUBSCRIPTION_REASON = "PetGestor Mensal";
+export const MP_SUBSCRIPTION_REASON_MONTHLY = "PetGestor Mensal";
+export const MP_SUBSCRIPTION_REASON_ANNUAL = "PetGestor Anual";
+
+/** @deprecated Use MP_SUBSCRIPTION_REASON_MONTHLY */
+export const MP_SUBSCRIPTION_REASON = MP_SUBSCRIPTION_REASON_MONTHLY;
 
 export const MP_PREAPPROVAL_STATUSES = [
   "pending",
@@ -56,6 +68,7 @@ export type MercadoPagoPayment = {
   id: string;
   status: string;
   date_approved?: string | null;
+  transaction_amount?: number | null;
 };
 
 export function buildExternalReference(companyId: string): string {
@@ -70,17 +83,42 @@ export function parseExternalReference(reference: string | undefined | null): st
   return reference.slice(EXTERNAL_REFERENCE_PREFIX.length);
 }
 
-export function getMercadoPagoTransactionAmount(): number {
-  return Number((PLAN_MONTHLY_PRICE_CENTS / 100).toFixed(2));
+export function getMercadoPagoTransactionAmount(
+  interval: BillingInterval = "monthly",
+): number {
+  return Number((priceCentsForInterval(interval) / 100).toFixed(2));
 }
 
-export function buildMercadoPagoAutoRecurring(): MercadoPagoAutoRecurring {
+/**
+ * Mensal: frequency 1 month × R$89,90
+ * Anual: frequency 12 months × R$799,00 (cobrança anual recorrente no MP)
+ */
+export function buildMercadoPagoAutoRecurring(
+  interval: BillingInterval = "monthly",
+): MercadoPagoAutoRecurring {
+  if (interval === "annual") {
+    return {
+      frequency: 12,
+      frequency_type: "months",
+      transaction_amount: getMercadoPagoTransactionAmount("annual"),
+      currency_id: "BRL",
+    };
+  }
+
   return {
     frequency: 1,
     frequency_type: "months",
-    transaction_amount: getMercadoPagoTransactionAmount(),
+    transaction_amount: getMercadoPagoTransactionAmount("monthly"),
     currency_id: "BRL",
   };
+}
+
+export function mercadoPagoReasonForInterval(interval: BillingInterval): string {
+  return interval === "annual" ? MP_SUBSCRIPTION_REASON_ANNUAL : MP_SUBSCRIPTION_REASON_MONTHLY;
+}
+
+export function offerCodeForInterval(interval: BillingInterval): string | null {
+  return interval === "annual" ? ANNUAL_OFFER_CODE_LAUNCH : null;
 }
 
 export type CreatePendingPreapprovalPayload = ReturnType<
@@ -91,12 +129,15 @@ export function buildCreatePendingPreapprovalPayload(params: {
   companyId: string;
   payerEmail: string;
   backUrl: string;
+  billingInterval?: BillingInterval;
 }) {
+  const billingInterval = params.billingInterval ?? "monthly";
+
   return {
-    reason: MP_SUBSCRIPTION_REASON,
+    reason: mercadoPagoReasonForInterval(billingInterval),
     external_reference: buildExternalReference(params.companyId),
     payer_email: params.payerEmail,
-    auto_recurring: buildMercadoPagoAutoRecurring(),
+    auto_recurring: buildMercadoPagoAutoRecurring(billingInterval),
     back_url: params.backUrl,
     status: "pending" as const,
   };
@@ -125,6 +166,26 @@ export function assertNoFreeTrialInPayload(payload: Record<string, unknown>): vo
   }
 }
 
-export function getPlanMarketingLabel(): string {
-  return `${PLAN_MONTHLY_PRICE_LABEL}/mês`;
+export function getPlanMarketingLabel(interval: BillingInterval = "monthly"): string {
+  return interval === "annual"
+    ? `${PLAN_ANNUAL_PRICE_LABEL}/ano`
+    : `${PLAN_MONTHLY_PRICE_LABEL}/mês`;
 }
+
+export function assertExpectedCheckoutAmount(
+  interval: BillingInterval,
+  amount: number | null | undefined,
+): void {
+  const expected = getMercadoPagoTransactionAmount(interval);
+  if (typeof amount !== "number" || Number(amount.toFixed(2)) !== expected) {
+    throw new Error("billing_amount_mismatch");
+  }
+}
+
+export {
+  PLAN_CODES,
+  planCodeForInterval,
+  planDisplayName,
+  PLAN_MONTHLY_PRICE_CENTS,
+  PLAN_ANNUAL_PRICE_CENTS,
+};

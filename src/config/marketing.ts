@@ -1,6 +1,10 @@
 import {
   formatTrialCtaLabel,
   formatTrialNote,
+  PLAN_ANNUAL_MONTHLY_EQUIVALENT_LABEL,
+  PLAN_ANNUAL_PRICE_LABEL,
+  PLAN_ANNUAL_SAVINGS_LABEL,
+  PLAN_MONTHLY_PRICE_LABEL,
   TRIAL_DURATION_DAYS,
 } from "@/config/subscription";
 
@@ -56,10 +60,33 @@ export const marketingContent = {
       description: "Registre serviços, status e tenha visão clara das operações.",
     },
   ],
+  pricing: {
+    intro: `Teste grátis por ${TRIAL_DURATION_DAYS} dias (72 horas) com acesso completo. Sem cartão durante o teste. Depois escolha o plano.`,
+    monthly: {
+      title: "Mensal",
+      price: PLAN_MONTHLY_PRICE_LABEL,
+      period: "por mês",
+      bullets: ["Cobrança mensal", "Acesso completo ao PetGestor"],
+    },
+    annual: {
+      title: "Anual",
+      badge: "Melhor oferta",
+      price: PLAN_ANNUAL_PRICE_LABEL,
+      period: "por ano",
+      equivalent: `Equivale a ${PLAN_ANNUAL_MONTHLY_EQUIVALENT_LABEL}/mês`,
+      savings: `Economize ${PLAN_ANNUAL_SAVINGS_LABEL}`,
+      bullets: [
+        `Equivale a ${PLAN_ANNUAL_MONTHLY_EQUIVALENT_LABEL}/mês`,
+        `Economize ${PLAN_ANNUAL_SAVINGS_LABEL} em 12 meses vs mensal`,
+        "Cobrança anual",
+      ],
+    },
+  },
+  /** @deprecated Prefer `pricing` — mantido para compatibilidade de imports. */
   pricingTeaser: {
-    title: "Plano PetGestor Mensal",
+    title: "Planos PetGestor",
     description: `Teste grátis por ${TRIAL_DURATION_DAYS} dias (72 horas) com acesso completo. Sem cartão durante o teste.`,
-    price: "R$ 89,90",
+    price: PLAN_MONTHLY_PRICE_LABEL,
     period: "por mês após o teste",
   },
   cta: {

@@ -51,7 +51,19 @@ export default async function AdminCompanyDetailPage({
     { label: "Timezone", value: detail.timezone },
     { label: "Criada em", value: formatAdminDateTime(detail.createdAt) },
     { label: "Plano", value: detail.planCode ?? "—" },
-    { label: "Valor mensal", value: formatAdminCurrencyFromCents(detail.monthlyPriceCents) },
+    {
+      label: "Intervalo",
+      value:
+        detail.billingInterval === "annual"
+          ? "Anual"
+          : detail.billingInterval === "monthly"
+            ? "Mensal"
+            : "—",
+    },
+    {
+      label: "Valor",
+      value: formatAdminCurrencyFromCents(detail.planPriceCents ?? detail.monthlyPriceCents),
+    },
     {
       label: "Acesso operacional",
       value: detail.hasOperationalAccess ? "Liberado" : "Bloqueado",
