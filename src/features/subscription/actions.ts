@@ -36,6 +36,7 @@ import {
   type BillingInterval,
 } from "@/config/subscription";
 import {
+  assertMercadoPagoCheckoutReady,
   assertMercadoPagoSandboxPayerEmail,
   BillingConfigError,
   getAppUrl,
@@ -182,13 +183,23 @@ function mapMercadoPagoCheckoutFailure(error: unknown): string {
     return "URL de retorno inválida. Confira APP_URL / NEXT_PUBLIC_APP_URL na Vercel (deve ser HTTPS do domínio público).";
   }
 
-  // Mantém genérico; detalhes ficam só no log do servidor.
-  return "O Mercado Pago recusou iniciar o checkout. Verifique a conta MP ou tente de novo em instantes.";
+  const detail =
+    error.causeDescriptions[0] ??
+    (typeof error.mpMessage === "string" && error.mpMessage.length > 0
+      ? error.mpMessage
+      : null);
+
+  if (detail) {
+    // Mostra a causa real do MP (sem token) para destravar suporte/configuração.
+    return `O Mercado Pago recusou o checkout (${error.status}): ${detail}`;
+  }
+
+  return `O Mercado Pago recusou iniciar o checkout (HTTP ${error.status}). Confira Access Token, ENVIRONMENT=production e APP_URL HTTPS na Vercel.`;
 }
 
 function mapCheckoutError(error: unknown): string {
   if (error instanceof BillingConfigError) {
-    return "Mercado Pago ainda não está configurado neste ambiente.";
+    return error.message;
   }
 
   if (error instanceof MercadoPagoApiError) {
@@ -452,6 +463,8 @@ export async function createSubscriptionCheckoutAction(
 
     const appUrl = getAppUrl();
     const backUrl = new URL("/assinatura/retorno", appUrl).toString();
+
+    assertMercadoPagoCheckoutReady(backUrl);
 
     const payload = buildCreatePendingPreapprovalPayload({
       companyId,
