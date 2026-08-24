@@ -16,11 +16,25 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 
 export class MercadoPagoApiError extends Error {
   readonly status: number;
+  readonly mpMessage?: string;
+  readonly mpError?: string;
+  readonly causeDescriptions: string[];
 
-  constructor(message: string, status: number) {
+  constructor(
+    message: string,
+    status: number,
+    details?: {
+      mpMessage?: string;
+      mpError?: string;
+      causeDescriptions?: string[];
+    },
+  ) {
     super(message);
     this.name = "MercadoPagoApiError";
     this.status = status;
+    this.mpMessage = details?.mpMessage;
+    this.mpError = details?.mpError;
+    this.causeDescriptions = details?.causeDescriptions ?? [];
   }
 }
 
@@ -154,7 +168,13 @@ async function mercadoPagoRequest<T>(
         httpStatus: response.status,
         body: safeBody,
       });
-      throw new MercadoPagoApiError("mercado_pago_request_failed", response.status);
+      throw new MercadoPagoApiError("mercado_pago_request_failed", response.status, {
+        mpMessage: safeBody.message,
+        mpError: safeBody.error,
+        causeDescriptions: (safeBody.causes ?? [])
+          .map((cause) => cause.description)
+          .filter((value): value is string => Boolean(value)),
+      });
     }
 
     return data as T;
