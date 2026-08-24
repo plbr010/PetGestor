@@ -3,6 +3,10 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 
 import {
+  computePaidPeriodEnd,
+  type BillingInterval,
+} from "@/config/subscription";
+import {
   getCompanySubscriptionByProviderId,
   updateCompanySubscriptionBilling,
 } from "@/features/subscription/billing-repository";
@@ -13,6 +17,7 @@ import {
   getSubscription,
 } from "@/features/subscription/providers/mercado-pago";
 import {
+  assertExpectedCheckoutAmount,
   MERCADO_PAGO_PROVIDER,
   parseExternalReference,
 } from "@/features/subscription/providers/mercado-pago-types";
@@ -40,6 +45,91 @@ function resolveCompanyIdFromPreapproval(
   }
 
   return companyId;
+}
+
+function resolveBillingInterval(row: {
+  billing_interval?: string | null;
+  plan_code?: string | null;
+}): BillingInterval {
+  if (row.billing_interval === "annual" || row.plan_code === "petgestor_annual") {
+    return "annual";
+  }
+  return "monthly";
+}
+
+/**
+ * Define período pago só na primeira ativação (idempotente em webhooks duplicados).
+ */
+function buildPeriodUpdateOnFirstActivation(params: {
+  alreadySubscribed: boolean;
+  hasPeriodStart: boolean;
+  billingInterval: BillingInterval;
+  now: Date;
+  nextPaymentAt: string | null | undefined;
+}): {
+  subscribed_at?: string;
+  current_period_start?: string;
+  current_period_end?: string;
+  cancel_at_period_end?: boolean;
+} {
+  if (params.alreadySubscribed && params.hasPeriodStart) {
+    return {};
+  }
+
+  const start = params.now;
+  // Anual: calendário de 12 meses (não confiar só em +365 dias via API).
+  // Mensal: next_payment_date do MP quando disponível.
+  const periodEnd =
+    params.billingInterval === "annual"
+      ? computePaidPeriodEnd(start, "annual")
+      : params.nextPaymentAt
+        ? new Date(params.nextPaymentAt)
+        : computePaidPeriodEnd(start, "monthly");
+
+  const update: {
+    subscribed_at?: string;
+    current_period_start?: string;
+    current_period_end?: string;
+    cancel_at_period_end?: boolean;
+  } = {};
+
+  if (!params.alreadySubscribed) {
+    update.subscribed_at = start.toISOString();
+  }
+
+  if (!params.hasPeriodStart) {
+    update.current_period_start = start.toISOString();
+    update.current_period_end = periodEnd.toISOString();
+    update.cancel_at_period_end = false;
+  }
+
+  return update;
+}
+
+/**
+ * Em renovação, avança current_period_end só se next_payment_date for mais tarde
+ * (idempotente em webhooks duplicados com a mesma data).
+ */
+function buildPeriodEndRefresh(params: {
+  hasPeriodStart: boolean;
+  currentPeriodEnd: string | null | undefined;
+  nextPaymentAt: string | null | undefined;
+}): { current_period_end?: string } {
+  if (!params.hasPeriodStart || !params.nextPaymentAt) {
+    return {};
+  }
+
+  const next = new Date(params.nextPaymentAt);
+  if (Number.isNaN(next.getTime())) {
+    return {};
+  }
+
+  const existingEnd = params.currentPeriodEnd ? new Date(params.currentPeriodEnd) : null;
+  if (existingEnd && next.getTime() <= existingEnd.getTime()) {
+    return {};
+  }
+
+  return { current_period_end: next.toISOString() };
 }
 
 export async function syncSubscriptionFromProvider(params: {
@@ -76,7 +166,13 @@ export async function syncSubscriptionFromProvider(params: {
   }
 
   const mapping = mapPreapprovalStatusToLocal(preapproval.status);
-  const nowIso = new Date().toISOString();
+  const now = new Date();
+  const billingInterval = resolveBillingInterval(existing ?? {});
+
+  const mpAmount = preapproval.auto_recurring?.transaction_amount;
+  if (typeof mpAmount === "number" && mapping.localStatus === "active") {
+    assertExpectedCheckoutAmount(billingInterval, mpAmount);
+  }
 
   const update: Parameters<typeof updateCompanySubscriptionBilling>[1] = {
     provider: MERCADO_PAGO_PROVIDER,
@@ -90,12 +186,38 @@ export async function syncSubscriptionFromProvider(params: {
     update.status = mapping.localStatus;
   }
 
-  if (mapping.localStatus === "active" && !existing?.subscribed_at) {
-    update.subscribed_at = nowIso;
+  if (mapping.localStatus === "active") {
+    Object.assign(
+      update,
+      buildPeriodUpdateOnFirstActivation({
+        alreadySubscribed: Boolean(existing?.subscribed_at),
+        hasPeriodStart: Boolean(existing?.current_period_start),
+        billingInterval,
+        now,
+        nextPaymentAt: preapproval.next_payment_date,
+      }),
+      buildPeriodEndRefresh({
+        hasPeriodStart: Boolean(existing?.current_period_start),
+        currentPeriodEnd: existing?.current_period_end,
+        nextPaymentAt: preapproval.next_payment_date,
+      }),
+    );
   }
 
   if (mapping.localStatus === "cancelled") {
-    update.cancelled_at = existing?.cancelled_at ?? nowIso;
+    update.cancelled_at = existing?.cancelled_at ?? now.toISOString();
+    update.cancel_at_period_end = true;
+
+    // Garante período já pago para não cortar acesso anual/mensal no meio do ciclo.
+    if (!existing?.current_period_end) {
+      const startIso = existing?.subscribed_at ?? existing?.current_period_start ?? now.toISOString();
+      const start = new Date(startIso);
+      const endFromNext = preapproval.next_payment_date
+        ? new Date(preapproval.next_payment_date)
+        : computePaidPeriodEnd(start, billingInterval);
+      update.current_period_start = existing?.current_period_start ?? start.toISOString();
+      update.current_period_end = endFromNext.toISOString();
+    }
   }
 
   const row = await updateCompanySubscriptionBilling(resolvedCompanyId, update);
@@ -155,6 +277,17 @@ export async function syncAuthorizedPaymentFromProvider(authorizedPaymentId: str
     update.status = paymentMapping.localStatus;
   }
 
+  // Pagamento aprovado reforça período só se ainda não houver (idempotente).
+  if (paymentMapping.localStatus === "active" && !local.current_period_start) {
+    const interval = resolveBillingInterval(local);
+    const start = paymentApprovedAt ? new Date(paymentApprovedAt) : new Date();
+    update.current_period_start = start.toISOString();
+    update.current_period_end = computePaidPeriodEnd(start, interval).toISOString();
+    if (!local.subscribed_at) {
+      update.subscribed_at = start.toISOString();
+    }
+  }
+
   await updateCompanySubscriptionBilling(local.company_id, update);
 
   revalidatePath("/assinatura");
@@ -168,7 +301,6 @@ export async function syncPaymentFromProvider(paymentId: string) {
   const paymentMapping = mapPaymentStatusToLocal(payment.status);
 
   // Payment webhooks alone cannot activate without linked preapproval context.
-  // Conservative: only update last payment fields when we can resolve company via existing sync flows.
   return {
     paymentId: payment.id,
     paymentStatus: payment.status,

@@ -5,6 +5,9 @@ import type { SubscriptionStatus } from "@/types/database.types";
 
 export type BillingSubscriptionUpdate = {
   status?: SubscriptionStatus;
+  plan_code?: string;
+  billing_interval?: "monthly" | "annual";
+  offer_code?: string | null;
   provider?: string;
   provider_subscription_id?: string | null;
   provider_status?: string | null;
@@ -17,10 +20,11 @@ export type BillingSubscriptionUpdate = {
   cancelled_at?: string | null;
   current_period_start?: string | null;
   current_period_end?: string | null;
+  cancel_at_period_end?: boolean;
 };
 
 const SUBSCRIPTION_COLUMNS =
-  "company_id, plan_code, status, trial_started_at, trial_ends_at, provider, provider_subscription_id, provider_status, provider_checkout_url, checkout_started_at, subscribed_at, next_payment_at, last_payment_at, last_payment_status, cancelled_at, current_period_start, current_period_end, cancel_at_period_end";
+  "company_id, plan_code, billing_interval, offer_code, status, trial_started_at, trial_ends_at, provider, provider_subscription_id, provider_status, provider_checkout_url, checkout_started_at, subscribed_at, next_payment_at, last_payment_at, last_payment_status, cancelled_at, current_period_start, current_period_end, cancel_at_period_end";
 
 export async function updateCompanySubscriptionBilling(
   companyId: string,

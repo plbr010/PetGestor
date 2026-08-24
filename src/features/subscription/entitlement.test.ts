@@ -18,6 +18,8 @@ function buildSubscription(
   return {
     companyId: "550e8400-e29b-41d4-a716-446655440000",
     planCode: "petgestor_monthly",
+    billingInterval: "monthly",
+    offerCode: null,
     status: "trialing",
     trialStartedAt: started.toISOString(),
     trialEndsAt: addHours(started, TRIAL_DURATION_HOURS).toISOString(),
@@ -84,6 +86,23 @@ describe("computeEntitlement", () => {
     const entitlement = computeEntitlement(subscription, started);
     expect(entitlement.hasOperationalAccess).toBe(false);
     expect(entitlement.state).toBe("cancelled");
+  });
+
+  it("cancelled anual com período pago restante → acesso mantido", () => {
+    const subscription = buildSubscription({
+      status: "cancelled",
+      billingInterval: "annual",
+      planCode: "petgestor_annual",
+      cancelAtPeriodEnd: true,
+      currentPeriodStart: "2026-08-24T15:00:00.000Z",
+      currentPeriodEnd: "2027-08-24T15:00:00.000Z",
+    });
+    const entitlement = computeEntitlement(
+      subscription,
+      new Date("2027-01-01T00:00:00.000Z"),
+    );
+    expect(entitlement.hasOperationalAccess).toBe(true);
+    expect(entitlement.state).toBe("active");
   });
 
   it("devBypass ignora expiração", () => {

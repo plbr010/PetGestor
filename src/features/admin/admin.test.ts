@@ -28,6 +28,8 @@ function makeItem(
     nextPaymentAt: null,
     lastPaymentAt: null,
     lastPaymentStatus: null,
+    planPriceCents: 8990,
+    billingInterval: "monthly",
     monthlyPriceCents: 8990,
     providerSubscriptionId: null,
     providerStatus: null,

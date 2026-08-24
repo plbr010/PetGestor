@@ -1,3 +1,4 @@
+import type { BillingInterval } from "@/config/subscription";
 import type { SubscriptionStatus } from "@/types/database.types";
 
 export type EntitlementState =
@@ -10,6 +11,8 @@ export type EntitlementState =
 export type CompanySubscriptionRecord = {
   companyId: string;
   planCode: string;
+  billingInterval: BillingInterval;
+  offerCode: string | null;
   status: SubscriptionStatus;
   trialStartedAt: string;
   trialEndsAt: string;

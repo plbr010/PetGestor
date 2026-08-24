@@ -14,6 +14,8 @@ import {
   buildCreatePendingPreapprovalPayload,
   buildSanitizedPreapprovalPayloadLog,
   MERCADO_PAGO_PROVIDER,
+  offerCodeForInterval,
+  planCodeForInterval,
 } from "@/features/subscription/providers/mercado-pago-types";
 import {
   createPendingSubscription,
@@ -26,6 +28,10 @@ import {
   canStartMercadoPagoCheckout,
   isTrialStillActiveServerSide,
 } from "@/features/subscription/subscription-ui";
+import {
+  parseBillingInterval,
+  type BillingInterval,
+} from "@/config/subscription";
 import {
   assertMercadoPagoSandboxPayerEmail,
   BillingConfigError,
@@ -143,9 +149,13 @@ function mapCheckoutError(error: unknown): string {
   return "Não foi possível iniciar a assinatura. Tente novamente.";
 }
 
-export async function createSubscriptionCheckoutAction(): Promise<void> {
+export async function createSubscriptionCheckoutAction(
+  billingIntervalInput: BillingInterval = "monthly",
+): Promise<void> {
   let stage = "action_started";
   logSubscriptionDevStage(stage);
+
+  const billingInterval = parseBillingInterval(billingIntervalInput);
 
   try {
     const context = await requireSubscriptionManagerContext();
@@ -154,7 +164,7 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
 
     const companyId = context.membership.company.id;
     stage = "company_loaded";
-    logSubscriptionDevStage(stage, { companyId });
+    logSubscriptionDevStage(stage, { companyId, billingInterval });
 
     const subscription = await requireCompanySubscription(companyId);
     stage = "subscription_loaded";
@@ -163,6 +173,7 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
       providerStatus: subscription.providerStatus,
       hasProviderSubscriptionId: Boolean(subscription.providerSubscriptionId),
       hasProviderCheckoutUrl: Boolean(subscription.providerCheckoutUrl),
+      billingInterval: subscription.billingInterval,
     });
 
     const serverNow = new Date();
@@ -180,7 +191,12 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
       redirect("/dashboard");
     }
 
+    const pendingMatchesPlan =
+      subscription.billingInterval === billingInterval &&
+      subscription.planCode === planCodeForInterval(billingInterval);
+
     if (
+      pendingMatchesPlan &&
       subscription.providerSubscriptionId &&
       isReusablePendingCheckout(subscription.providerStatus) &&
       subscription.providerCheckoutUrl
@@ -194,6 +210,7 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
     }
 
     if (
+      pendingMatchesPlan &&
       subscription.providerSubscriptionId &&
       isReusablePendingCheckout(subscription.providerStatus)
     ) {
@@ -209,6 +226,19 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
           reason: "existing_pending_init_point",
         });
         redirect(existing.init_point);
+      }
+    }
+
+    // Checkout pendente de outro plano: descarta e cria novo (evita reabrir mensal ao escolher anual).
+    if (
+      subscription.providerSubscriptionId &&
+      isReusablePendingCheckout(subscription.providerStatus) &&
+      !pendingMatchesPlan
+    ) {
+      try {
+        await cancelMercadoPagoSubscription(subscription.providerSubscriptionId);
+      } catch {
+        // Melhor esforço — seguimos com novo preapproval.
       }
     }
 
@@ -253,6 +283,7 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
       companyId,
       payerEmail,
       backUrl,
+      billingInterval,
     });
 
     assertNoFreeTrialInPayload(payload);
@@ -263,6 +294,8 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
       appUrl,
       backUrl,
       endpoint: "/preapproval",
+      billingInterval,
+      transactionAmount: payload.auto_recurring.transaction_amount,
     });
 
     if (isDev) {
@@ -270,6 +303,7 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
         ...buildSanitizedPreapprovalPayloadLog(payload),
         hasTestPayerEmail: payerContext.hasTestPayerEmail,
         payerEmailUsed: payerEmail,
+        billingInterval,
       });
     }
 
@@ -297,12 +331,17 @@ export async function createSubscriptionCheckoutAction(): Promise<void> {
       throw new Error("missing_init_point");
     }
 
+    // Persiste plano escolhido ANTES do pagamento — status continua pending até webhook.
     await updateCompanySubscriptionBilling(companyId, {
+      plan_code: planCodeForInterval(billingInterval),
+      billing_interval: billingInterval,
+      offer_code: offerCodeForInterval(billingInterval),
       provider: MERCADO_PAGO_PROVIDER,
       provider_subscription_id: preapproval.id,
       provider_status: preapproval.status,
       provider_checkout_url: preapproval.init_point,
       checkout_started_at: new Date().toISOString(),
+      cancel_at_period_end: false,
     });
 
     stage = "local_subscription_updated";
@@ -362,15 +401,28 @@ export async function cancelSubscriptionAction(): Promise<SubscriptionActionStat
 
     revalidatePath("/assinatura");
     revalidatePath("/dashboard");
-    return { success: "Assinatura cancelada." };
+    return {
+      success:
+        "Renovação cancelada no Mercado Pago. Se houver período já pago, o acesso continua até o fim desse período.",
+    };
   } catch {
     return { error: "Não foi possível cancelar a assinatura." };
   }
 }
 
-export async function createSubscriptionCheckoutFormAction(): Promise<SubscriptionActionState> {
+export async function createSubscriptionCheckoutFormAction(
+  _prevState: SubscriptionActionState,
+  formData: FormData,
+): Promise<SubscriptionActionState> {
   try {
-    await createSubscriptionCheckoutAction();
+    let billingInterval: BillingInterval = "monthly";
+    try {
+      billingInterval = parseBillingInterval(formData.get("plan") ?? "monthly");
+    } catch {
+      return { error: "Plano inválido. Escolha mensal ou anual." };
+    }
+
+    await createSubscriptionCheckoutAction(billingInterval);
     return {};
   } catch (error) {
     unstable_rethrow(error);
@@ -380,6 +432,9 @@ export async function createSubscriptionCheckoutFormAction(): Promise<Subscripti
     if (error instanceof Error) {
       if (error.message === "trial_still_active") {
         return { error: "Seu período de teste gratuito ainda está ativo." };
+      }
+      if (error.message === "invalid_billing_interval") {
+        return { error: "Plano inválido. Escolha mensal ou anual." };
       }
       if (error.message.includes("Mercado Pago")) {
         return { error: error.message };

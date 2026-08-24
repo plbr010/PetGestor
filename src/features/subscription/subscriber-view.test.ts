@@ -23,6 +23,8 @@ function buildSubscription(
   return {
     companyId: "550e8400-e29b-41d4-a716-446655440000",
     planCode: "petgestor_monthly",
+    billingInterval: "monthly",
+    offerCode: null,
     status: "trialing",
     trialStartedAt: started.toISOString(),
     trialEndsAt: addHours(started, TRIAL_DURATION_HOURS).toISOString(),

@@ -26,7 +26,9 @@ Não há cobrança automática ao fim do trial. Sem meio de pagamento cadastrado
 | Campo | Descrição |
 |-------|-----------|
 | `company_id` | PK → `companies` |
-| `plan_code` | Default `petgestor_monthly` |
+| `plan_code` | `petgestor_monthly` (default) ou `petgestor_annual` |
+| `billing_interval` | `monthly` \| `annual` (default `monthly`) |
+| `offer_code` | Oferta comercial opcional (ex.: `annual_launch_799`) — sem countdown falso |
 | `status` | `trialing`, `active`, `past_due`, `cancelled` |
 | `trial_started_at` | Início do trial |
 | `trial_ends_at` | Fim exato (+72 horas) |
@@ -34,6 +36,20 @@ Não há cobrança automática ao fim do trial. Sem meio de pagamento cadastrado
 | `provider_subscription_id` | ID preapproval Mercado Pago |
 | `provider_status` | Status real MP (`pending`, `authorized`, `paused`, `canceled`) |
 | `provider_checkout_url` | `init_point` do checkout hospedado |
+| `current_period_start` / `current_period_end` | Período pago (anual = +12 meses civis na 1ª ativação) |
+
+Migration: `20260824200000_annual_subscription_plan.sql` (**aplicar no Supabase**).
+
+## Planos
+
+| Plano | Código | Intervalo | Preço (server-side) |
+|-------|--------|-----------|---------------------|
+| Mensal | `petgestor_monthly` | `monthly` | R$ 89,90 / mês |
+| Anual | `petgestor_annual` | `annual` | R$ 799,00 / ano (`offer_code`: `annual_launch_799`) |
+
+- Equivalente anual: R$ 66,58/mês; economia vs 12× mensal: R$ 279,80
+- Frontend informa só `plan` (`monthly` \| `annual`); **preço nunca vem do browser**
+- Clicar em Assinar **não** ativa — só webhook/sync com preapproval autorizado
 
 ## Mercado Pago (Etapa 10B)
 
@@ -42,8 +58,17 @@ Não há cobrança automática ao fim do trial. Sem meio de pagamento cadastrado
 - **Sem** `free_trial` no Mercado Pago (trial já ocorreu no PetGestor)
 - **Sem** `card_token_id` — checkout hospedado MP
 - `external_reference`: `petgestor_company_<uuid>`
+- Mensal: `auto_recurring` frequency `1` month × R$ 89,90
+- Anual: `auto_recurring` frequency `12` months × R$ 799,00 (renovação recorrente pelo MP)
 - Sincronização via API + webhook — nunca confiar em query params do browser
+- Webhooks idempotentes via `billing_webhook_events` (evento duplicado não recria período)
 - Ver `docs/MERCADO_PAGO_SETUP.md`
+
+### Trocas de plano (escopo atual)
+
+- **Mensal → anual** com assinatura já `active`: **não implementado** (risco de cobrança dupla / prorrata)
+- **Anual → mensal** no fim do período: **não implementado**
+- Escolha mensal/anual só no checkout quando ainda não há assinatura ativa (trial expirado, cancelado, past_due)
 
 ## Trial de 72 horas
 
@@ -98,7 +123,15 @@ Expiração **não apaga** tutores, pets, agenda, financeiro ou empresa. Apenas 
 
 - `TRIAL_DURATION_HOURS = 72`
 - `PLAN_MONTHLY_PRICE_CENTS = 8990`
-- `PLAN_CODE = 'petgestor_monthly'`
+- `PLAN_ANNUAL_PRICE_CENTS = 79900`
+- `PLAN_CODES.monthly` / `PLAN_CODES.annual`
+- `ANNUAL_OFFER_CODE_LAUNCH = 'annual_launch_799'`
+
+## Cancelamento
+
+- CTA: **Cancelar renovação** (não “apagar acesso imediato”)
+- Status `cancelled` + `current_period_end` no futuro → acesso operacional **mantido** até o fim do período já pago
+- Sem política automática de reembolso
 
 ## Dev / teste
 
@@ -114,6 +147,6 @@ Opcional: `BILLING_DEV_BYPASS=true` (somente `NODE_ENV !== 'production'`).
 
 ## Não incluído
 
-Outros gateways, NF, estoque.
+Stripe, cupons, semestral/trimestral/vitalício, NF, afiliados, outro gateway.
 
-**Migrations pendentes:** trial + `20260806084500_mercado_pago_billing.sql`
+**Migrations relevantes:** trial + Mercado Pago billing + `20260824200000_annual_subscription_plan.sql`
