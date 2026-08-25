@@ -19,6 +19,7 @@ const ROUTE_RULES: RoutePermissionRule[] = [
   { prefix: "/dashboard/pets", permission: "pets.view" },
   { prefix: "/dashboard/tutores", permission: "customers.view" },
   { prefix: "/dashboard", permission: "dashboard.view" },
+  { prefix: "/notificacoes", permission: "dashboard.view" },
   { prefix: "/assinatura", permission: "subscription.view" },
 ];
 

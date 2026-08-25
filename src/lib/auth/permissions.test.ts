@@ -189,6 +189,7 @@ describe("route permissions", () => {
     expect(getRequiredPermissionForPath("/dashboard/pets")).toBe("pets.view");
     expect(getRequiredPermissionForPath("/dashboard/servicos")).toBe("services.view");
     expect(getRequiredPermissionForPath("/dashboard")).toBe("dashboard.view");
+    expect(getRequiredPermissionForPath("/notificacoes")).toBe("dashboard.view");
     expect(getRequiredPermissionForPath("/assinatura")).toBe("subscription.view");
   });
 

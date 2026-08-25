@@ -10,6 +10,7 @@ import {
 } from "@/features/service-orders/schemas";
 import { mapServiceOrderError } from "@/features/service-orders/utils";
 import { enqueuePetReadyNotification } from "@/features/notifications/queue-service";
+import { notifyServiceOrderReady } from "@/features/app-notifications/emitters";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
@@ -136,6 +137,11 @@ export async function markServiceOrderReadyAction(
     context.membership.company.id,
     serviceOrderId,
     context.membership.company.timezone,
+  );
+  await notifyServiceOrderReady(
+    supabase,
+    context.membership.company.id,
+    serviceOrderId,
   );
 
   revalidateServiceOrderPaths(serviceOrderId);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { DashboardMobileNav } from "@/components/layout/dashboard-mobile-nav";
@@ -9,8 +9,8 @@ import {
   getRoleLabel,
   useDashboardUser,
 } from "@/components/layout/dashboard-user-provider";
+import { NotificationBell } from "@/features/app-notifications/components/notification-bell";
 import { ButtonLink } from "@/components/ui/button-link";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -74,16 +74,7 @@ export function DashboardHeader({ title, description }: DashboardHeaderProps) {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            <Button
-              variant="outline"
-              size="icon"
-              className="relative"
-              aria-label="Notificações"
-              disabled
-            >
-              <Bell className="size-4" />
-              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" />
-            </Button>
+            <NotificationBell />
             <div className="hidden items-center gap-2 rounded-xl border bg-card px-2 py-1.5 sm:flex">
               <Avatar size="sm">
                 <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
