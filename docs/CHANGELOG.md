@@ -1,3 +1,10 @@
+## [0.39.1] — 2026-08-25
+
+### Ajuste — WhatsApp visível no dashboard (mobile)
+
+- Ícone de WhatsApp no header, ao lado do sino
+- Botão flutuante sobe no celular para não ficar atrás da barra do navegador
+
 ## [0.39.0] — 2026-08-25
 
 ### Adicionado — Botão flutuante de WhatsApp (site + dashboard)

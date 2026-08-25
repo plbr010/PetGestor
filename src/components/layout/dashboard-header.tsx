@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { DashboardMobileNav } from "@/components/layout/dashboard-mobile-nav";
+import { DashboardWhatsAppButton } from "@/components/layout/dashboard-whatsapp-button";
 import {
   getInitials,
   getRoleLabel,
@@ -63,6 +64,7 @@ export function DashboardHeader({ title, description }: DashboardHeaderProps) {
           <GlobalSearch />
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
+            <DashboardWhatsAppButton />
             <NotificationBell />
             <div className="hidden items-center gap-2 rounded-xl border bg-card px-2 py-1.5 sm:flex">
               <Avatar size="sm">
