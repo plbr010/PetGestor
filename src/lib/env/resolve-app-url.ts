@@ -1,3 +1,5 @@
+type EnvLike = Record<string, string | undefined>;
+
 /**
  * Resolução central da URL pública do app (e-mails Auth, redirects, billing).
  *
@@ -22,7 +24,7 @@ export function normalizeAppUrl(url: string): string {
 
 /** URL configurada por env / Vercel, sem headers de request. */
 export function resolveConfiguredAppUrl(
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvLike = process.env,
 ): string | undefined {
   const fromAppUrl = env.APP_URL?.trim();
   if (fromAppUrl) {
@@ -45,13 +47,13 @@ export function resolveConfiguredAppUrl(
   return undefined;
 }
 
-export function isProductionRuntime(env: NodeJS.ProcessEnv = process.env): boolean {
+export function isProductionRuntime(env: EnvLike = process.env): boolean {
   return env.NODE_ENV === "production" || env.VERCEL_ENV === "production";
 }
 
 /** Fallback local só em desenvolvimento / preview sem env. Nunca em production. */
 export function resolveDevLocalAppUrl(
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvLike = process.env,
 ): string | undefined {
   if (isProductionRuntime(env)) {
     return undefined;
@@ -59,7 +61,7 @@ export function resolveDevLocalAppUrl(
   return "http://localhost:3000";
 }
 
-export function requireAppUrl(env: NodeJS.ProcessEnv = process.env): string {
+export function requireAppUrl(env: EnvLike = process.env): string {
   const configured = resolveConfiguredAppUrl(env);
   if (configured) {
     return configured;
