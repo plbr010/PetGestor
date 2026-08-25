@@ -7,6 +7,7 @@ import {
   PLAN_MONTHLY_PRICE_LABEL,
   type BillingInterval,
 } from "@/config/subscription";
+import { trackMetaInitiateCheckout } from "@/lib/analytics/meta-pixel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -111,6 +112,9 @@ function PlanCard({
   return (
     <form
       action={formAction}
+      onSubmit={() => {
+        trackMetaInitiateCheckout(interval);
+      }}
       className={cn(
         "flex flex-col rounded-2xl border p-4",
         highlight || isCurrent ? "border-primary bg-primary/5 shadow-sm" : "bg-card",

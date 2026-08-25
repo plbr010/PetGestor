@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, BriefcaseBusiness, UserRound } from "lucide-react";
 
 import { signUpAction, type AuthActionState } from "@/features/auth/actions";
+import { trackMetaSignupStarted } from "@/lib/analytics/meta-pixel";
 import {
   lookupPendingInviteByEmailAction,
   type InviteLookupResult,
@@ -104,7 +105,10 @@ export function SignUpWizard({
         <CardContent className="space-y-3">
           <button
             type="button"
-            onClick={() => setStep("owner-form")}
+            onClick={() => {
+              trackMetaSignupStarted();
+              setStep("owner-form");
+            }}
             className={cn(
               "flex w-full flex-col gap-1 rounded-2xl border bg-background px-4 py-4 text-left transition-colors",
               "hover:border-primary/40 hover:bg-primary/5",

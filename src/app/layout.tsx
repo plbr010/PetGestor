@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 
+import { MetaPixelRoot } from "@/components/analytics/meta-pixel-root";
 import { brand } from "@/config/brand";
 
 import "./globals.css";
@@ -34,7 +35,10 @@ export default function RootLayout({
       lang={brand.locale}
       className={`${plusJakarta.variable} ${geistMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col overflow-x-hidden">{children}</body>
+      <body className="min-h-full flex flex-col overflow-x-hidden">
+        <MetaPixelRoot />
+        {children}
+      </body>
     </html>
   );
 }

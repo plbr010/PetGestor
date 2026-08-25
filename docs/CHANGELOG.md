@@ -1,3 +1,13 @@
+## [0.37.0] — 2026-08-25
+
+### Adicionado — Meta Pixel
+
+- Loader central no root layout (`MetaPixelRoot`)
+- Env `NEXT_PUBLIC_META_PIXEL_ID` (produção) + `NEXT_PUBLIC_META_PIXEL_DEBUG` (dev opcional)
+- Eventos: PageView, SignupStarted, CompleteRegistration, StartTrial, InitiateCheckout
+- Sem Purchase no browser (webhook/CAPI futuro)
+- Docs: `docs/META_PIXEL.md`
+
 ## [0.36.0] — 2026-08-25
 
 ### Finalizado — Insumos de serviço → consumo no atendimento → estoque
