@@ -1,5 +1,6 @@
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { DashboardUserProvider } from "@/components/layout/dashboard-user-provider";
+import { WhatsAppFloatingButton } from "@/components/whatsapp-floating-button";
 import { OnboardingExperienceLayer } from "@/features/onboarding-tour/components/onboarding-experience-layer";
 import { OnboardingTourProvider } from "@/features/onboarding-tour/onboarding-tour-provider";
 import { loadOnboardingSnapshot } from "@/features/onboarding-tour/queries";
@@ -48,6 +49,7 @@ export default async function AuthenticatedAppLayout({
             <div className="flex min-w-0 flex-1 flex-col">{children}</div>
           </div>
         </div>
+        <WhatsAppFloatingButton />
         <OnboardingExperienceLayer />
       </OnboardingTourProvider>
     </DashboardUserProvider>
