@@ -1,3 +1,21 @@
+## [0.36.0] — 2026-08-25
+
+### Finalizado — Insumos de serviço → consumo no atendimento → estoque
+
+- Receita do serviço (`service_product_recipes`): UI em criar/editar serviço
+- Linhas de consumo no atendimento (`service_order_consumptions`): ajustar qty, adicionar, remover
+- Baixa automática ao **marcar como pronto** (`mark_service_order_ready`) via `register_stock_movement` (`internal_use` / `service_consumption`)
+- Idempotência por chave determinística; FEFO/lotes; bloqueio de estoque insuficiente com detalhe
+- Custo gerencial de insumos (visível com `inventory.view`); não altera preço do cliente
+- Notificação de estoque baixo/zerado após a baixa
+- Sem conversão automática ml↔litro (quantidade na unidade do produto)
+- Sem reabertura de OS; cancelamento só em `waiting` (antes do consumo)
+
+### Migration
+
+- `20260825170000_service_order_stock_consumption.sql` (**aplicar no Supabase**)
+- Atalho: `docs/sql/APPLY-service-order-stock-consumption.sql`
+
 ## [0.35.0] — 2026-08-25
 
 ### Finalizado — PDV (saldo, pagamento adicional, caixa)

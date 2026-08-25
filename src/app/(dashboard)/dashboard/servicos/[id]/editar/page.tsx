@@ -2,7 +2,9 @@ import {
   updateServiceAction,
 } from "@/features/services/actions";
 import { ServiceForm } from "@/features/services/components/service-form";
+import { getServiceRecipes } from "@/features/services/recipe-queries";
 import { requireServiceById } from "@/features/services/queries";
+import { getProductPickerOptions } from "@/features/inventory/product-picker";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +16,12 @@ type EditServicePageProps = {
 export default async function EditServicePage({ params }: EditServicePageProps) {
   const context = await requireCompanyContext();
   const { id } = await params;
-  const service = await requireServiceById(context.membership.company.id, id);
+  const companyId = context.membership.company.id;
+  const [service, products, recipes] = await Promise.all([
+    requireServiceById(companyId, id),
+    getProductPickerOptions(companyId),
+    getServiceRecipes(companyId, id),
+  ]);
 
   const boundAction = updateServiceAction.bind(null, id);
 
@@ -32,6 +39,8 @@ export default async function EditServicePage({ params }: EditServicePageProps) 
               service={service}
               cancelHref={`/dashboard/servicos/${id}`}
               action={boundAction}
+              products={products}
+              recipes={recipes}
             />
           </CardContent>
         </Card>

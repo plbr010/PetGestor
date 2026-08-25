@@ -13,10 +13,19 @@ companies
   → products
        → product_batches
        → stock_movements (imutável)
-  → service_product_recipes  (stub; sem baixa automática)
+  → service_product_recipes  (receita padrão do serviço)
+  → service_order_consumptions (quantidade real no atendimento)
 ```
 
 `company_id` é sempre derivado no servidor (`requireCompanyContext` / RPC `auth.uid()` + membership). RLS com `private.is_company_member`.
+
+## Consumo em atendimentos
+
+- Receita em `service_product_recipes` (quantidade na **unidade do produto**; sem conversão ml↔L)
+- Quantidade real em `service_order_consumptions` (seed no check-in; editável até `ready`)
+- Baixa em `mark_service_order_ready` → `register_stock_movement` (`internal_use` / `service_consumption` / `reference_type=service_order`)
+- Idempotência: `private.stock_movement_key_for_service_order(so_id, consumption_id)`
+- PDV permanece independente (`type=sale`)
 
 ## Regras
 

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { formatQuantity } from "@/features/inventory/stock-engine";
 import type { StockMovementView } from "@/features/inventory/types";
 import type { ProductUnit } from "@/features/inventory/units";
@@ -48,7 +50,9 @@ export function StockMovementList({
           </div>
           <div className="mt-2 space-y-1 text-sm text-muted-foreground">
             {movement.unitCostCents != null ? (
-              <p>{formatCentsToBRL(movement.unitCostCents)}/{shortUnit}</p>
+              <p>
+                {formatCentsToBRL(movement.unitCostCents)}/{shortUnit}
+              </p>
             ) : null}
             <p>
               Saldo: {formatQuantity(movement.previousQuantity, shortUnit)} →{" "}
@@ -57,6 +61,26 @@ export function StockMovementList({
             <p>{movement.createdByName}</p>
             {movement.supplierName ? <p>Fornecedor: {movement.supplierName}</p> : null}
             {movement.notes ? <p>{movement.notes}</p> : null}
+            {movement.referenceType === "service_order" && movement.referenceId ? (
+              <p>
+                <Link
+                  href={`/dashboard/atendimentos/${movement.referenceId}`}
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  Ver atendimento
+                </Link>
+              </p>
+            ) : null}
+            {movement.referenceType === "sale" && movement.referenceId ? (
+              <p>
+                <Link
+                  href={`/dashboard/pdv/vendas/${movement.referenceId}`}
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  Ver venda
+                </Link>
+              </p>
+            ) : null}
           </div>
         </li>
       ))}

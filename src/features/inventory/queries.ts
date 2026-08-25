@@ -433,7 +433,7 @@ export async function getStockMovements({
   let builder = supabase
     .from("stock_movements")
     .select(
-      "id, product_id, type, quantity, previous_quantity, new_quantity, unit_cost_cents, reason, notes, supplier_id, created_by_name, created_at, products(name), inventory_suppliers(name)",
+      "id, product_id, type, quantity, previous_quantity, new_quantity, unit_cost_cents, reason, notes, supplier_id, reference_type, reference_id, created_by_name, created_at, products(name), inventory_suppliers(name)",
       { count: "exact" },
     )
     .eq("company_id", companyId)
@@ -460,6 +460,8 @@ export async function getStockMovements({
     reason: string | null;
     notes: string | null;
     supplier_id: string | null;
+    reference_type: string | null;
+    reference_id: string | null;
     created_by_name: string;
     created_at: string;
     products: { name: string } | { name: string }[] | null;
@@ -496,6 +498,8 @@ export async function getStockMovements({
       notes: row.notes,
       supplierId: row.supplier_id,
       supplierName,
+      referenceType: row.reference_type,
+      referenceId: row.reference_id,
       createdByName: row.created_by_name,
       createdAt: row.created_at,
     };
