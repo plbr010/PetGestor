@@ -117,7 +117,7 @@ async function syncExpiringPackages(
 
   const { data, error } = await supabase
     .from("customer_service_packages")
-    .select("id, expires_at, status, package_name_snapshot, pets(name)")
+    .select("id, expires_at, status, package_name_snapshot, pet_id")
     .eq("company_id", companyId)
     .eq("status", "active")
     .gte("expires_at", `${today}T00:00:00`)
@@ -128,9 +128,23 @@ async function syncExpiringPackages(
     return;
   }
 
+  const petIds = [...new Set(data.map((pkg) => pkg.pet_id))];
+  const petNames = new Map<string, string>();
+
+  if (petIds.length > 0) {
+    const { data: pets } = await supabase
+      .from("pets")
+      .select("id, name")
+      .eq("company_id", companyId)
+      .in("id", petIds);
+
+    for (const pet of pets ?? []) {
+      petNames.set(pet.id, pet.name);
+    }
+  }
+
   for (const pkg of data) {
-    const pet = unwrapJoin(pkg.pets as { name: string } | { name: string }[] | null);
-    const petName = pet?.name ?? "pet";
+    const petName = petNames.get(pkg.pet_id) ?? "pet";
     const expiresKey = formatUtcDateInTimezone(pkg.expires_at, timeZone);
 
     await createAppNotification(supabase, {

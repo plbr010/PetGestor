@@ -85,15 +85,12 @@ export function NotificationBell() {
 
   useEffect(() => {
     refresh();
-    // Contador inicial no header
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, []);
 
   useEffect(() => {
     if (open) {
       refresh();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- open only
   }, [open]);
 
   function handleOpenItem(item: AppNotificationRecord) {

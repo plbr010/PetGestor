@@ -95,7 +95,7 @@ async function createManualEntry(
     return { error: "Não foi possível criar o lançamento." };
   }
 
-  if (parsed.data.status === "pending" || parsed.data.status === "partially_paid") {
+  if (parsed.data.status === "pending") {
     await notifyPaymentPending(supabase, context.membership.company.id, data.id);
   }
 
