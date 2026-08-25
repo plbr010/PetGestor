@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { notifyProductStockStatus } from "@/features/app-notifications/emitters";
 import {
   parseCategoryForm,
   parseProductForm,
@@ -382,7 +383,7 @@ export async function registerStockEntryAction(
   _prevState: InventoryActionState,
   formData: FormData,
 ): Promise<InventoryActionState> {
-  await requirePermission("inventory.manage");
+  const context = await requirePermission("inventory.manage");
   const parsed = parseStockEntryForm(formData);
 
   if (!parsed.success) {
@@ -406,6 +407,12 @@ export async function registerStockEntryAction(
     return { error: mapStockRpcError(error.message) };
   }
 
+  await notifyProductStockStatus(
+    supabase,
+    context.membership.company.id,
+    parsed.data.productId,
+  );
+
   revalidateInventory(parsed.data.productId);
   redirect(`/dashboard/estoque/${parsed.data.productId}?entrada=1`);
 }
@@ -414,7 +421,7 @@ export async function registerStockExitAction(
   _prevState: InventoryActionState,
   formData: FormData,
 ): Promise<InventoryActionState> {
-  await requirePermission("inventory.manage");
+  const context = await requirePermission("inventory.manage");
   const parsed = parseStockExitForm(formData);
 
   if (!parsed.success) {
@@ -435,6 +442,12 @@ export async function registerStockExitAction(
     return { error: mapStockRpcError(error.message) };
   }
 
+  await notifyProductStockStatus(
+    supabase,
+    context.membership.company.id,
+    parsed.data.productId,
+  );
+
   revalidateInventory(parsed.data.productId);
   redirect(`/dashboard/estoque/${parsed.data.productId}?saida=1`);
 }
@@ -443,7 +456,7 @@ export async function registerStockAdjustmentAction(
   _prevState: InventoryActionState,
   formData: FormData,
 ): Promise<InventoryActionState> {
-  await requirePermission("inventory.adjust");
+  const context = await requirePermission("inventory.adjust");
   const parsed = parseStockAdjustmentForm(formData);
 
   if (!parsed.success) {
@@ -464,6 +477,12 @@ export async function registerStockAdjustmentAction(
   if (error) {
     return { error: mapStockRpcError(error.message) };
   }
+
+  await notifyProductStockStatus(
+    supabase,
+    context.membership.company.id,
+    parsed.data.productId,
+  );
 
   revalidateInventory(parsed.data.productId);
   redirect(`/dashboard/estoque/${parsed.data.productId}?ajuste=1`);

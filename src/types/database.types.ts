@@ -967,6 +967,68 @@ export type Database = {
           },
         ];
       };
+      app_notifications: {
+        Row: {
+          id: string;
+          company_id: string;
+          user_id: string | null;
+          type: string;
+          severity: "info" | "success" | "warning" | "error";
+          title: string;
+          message: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          href: string | null;
+          required_permission: string | null;
+          dedupe_key: string;
+          is_read: boolean;
+          created_at: string;
+          read_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          user_id?: string | null;
+          type: string;
+          severity?: "info" | "success" | "warning" | "error";
+          title: string;
+          message: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          href?: string | null;
+          required_permission?: string | null;
+          dedupe_key: string;
+          is_read?: boolean;
+          created_at?: string;
+          read_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          user_id?: string | null;
+          type?: string;
+          severity?: "info" | "success" | "warning" | "error";
+          title?: string;
+          message?: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          href?: string | null;
+          required_permission?: string | null;
+          dedupe_key?: string;
+          is_read?: boolean;
+          created_at?: string;
+          read_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "app_notifications_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       notification_queue: {
         Row: {
           id: string;

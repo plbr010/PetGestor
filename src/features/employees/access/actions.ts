@@ -10,6 +10,7 @@ import {
   mapSendEmployeeInviteMessage,
   sendEmployeeInviteEmail,
 } from "@/features/employees/access/send-invite-email";
+import { notifyEmployeeInvitePending } from "@/features/app-notifications/emitters";
 import {
   buildPermissionsPayload,
   permissionsToJson,
@@ -98,6 +99,11 @@ export async function grantEmployeeAccessAction(
   if (result?.status === "invite_pending") {
     const inviteEmail = result.email ?? parsed.data.email;
     const delivery = await sendEmployeeInviteEmail(inviteEmail);
+    await notifyEmployeeInvitePending(
+      supabase,
+      context.membership.company.id,
+      inviteEmail,
+    );
 
     return {
       success: mapSendEmployeeInviteMessage(delivery, inviteEmail),

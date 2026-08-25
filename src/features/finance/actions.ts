@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { notifyPaymentPending } from "@/features/app-notifications/emitters";
 import {
   parseManualExpenseForm,
   parseManualIncomeForm,
@@ -92,6 +93,10 @@ async function createManualEntry(
 
   if (!didMutateAccessibleRow({ data, error }) || !data) {
     return { error: "Não foi possível criar o lançamento." };
+  }
+
+  if (parsed.data.status === "pending" || parsed.data.status === "partially_paid") {
+    await notifyPaymentPending(supabase, context.membership.company.id, data.id);
   }
 
   revalidateFinancePaths(data.id);

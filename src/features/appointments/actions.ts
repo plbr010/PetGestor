@@ -24,6 +24,7 @@ import {
   cancelAppointmentNotificationsForStatusChange,
   syncAppointmentNotifications,
 } from "@/features/notifications/queue-service";
+import { notifyAppointmentAssigned } from "@/features/app-notifications/emitters";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import {
   didMutateAccessibleRow,
@@ -120,6 +121,7 @@ export async function createAppointmentAction(
     }
 
     await syncAppointmentNotifications(supabase, companyId, String(data), timeZone);
+    await notifyAppointmentAssigned(supabase, companyId, String(data));
 
     revalidateAgendaPaths(String(data));
     redirect(`/dashboard/agenda/${data}`);
@@ -212,6 +214,10 @@ export async function createAppointmentAction(
       String(appointmentId),
       timeZone,
     );
+  }
+
+  if (createdIds[0]) {
+    await notifyAppointmentAssigned(supabase, companyId, createdIds[0]);
   }
 
   if (createdIds.length === 0) {
@@ -368,6 +374,7 @@ export async function updateAppointmentAction(
   }
 
   await syncAppointmentNotifications(supabase, companyId, appointmentId, timeZone);
+  await notifyAppointmentAssigned(supabase, companyId, appointmentId);
 
   const scope: SeriesScope = parsed.data.seriesScope ?? "this";
 
@@ -570,6 +577,7 @@ export async function createAppointmentInlineAction(
 
   const appointmentId = String(data);
   await syncAppointmentNotifications(supabase, companyId, appointmentId, timeZone);
+  await notifyAppointmentAssigned(supabase, companyId, appointmentId);
 
   const waitlistId = String(formData.get("waitlistId") ?? "");
   if (isValidUuid(waitlistId)) {
