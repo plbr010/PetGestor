@@ -3,7 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { runCompleteOnboarding } from "@/features/auth/actions";
 import { peekPendingInvite } from "@/features/employees/access/accept-invite";
-import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
+import { buildDashboardTrialStartedHref } from "@/lib/analytics/meta-pixel";
 import { isValidBrazilianPhone, toE164Brazil } from "@/lib/phone";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -11,7 +11,6 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
-  const next = getSafeRedirectPath(requestUrl.searchParams.get("next"));
 
   if (!tokenHash || !type) {
     redirect("/auth/erro?motivo=confirmacao-invalida");
@@ -57,7 +56,7 @@ export async function GET(request: Request) {
       redirect("/onboarding");
     }
 
-    redirect(next === "/convite" ? "/dashboard" : next);
+    redirect(buildDashboardTrialStartedHref("/dashboard"));
   }
 
   redirect("/onboarding");

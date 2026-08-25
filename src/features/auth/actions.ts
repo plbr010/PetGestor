@@ -17,6 +17,7 @@ import {
 } from "@/features/employees/access/accept-invite";
 import { getSiteUrl } from "@/lib/auth/get-site-url";
 import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
+import { buildDashboardTrialStartedHref } from "@/lib/analytics/meta-pixel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type AuthActionState = {
@@ -128,7 +129,7 @@ export async function signUpAction(
     }
 
     revalidatePath("/", "layout");
-    redirect("/dashboard");
+    redirect(buildDashboardTrialStartedHref("/dashboard"));
   }
 
   redirect("/verifique-email");
@@ -300,7 +301,7 @@ export async function completeOnboardingAction(
   revalidatePath("/", "layout");
   revalidatePath("/dashboard", "layout");
   revalidatePath("/onboarding", "layout");
-  redirect("/dashboard");
+  redirect(buildDashboardTrialStartedHref("/dashboard"));
 }
 
 export type OnboardingResult =
