@@ -35,8 +35,8 @@ describe("formatTrialBannerMessage", () => {
 });
 
 describe("getTrialDurationHoursForTests", () => {
-  it("expõe 72 horas", () => {
-    expect(getTrialDurationHoursForTests()).toBe(72);
-    expect(TRIAL_DURATION_HOURS).toBe(72);
+  it("expõe duração do trial em horas (7 dias)", () => {
+    expect(getTrialDurationHoursForTests()).toBe(168);
+    expect(TRIAL_DURATION_HOURS).toBe(168);
   });
 });

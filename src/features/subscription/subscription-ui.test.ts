@@ -41,14 +41,14 @@ function buildSubscription(
 }
 
 describe("checkout rules", () => {
-  it("bloqueia checkout antes de 72h", () => {
+  it("bloqueia checkout antes do fim do trial", () => {
     const subscription = buildSubscription();
     const now = addHours(new Date(subscription.trialStartedAt), TRIAL_DURATION_HOURS - 1);
     expect(isTrialStillActiveServerSide(subscription, now)).toBe(true);
     expect(canStartMercadoPagoCheckout(subscription, now)).toBe(false);
   });
 
-  it("permite checkout após 72h", () => {
+  it("permite checkout após o fim do trial", () => {
     const subscription = buildSubscription();
     const now = addHours(new Date(subscription.trialStartedAt), TRIAL_DURATION_HOURS);
     expect(isTrialStillActiveServerSide(subscription, now)).toBe(false);

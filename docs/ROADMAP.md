@@ -11,7 +11,7 @@
 7. **Agenda** — agendamentos, calendário dia/semana, conflitos, snapshots (`appointments`)
 8. **Atendimentos / ordens de serviço** — check-in, fila operacional, entrega (`service_orders`)
 9. **Financeiro operacional** — receitas/despesas, contas a receber, dashboard real (`financial_entries`)
-10. **Trial 72h e controle de acesso** — `company_subscriptions`, entitlement, bloqueio pós-trial
+10. **Trial 7 dias e controle de acesso** — `company_subscriptions`, entitlement, bloqueio pós-trial
 11. **Mercado Pago e assinatura real** — checkout pós-trial, webhooks, recorrência MP
 12. **Lembretes transacionais no WhatsApp** — fila existente + Cloud API oficial da Meta (aguardando conta/templates/credenciais)
 13. **Estoque** — produtos, categorias, fornecedores, lotes, validade, custo médio e movimentações (`register_stock_movement`)

@@ -54,7 +54,7 @@ describe("subscriber area badges and CTAs", () => {
 
     expect(state).toBe("trial_active");
     expect(resolveSubscriberBadge(state)).toBe("TRIAL");
-    expect(formatAdminTrialRemaining(subscription.trialEndsAt, now)).toBe("2d 14h restantes");
+    expect(formatAdminTrialRemaining(subscription.trialEndsAt, now)).toBe("6d 14h restantes");
     expect(shouldShowRegularizeCta(state)).toBe(false);
   });
 

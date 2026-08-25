@@ -1,3 +1,17 @@
+## [0.32.0] — 2026-08-25
+
+### Alterado — Trial gratuito de 7 dias
+
+- `TRIAL_DURATION_DAYS = 7` / `TRIAL_DURATION_HOURS = 168` em `src/config/subscription.ts`
+- Trigger `private.create_company_subscription()` cria novos trials com `now() + interval '7 days'`
+- Textos de marketing/landing/admin atualizados para “7 dias”
+- **Não** estende trials já existentes (ativos, expirados ou assinantes)
+
+### Migration
+
+- `20260825120000_trial_7_days.sql` (**aplicar no Supabase**)
+- Atalho: `docs/sql/APPLY-trial-7-days.sql`
+
 ## [0.31.0] — 2026-08-24
 
 ### Adicionado — Plano anual R$ 799 (Mercado Pago)

@@ -2,7 +2,7 @@
 
 ## Regra comercial
 
-PetGestor oferece **72 horas de teste gratuito** sem exigir meio de pagamento.
+PetGestor oferece **7 dias de teste gratuito** sem exigir meio de pagamento.
 
 Após `trial_ends_at`, se não houver assinatura `active`, o **acesso operacional é suspenso** até existir assinatura válida.
 
@@ -31,7 +31,7 @@ Não há cobrança automática ao fim do trial. Sem meio de pagamento cadastrado
 | `offer_code` | Oferta comercial opcional (ex.: `annual_launch_799`) — sem countdown falso |
 | `status` | `trialing`, `active`, `past_due`, `cancelled` |
 | `trial_started_at` | Início do trial |
-| `trial_ends_at` | Fim exato (+72 horas) |
+| `trial_ends_at` | Fim exato (+7 dias / 168 horas) |
 | `provider` | `mercado_pago` quando integrado |
 | `provider_subscription_id` | ID preapproval Mercado Pago |
 | `provider_status` | Status real MP (`pending`, `authorized`, `paused`, `canceled`) |
@@ -70,12 +70,13 @@ Migration: `20260824200000_annual_subscription_plan.sql` (**aplicar no Supabase*
 - **Anual ativo → mensal:** **bloqueado** enquanto o período anual já pago estiver vigente. O cliente cancela a renovação e, no fim do período, assina o mensal.
 - Escolha mensal/anual também no checkout quando não há assinatura ativa (trial expirado, cancelado, past_due)
 
-## Trial de 72 horas
+## Trial de 7 dias
 
-- `trial_ends_at = trial_started_at + interval '72 hours'`
-- **Não** usa `CURRENT_DATE + 3`
-- Exemplo: terça 14:37 → sexta 14:37
+- `trial_ends_at = trial_started_at + interval '7 days'` (168 horas)
+- **Não** usa `CURRENT_DATE + 7` sem hora — o timestamp preserva a hora de início
+- Exemplo: 25/08/2026 10:00 → 01/09/2026 10:00
 
+Migration de duração: `20260825120000_trial_7_days.sql` (só novas empresas).
 ## Criação automática
 
 Trigger `AFTER INSERT ON companies` → `private.create_company_subscription()` (idempotente).
@@ -84,8 +85,7 @@ Toda empresa nova recebe registro de trial. Nunca existe company sem subscriptio
 
 ## Backfill (desenvolvimento)
 
-Empresas existentes sem registro recebem trial iniciando no momento da migration (+72h).
-
+Empresas existentes sem registro recebem trial iniciando no momento da migration original.
 Registros existentes **não** são sobrescritos.
 
 ## Entitlement (server-side)
@@ -121,7 +121,8 @@ Expiração **não apaga** tutores, pets, agenda, financeiro ou empresa. Apenas 
 
 `src/config/subscription.ts`:
 
-- `TRIAL_DURATION_HOURS = 72`
+- `TRIAL_DURATION_HOURS = 168`
+- `TRIAL_DURATION_DAYS = 7`
 - `PLAN_MONTHLY_PRICE_CENTS = 8990`
 - `PLAN_ANNUAL_PRICE_CENTS = 79900`
 - `PLAN_CODES.monthly` / `PLAN_CODES.annual`

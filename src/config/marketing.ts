@@ -61,7 +61,7 @@ export const marketingContent = {
     },
   ],
   pricing: {
-    intro: `Teste grátis por ${TRIAL_DURATION_DAYS} dias (72 horas) com acesso completo. Sem cartão durante o teste. Depois escolha o plano.`,
+    intro: `Teste grátis por ${TRIAL_DURATION_DAYS} dias com acesso completo. Sem cartão durante o teste. Depois escolha o plano.`,
     monthly: {
       title: "Mensal",
       price: PLAN_MONTHLY_PRICE_LABEL,
@@ -85,7 +85,7 @@ export const marketingContent = {
   /** @deprecated Prefer `pricing` — mantido para compatibilidade de imports. */
   pricingTeaser: {
     title: "Planos PetGestor",
-    description: `Teste grátis por ${TRIAL_DURATION_DAYS} dias (72 horas) com acesso completo. Sem cartão durante o teste.`,
+    description: `Teste grátis por ${TRIAL_DURATION_DAYS} dias com acesso completo. Sem cartão durante o teste.`,
     price: PLAN_MONTHLY_PRICE_LABEL,
     period: "por mês após o teste",
   },

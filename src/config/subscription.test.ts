@@ -21,9 +21,10 @@ import {
 } from "@/config/subscription";
 
 describe("subscription config", () => {
-  it("define trial de 72 horas (3 dias comerciais)", () => {
-    expect(TRIAL_DURATION_HOURS).toBe(72);
-    expect(TRIAL_DURATION_DAYS).toBe(3);
+  it("define trial de 7 dias completos (168 horas)", () => {
+    expect(TRIAL_DURATION_DAYS).toBe(7);
+    expect(TRIAL_DURATION_HOURS).toBe(168);
+    expect(TRIAL_DURATION_HOURS).toBe(TRIAL_DURATION_DAYS * 24);
   });
 
   it("mantém plano mensal e adiciona anual com preços server-side", () => {
@@ -58,9 +59,9 @@ describe("subscription config", () => {
   });
 
   it("formata textos de marketing do trial", () => {
-    expect(formatTrialPeriodLabel()).toBe("3 dias");
-    expect(formatTrialCtaLabel()).toBe("Teste grátis por 3 dias");
-    expect(formatTrialNote()).toContain("3 dias");
+    expect(formatTrialPeriodLabel()).toBe("7 dias");
+    expect(formatTrialCtaLabel()).toBe("Teste grátis por 7 dias");
+    expect(formatTrialNote()).toContain("7 dias");
     expect(formatTrialNote()).toContain("Sem cartão");
   });
 

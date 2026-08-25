@@ -33,12 +33,12 @@ Estoque operacional (produtos, movimentações, fornecedores e lotes) está impl
 
 ## Teste gratuito
 
-PetGestor oferece **72 horas de teste gratuito** sem exigir meio de pagamento.
+PetGestor oferece **7 dias de teste gratuito** sem exigir meio de pagamento.
 
-- Constantes: `TRIAL_DURATION_HOURS = 72`, `TRIAL_DURATION_DAYS = 3` (marketing)
+- Constantes: `TRIAL_DURATION_DAYS = 7`, `TRIAL_DURATION_HOURS = 168`
 - Início: criação da empresa (onboarding)
-- Fim: `trial_ends_at = trial_started_at + 72 hours` (PostgreSQL)
-- Posicionamento: **“Teste grátis por 3 dias”** e **“Sem cartão”**
+- Fim: `trial_ends_at = trial_started_at + 7 days` (PostgreSQL)
+- Posicionamento: **“Teste grátis por 7 dias”** e **“Sem cartão”**
 - Após expiração: acesso operacional suspenso até assinatura `active`
 - Cobrança Mercado Pago: Etapa 10B implementada — checkout pós-trial via preapproval
 

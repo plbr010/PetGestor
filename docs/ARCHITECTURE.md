@@ -77,7 +77,7 @@ O Proxy **não substitui** proteção server-side em layouts.
 1. **Server Components por padrão** — interatividade apenas onde necessário.
 2. **Marca centralizada** em `src/config/brand.ts`.
 3. **Dados demo** permanecem parcialmente no dashboard (badge demonstrativo); módulos operacionais usam dados reais.
-4. **Trial 72h** — entitlement calculado no servidor; gate no layout do dashboard e em `requireCompanyContext()`.
+4. **Trial 7 dias** — entitlement calculado no servidor; gate no layout do dashboard e em `requireCompanyContext()`.
 4. **Rotas agrupadas** por contexto: `(public)`, `(auth)`, `(dashboard)`.
 5. **Service role** — apenas rotas privilegiadas (billing, cron WhatsApp, webhook Meta, painel `/admin`). Operações do pet shop continuam no client autenticado + RLS.
 6. **user_metadata** só para pré-preenchimento — nunca para autorização.

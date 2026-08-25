@@ -81,7 +81,7 @@ Sem essa migration, trocar para o anual / gravar `billing_interval` pode falhar 
 
 ## 6. Testar fluxo
 
-1. Cadastre conta → 72h de trial (sem cartão)
+1. Cadastre conta → 7 dias de trial (sem cartão)
 2. Simule trial expirado (ver `docs/MERCADO_PAGO_TEST_PLAN.md`)
 3. Acesse `/assinatura` → **Assinar por R$ 89,90/mês**
 4. Conclua checkout no Mercado Pago (cartões de teste)

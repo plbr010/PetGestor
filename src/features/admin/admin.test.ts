@@ -72,7 +72,7 @@ describe("admin status mapping", () => {
 });
 
 describe("formatAdminTrialRemaining", () => {
-  it("mostra tempo restante do trial de 72h", () => {
+  it("mostra tempo restante do trial ativo", () => {
     const now = new Date("2026-08-01T10:00:00.000Z");
     const ends = "2026-08-03T00:00:00.000Z";
     expect(formatAdminTrialRemaining(ends, now)).toBe("1d 14h restantes");
