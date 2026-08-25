@@ -64,10 +64,15 @@ export function formatPhoneInput(value: string): string {
 }
 
 /** Link wa.me a partir de telefone BR (local ou E.164). */
-export function buildWhatsAppUrl(value: string): string | null {
+export function buildWhatsAppUrl(value: string, text?: string): string | null {
   if (!isValidBrazilianPhone(value)) {
     return null;
   }
 
-  return `https://wa.me/55${normalizePhone(value)}`;
+  const base = `https://wa.me/55${normalizePhone(value)}`;
+  if (!text) {
+    return base;
+  }
+
+  return `${base}?text=${encodeURIComponent(text)}`;
 }

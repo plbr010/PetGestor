@@ -41,4 +41,13 @@ describe("phone helpers", () => {
     expect(buildWhatsAppUrl("(32) 99999-9999")).toBe("https://wa.me/5532999999999");
     expect(buildWhatsAppUrl("abc")).toBeNull();
   });
+
+  it("monta link do WhatsApp com mensagem pré-preenchida codificada", () => {
+    expect(
+      buildWhatsAppUrl("32998064217", "Olá, tenho uma dúvida sobre o PetGestor."),
+    ).toBe(
+      "https://wa.me/5532998064217?text=Ol%C3%A1%2C%20tenho%20uma%20d%C3%BAvida%20sobre%20o%20PetGestor.",
+    );
+  });
 });
+

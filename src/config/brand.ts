@@ -7,6 +7,13 @@ export const brand = {
   defaultDescription:
     "SaaS de gestão para pet shops: agenda, clientes, pets, serviços e financeiro básico.",
   locale: "pt-BR",
+  supportWhatsApp: {
+    /** Número E.164 sem `+` (wa.me). */
+    phoneDigits: "5532998064217",
+    /** Telefone BR local para `buildWhatsAppUrl`. */
+    phoneLocal: "32998064217",
+    prefillMessage: "Olá, tenho uma dúvida sobre o PetGestor.",
+  },
 } as const;
 
 export type Brand = typeof brand;

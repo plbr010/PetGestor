@@ -153,3 +153,25 @@
     @apply bg-gradient-to-r from-primary to-[oklch(0.58_0.12_190)] bg-clip-text text-transparent;
   }
 }
+
+@keyframes whatsapp-float-attention {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .whatsapp-float-attention {
+    animation: whatsapp-float-attention 2.8s ease-in-out infinite;
+  }
+
+  .whatsapp-float-attention:hover,
+  .whatsapp-float-attention:focus-visible {
+    animation-play-state: paused;
+  }
+}
+
