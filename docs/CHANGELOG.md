@@ -1,3 +1,11 @@
+## [0.32.2] — 2026-08-25
+
+### Corrigido — Links de e-mail Auth apontavam para localhost
+
+- Causa: `getSiteUrl()` lia só `NEXT_PUBLIC_APP_URL` e caía em `localhost:3000`, ignorando `APP_URL`
+- Resolução central em `src/lib/env/resolve-app-url.ts`: `APP_URL` → `NEXT_PUBLIC_APP_URL` → `VERCEL_URL` → headers → localhost **só fora de production**
+- Convite de funcionário, confirmação de conta e recuperação de senha usam a mesma URL
+
 ## [0.32.1] — 2026-08-25
 
 ### Adicionado — Botão Sair mais visível
