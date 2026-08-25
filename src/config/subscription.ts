@@ -2,17 +2,18 @@
  * Configuração central de assinatura e trial — PetGestor
  *
  * Regra comercial:
- * - 72 horas de teste gratuito (exatamente 3 dias corridos por hora)
+ * - 7 dias completos de teste gratuito (168 horas exatas a partir de trial_started_at)
  * - Sem cartão, Pix ou checkout durante cadastro/onboarding/trial
  * - Após trial_ends_at sem assinatura active → acesso operacional suspenso
  * - Autorização sempre server-side (PostgreSQL + servidor)
  * - Preços: apenas constantes server-side (nunca confiar no frontend)
  */
 
-export const TRIAL_DURATION_HOURS = 72;
+/** Fonte de verdade comercial do trial (dias completos). */
+export const TRIAL_DURATION_DAYS = 7;
 
-/** Referência comercial para marketing ("3 dias") — duração real = TRIAL_DURATION_HOURS */
-export const TRIAL_DURATION_DAYS = 3;
+/** Duração real do trial em horas (= TRIAL_DURATION_DAYS × 24). */
+export const TRIAL_DURATION_HOURS = TRIAL_DURATION_DAYS * 24;
 
 export const BILLING_INTERVALS = ["monthly", "annual"] as const;
 export type BillingInterval = (typeof BILLING_INTERVALS)[number];

@@ -11,7 +11,7 @@
 
 1. Cadastro novo sem Mercado Pago
 2. Confirmar nenhuma chamada MP durante trial
-3. Menos de 72h → dashboard funciona, checkout bloqueado
+3. Antes do fim do trial → dashboard funciona, checkout bloqueado
 4. Tentativa direta de checkout → “Seu período de teste gratuito ainda está ativo.”
 5. Expirar trial (SQL)
 6. `/assinatura` acessível
@@ -37,7 +37,7 @@
 26. Nova assinatura após cancelamento
 27. Empresa A nunca altera B
 28. PetGestor não coleta cartão
-29. Nenhuma cobrança antes de 72h
+29. Nenhuma cobrança antes do fim do trial
 30. Refresh manual sincroniza
 
 ## Simular trial expirado

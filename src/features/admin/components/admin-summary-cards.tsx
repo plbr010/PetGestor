@@ -30,7 +30,7 @@ export function AdminSummaryCards({ summary }: AdminSummaryCardsProps) {
       id: "trial",
       label: "Em trial",
       value: String(summary.trialCount),
-      change: "Teste de 72h ativo",
+      change: "Teste de 7 dias ativo",
       trend: "neutral" as const,
       icon: Clock3,
     },

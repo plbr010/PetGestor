@@ -44,14 +44,14 @@ describe("computeEntitlement", () => {
   const started = new Date("2026-08-06T14:37:00.000Z");
   const ends = addHours(started, TRIAL_DURATION_HOURS);
 
-  it("trial exatamente 72 horas entre início e fim", () => {
+  it("trial exatamente 7 dias (168h) entre início e fim", () => {
     const subscription = buildSubscription();
     expect(msBetween(new Date(subscription.trialStartedAt), new Date(subscription.trialEndsAt))).toBe(
       TRIAL_DURATION_HOURS * 3_600_000,
     );
   });
 
-  it("71h59min após início → acesso permitido", () => {
+  it("quase no fim do trial → acesso permitido", () => {
     const subscription = buildSubscription();
     const now = addHours(started, TRIAL_DURATION_HOURS - 1 / 60);
     const entitlement = computeEntitlement(subscription, now);
@@ -59,7 +59,7 @@ describe("computeEntitlement", () => {
     expect(entitlement.state).toBe("trialing");
   });
 
-  it("72h00min após início → bloqueado", () => {
+  it("no instante do fim do trial → bloqueado", () => {
     const subscription = buildSubscription();
     const now = addHours(started, TRIAL_DURATION_HOURS);
     const entitlement = computeEntitlement(subscription, now);
@@ -129,7 +129,7 @@ describe("computeEntitlement", () => {
 });
 
 describe("isTrialExpired", () => {
-  it("detecta expiração após 72h", () => {
+  it("detecta expiração após 7 dias", () => {
     const subscription = buildSubscription();
     const started = new Date(subscription.trialStartedAt);
     expect(isTrialExpired(subscription, addHours(started, TRIAL_DURATION_HOURS))).toBe(true);
