@@ -7,15 +7,19 @@ import { cn } from "@/lib/utils";
 const SUPPORT_ARIA_LABEL =
   "Ficou com dúvida? Fale no WhatsApp com o suporte do PetGestor";
 
+export function getSupportWhatsAppHref(): string | null {
+  return buildWhatsAppUrl(
+    brand.supportWhatsApp.phoneLocal,
+    brand.supportWhatsApp.prefillMessage,
+  );
+}
+
 export function WhatsAppFloatingButton({
   className,
 }: {
   className?: string;
 }) {
-  const href = buildWhatsAppUrl(
-    brand.supportWhatsApp.phoneLocal,
-    brand.supportWhatsApp.prefillMessage,
-  );
+  const href = getSupportWhatsAppHref();
 
   if (!href) {
     return null;
@@ -24,8 +28,9 @@ export function WhatsAppFloatingButton({
   return (
     <div
       className={cn(
-        "whatsapp-float-attention fixed z-50",
-        "bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]",
+        "whatsapp-float-attention pointer-events-none fixed z-[55]",
+        "right-[max(1rem,env(safe-area-inset-right))]",
+        "bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] sm:bottom-[max(1.25rem,env(safe-area-inset-bottom))]",
         className,
       )}
     >
@@ -35,10 +40,10 @@ export function WhatsAppFloatingButton({
         rel="noopener noreferrer"
         aria-label={SUPPORT_ARIA_LABEL}
         className={cn(
-          "group flex items-center gap-3 rounded-full bg-[#25D366] text-white",
-          "shadow-lg shadow-[#25D366]/35",
+          "pointer-events-auto group flex items-center gap-3 rounded-full bg-[#25D366] text-white",
+          "shadow-lg shadow-black/20",
           "transition-[transform,box-shadow,background-color] duration-200 ease-out",
-          "hover:scale-[1.03] hover:bg-[#1ebe57] hover:shadow-xl hover:shadow-[#25D366]/45",
+          "hover:scale-[1.03] hover:bg-[#1ebe57] hover:shadow-xl",
           "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#25D366]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           "size-14 justify-center sm:size-auto sm:px-4 sm:py-3",
         )}
