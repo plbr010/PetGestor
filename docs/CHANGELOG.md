@@ -1,3 +1,19 @@
+## [0.33.0] — 2026-08-25
+
+### Adicionado — Central de notificações (sino)
+
+- Tabela `app_notifications` com RLS multi-tenant e dedupe por `(company_id, dedupe_key)`
+- Sino no header: painel, contador de não lidas, marcar lida / todas, deep links
+- Página `/notificacoes` com filtros todas / não lidas / lidas
+- Eventos: atendimento pronto, estoque baixo/zerado, agendamento atribuído/próximo, pagamento pendente/vencido, pacote a vencer, convite de funcionário
+- Filtragem por permissão (ex.: sem `finance.view` não vê financeiro)
+- Sem WhatsApp / push / e-mail nesta etapa
+
+### Migration
+
+- `20260825140000_app_notifications.sql` (**aplicar no Supabase**)
+- Atalho: `docs/sql/APPLY-app-notifications.sql`
+
 ## [0.32.2] — 2026-08-25
 
 ### Corrigido — Links de e-mail Auth apontavam para localhost

@@ -209,6 +209,26 @@ Campos principais: `scheduled_start`, `scheduled_end`, `status`, snapshots (`ser
 
 Status: `scheduled`, `confirmed`, `in_progress`, `completed`, `cancelled`, `no_show`.
 
+### Notificações internas (sino)
+
+Tabela `app_notifications` — alertas in-app por empresa (e opcionalmente por usuário).
+
+| Coluna | Notas |
+|--------|-------|
+| `company_id` | Tenant obrigatório |
+| `user_id` | NULL = broadcast; preenchido = só aquele usuário |
+| `type` / `severity` | Tipo de evento + info/success/warning/error |
+| `dedupe_key` | Único por empresa — evita spam do mesmo alerta |
+| `required_permission` | Filtro de permissão no app |
+| `is_read` / `read_at` | Estado de leitura |
+
+RLS: membro da empresa; SELECT/UPDATE só de broadcast ou do próprio `user_id`.
+
+**Migration:** `supabase/migrations/20260825140000_app_notifications.sql`  
+Atalho: `docs/sql/APPLY-app-notifications.sql`
+
+Separado da fila WhatsApp (`notification_queue`).
+
 ### Notificações (fila + WhatsApp Cloud API)
 
 `notification_queue` + `company_notification_settings` — lembretes de tutor e funcionário.
