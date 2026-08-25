@@ -1,7 +1,9 @@
+-- PetGestor — aplicar no SQL Editor do Supabase
+-- Onboarding de ativação (onboarding_progress). Idempotente.
+-- Cole TODO este arquivo no editor e clique em Run.
+-- NÃO use \i (isso é só do psql CLI e falha no SQL Editor).
+-- Fonte: supabase/migrations/20260825200000_onboarding_progress.sql
 
--- Atalho para SQL Editor (idempotente).
--- PetGestor — progresso granular do onboarding de ativação (por usuário + empresa)
--- Não destrutivo: mantém profiles.onboarding_tutorial_completed_at e sincroniza ao concluir.
 
 CREATE TABLE IF NOT EXISTS public.onboarding_progress (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
