@@ -14,6 +14,17 @@ Loader: `src/components/analytics/meta-pixel.tsx` (root layout via `MetaPixelRoo
 | CompleteRegistration | padrão | Empresa criada com sucesso (`?meta_conv=trial_started`) |
 | StartTrial | custom | Mesmo momento do CompleteRegistration (trial 7 dias no INSERT) |
 | InitiateCheckout | padrão | Submit do plano em `/assinatura` (antes do redirect MP) |
+| onboarding_started | custom | Usuário inicia configuração guiada |
+| onboarding_skipped | custom | Usuário pula o tutorial guiado |
+| service_created | custom | Primeiro serviço detectado no onboarding |
+| employee_created | custom | Primeiro funcionário detectado |
+| customer_created | custom | Primeiro tutor+pet detectados |
+| first_appointment_created | custom | Primeiro agendamento detectado |
+| workflow_viewed | custom | Fluxo de atendimento visualizado |
+| finance_viewed | custom | Introdução financeira visualizada |
+| onboarding_completed | custom | Onboarding de ativação concluído |
+
+Helpers: `trackOnboardingEvent` em `src/features/onboarding-tour/analytics.ts` (nunca bloqueia a UI).
 
 **Purchase / pagamento confirmado:** não dispara no browser (nem em `/assinatura/retorno`). Preparar Conversions API no webhook depois.
 

@@ -1,4 +1,4 @@
-## [0.38.0] — 2026-08-25
+## [0.39.0] — 2026-08-25
 
 ### Adicionado — Botão flutuante de WhatsApp (site)
 
@@ -6,6 +6,23 @@
 - Visível nas páginas públicas (layout `(public)`): desktop com texto + ícone; mobile só ícone circular
 - Link `wa.me` com mensagem pré-preenchida codificada; abre em nova aba (`target="_blank"`)
 - Número e mensagem em `src/config/brand.ts` (`supportWhatsApp`)
+
+## [0.38.0] — 2026-08-25
+
+### Adicionado — Onboarding de ativação
+
+- Modal de boas-vindas + checklist “Configure seu PetGestor” no dashboard
+- Tutorial guiado com spotlight em CTAs reais (serviço, funcionário, tutor/pet, agenda)
+- Detecção automática de etapas a partir dos dados da empresa
+- Guia visual do fluxo de atendimento + intro financeira (educativos)
+- Persistência `onboarding_progress` (multi-tenant + RLS) com fallback legado/`localStorage`
+- Ajuda em Configurações: refazer tutorial + WhatsApp suporte
+- Eventos Meta: onboarding_started/skipped/completed e marcos de ativação
+
+### Migration
+
+- `20260825200000_onboarding_progress.sql` (**aplicar no Supabase**)
+- Atalho: `docs/sql/APPLY-onboarding-progress.sql`
 
 ## [0.37.0] — 2026-08-25
 

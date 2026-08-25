@@ -2469,6 +2469,68 @@ export type Database = {
           },
         ];
       };
+      onboarding_progress: {
+        Row: {
+          id: string;
+          company_id: string;
+          user_id: string;
+          onboarding_started_at: string | null;
+          welcome_seen_at: string | null;
+          guided_started_at: string | null;
+          guided_skipped_at: string | null;
+          guided_active: boolean;
+          last_guided_step: string | null;
+          workflow_step_viewed_at: string | null;
+          finance_step_viewed_at: string | null;
+          onboarding_completed_at: string | null;
+          checklist_dismissed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          user_id: string;
+          onboarding_started_at?: string | null;
+          welcome_seen_at?: string | null;
+          guided_started_at?: string | null;
+          guided_skipped_at?: string | null;
+          guided_active?: boolean;
+          last_guided_step?: string | null;
+          workflow_step_viewed_at?: string | null;
+          finance_step_viewed_at?: string | null;
+          onboarding_completed_at?: string | null;
+          checklist_dismissed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          user_id?: string;
+          onboarding_started_at?: string | null;
+          welcome_seen_at?: string | null;
+          guided_started_at?: string | null;
+          guided_skipped_at?: string | null;
+          guided_active?: boolean;
+          last_guided_step?: string | null;
+          workflow_step_viewed_at?: string | null;
+          finance_step_viewed_at?: string | null;
+          onboarding_completed_at?: string | null;
+          checklist_dismissed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_progress_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -2490,6 +2552,29 @@ export type Database = {
       complete_onboarding_tutorial: {
         Args: Record<string, never>;
         Returns: undefined;
+      };
+      upsert_onboarding_progress: {
+        Args: {
+          p_company_id: string;
+          p_patch?: Json;
+        };
+        Returns: {
+          id: string;
+          company_id: string;
+          user_id: string;
+          onboarding_started_at: string | null;
+          welcome_seen_at: string | null;
+          guided_started_at: string | null;
+          guided_skipped_at: string | null;
+          guided_active: boolean;
+          last_guided_step: string | null;
+          workflow_step_viewed_at: string | null;
+          finance_step_viewed_at: string | null;
+          onboarding_completed_at: string | null;
+          checklist_dismissed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
       };
       create_service_with_prices: {
         Args: {

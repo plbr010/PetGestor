@@ -58,7 +58,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
               {result.total} {result.total === 1 ? "tutor cadastrado" : "tutores cadastrados"}
             </p>
           </div>
-          <ButtonLink href="/dashboard/tutores/novo">
+          <ButtonLink href="/dashboard/tutores/novo" data-tour-id="cta-new-customer">
             <Plus className="size-4" aria-hidden="true" />
             Novo tutor
           </ButtonLink>

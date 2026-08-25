@@ -17,6 +17,8 @@ import {
   parseFinancialSourceFilter,
   parsePaymentMethodFilter,
 } from "@/features/finance/status";
+import { FinanceIntroBanner } from "@/features/onboarding-tour/components/finance-intro-banner";
+import { MarkOnboardingPageView } from "@/features/onboarding-tour/components/mark-onboarding-page-view";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { PaginationNav } from "@/components/shared/pagination-nav";
@@ -96,6 +98,8 @@ export default async function FinanceiroPage({ searchParams }: FinanceiroPagePro
         description="Visualize de onde veio e para onde foi o dinheiro do pet shop."
       />
       <main className="flex-1 space-y-6 overflow-x-hidden p-4 sm:p-6">
+        <MarkOnboardingPageView step="finance" />
+        <FinanceIntroBanner />
         <FinanceAnalyticsDashboard analytics={analytics} filters={filters} />
 
         {pendingReceivables.length > 0 ? (
