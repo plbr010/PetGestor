@@ -31,6 +31,8 @@ export const PERMISSIONS = [
   "pos.use",
   "pos.cancel_sale",
   "pos.apply_discount",
+  "pos.receive_payment",
+  "pos.close_cash",
   "reports.view",
   "settings.view",
   "settings.manage",
@@ -138,7 +140,9 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [
       { key: "pos.use", label: "Usar" },
       { key: "pos.apply_discount", label: "Aplicar desconto" },
+      { key: "pos.receive_payment", label: "Receber pagamento" },
       { key: "pos.cancel_sale", label: "Cancelar venda" },
+      { key: "pos.close_cash", label: "Abrir/fechar caixa" },
     ],
   },
   {
@@ -194,6 +198,8 @@ const PROFILE_PERMISSIONS: Record<AccessProfile, readonly Permission[]> = {
     "pos.use",
     "pos.apply_discount",
     "pos.cancel_sale",
+    "pos.receive_payment",
+    "pos.close_cash",
     "reports.view",
     "settings.view",
   ],
@@ -213,6 +219,7 @@ const PROFILE_PERMISSIONS: Record<AccessProfile, readonly Permission[]> = {
     "services.view",
     "finance.create",
     "pos.use",
+    "pos.receive_payment",
   ],
   operational: [
     "dashboard.view",
@@ -229,13 +236,17 @@ const PROFILE_PERMISSIONS: Record<AccessProfile, readonly Permission[]> = {
     "finance.close_cash",
     "reports.view",
     "pos.use",
+    "pos.receive_payment",
+    "pos.close_cash",
   ],
   inventory_cash: [
     "dashboard.view",
     "inventory.view",
     "inventory.manage",
     "pos.use",
+    "pos.receive_payment",
     "finance.close_cash",
+    "pos.close_cash",
   ],
 };
 

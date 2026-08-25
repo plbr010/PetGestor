@@ -8,13 +8,20 @@ import {
   buildRpcPaymentsPayload,
 } from "@/features/pos/cart-engine";
 import { mapPosError } from "@/features/pos/utils";
-import { parseCancelSaleForm, parseCompleteSaleJson } from "@/features/pos/schemas";
+import {
+  parseCancelSaleForm,
+  parseCloseCashSessionForm,
+  parseCompleteSaleJson,
+  parseOpenCashSessionForm,
+  parseRegisterSalePaymentForm,
+} from "@/features/pos/schemas";
 import type { CartLine, SalePaymentInput } from "@/features/pos/types";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { hasPermission } from "@/lib/auth/permissions";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { localDateTimeToUtcIsoFromInput } from "@/features/finance/utils";
 
 export type PosActionState = {
   error?: string;
@@ -26,6 +33,7 @@ function revalidatePos(saleId?: string) {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/pdv");
   revalidatePath("/dashboard/pdv/vendas");
+  revalidatePath("/dashboard/pdv/caixa");
   revalidatePath("/dashboard/financeiro");
   revalidatePath("/dashboard/estoque");
   revalidatePath("/dashboard/estoque/movimentacoes");
@@ -91,6 +99,43 @@ export async function completeSaleAction(
   redirect(`/dashboard/pdv/vendas/${data}?concluida=1`);
 }
 
+export async function registerSalePaymentAction(
+  saleId: string,
+  _prevState: PosActionState,
+  formData: FormData,
+): Promise<PosActionState> {
+  if (!isValidUuid(saleId)) {
+    return { error: GENERIC_NOT_FOUND_MESSAGE };
+  }
+
+  const context = await requirePermission("pos.receive_payment");
+  const parsed = parseRegisterSalePaymentForm(formData);
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const paidAt = parsed.data.paidAt
+    ? localDateTimeToUtcIsoFromInput(parsed.data.paidAt, context.membership.company.timezone)
+    : undefined;
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("register_sale_payment", {
+    p_sale_id: saleId,
+    p_amount_cents: parsed.data.amountCents,
+    p_payment_method: parsed.data.paymentMethod,
+    p_idempotency_key: parsed.data.idempotencyKey,
+    p_paid_at: paidAt,
+  });
+
+  if (error || !data) {
+    return { error: mapPosError(error?.message) };
+  }
+
+  revalidatePos(saleId);
+  return { success: "Pagamento registrado com sucesso." };
+}
+
 export async function cancelSaleAction(
   saleId: string,
   _prevState: PosActionState,
@@ -119,4 +164,55 @@ export async function cancelSaleAction(
 
   revalidatePos(saleId);
   return { success: "Venda cancelada com sucesso." };
+}
+
+export async function openCashSessionAction(
+  _prevState: PosActionState,
+  formData: FormData,
+): Promise<PosActionState> {
+  await requirePermission("pos.close_cash");
+  const parsed = parseOpenCashSessionForm(formData);
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("open_cash_session", {
+    p_opening_balance_cents: parsed.data.openingBalanceCents,
+    p_notes: parsed.data.notes ?? null,
+  });
+
+  if (error || !data) {
+    return { error: mapPosError(error?.message) };
+  }
+
+  revalidatePos();
+  return { success: "Caixa aberto com sucesso." };
+}
+
+export async function closeCashSessionAction(
+  _prevState: PosActionState,
+  formData: FormData,
+): Promise<PosActionState> {
+  await requirePermission("pos.close_cash");
+  const parsed = parseCloseCashSessionForm(formData);
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("close_cash_session", {
+    p_session_id: parsed.data.sessionId,
+    p_counted_cash_cents: parsed.data.countedCashCents,
+    p_notes: parsed.data.notes ?? null,
+  });
+
+  if (error || !data) {
+    return { error: mapPosError(error?.message) };
+  }
+
+  revalidatePos();
+  return { success: "Caixa fechado com sucesso." };
 }

@@ -1,3 +1,21 @@
+## [0.35.0] — 2026-08-25
+
+### Finalizado — PDV (saldo, pagamento adicional, caixa)
+
+- Detalhe da venda: Total / Pago / Saldo pendente e status claro
+- RPC `register_sale_payment` para receber saldo de venda parcialmente paga (sem duplicar receita)
+- Sessão de caixa (`cash_sessions`): abrir → operar → fechar em `/dashboard/pdv/caixa`
+- Fechamento por forma de pagamento; só dinheiro físico entra no gaveteiro
+- Pagamentos do período contabilizados por `paid_at` (parcial em dias diferentes não duplica)
+- Permissões: `pos.receive_payment`, `pos.close_cash` (além de `pos.use` / `pos.cancel_sale`)
+- Cancelamento total com devolução de estoque e cancelamento financeiro interno (já existente; UI gated por permissão)
+- Devolução parcial de itens **não** incluída (adiada por risco)
+
+### Migration
+
+- `20260825160000_pdv_finalize.sql` (**aplicar no Supabase**)
+- Atalho: `docs/sql/APPLY-pdv-finalize.sql`
+
 ## [0.34.0] — 2026-08-25
 
 ### Adicionado — Busca global no header

@@ -9,6 +9,7 @@ export type RoutePermissionRule = {
 const ROUTE_RULES: RoutePermissionRule[] = [
   { prefix: "/dashboard/relatorios", permission: "reports.view" },
   { prefix: "/dashboard/estoque", permission: "inventory.view" },
+  { prefix: "/dashboard/pdv/caixa", permission: "pos.close_cash" },
   { prefix: "/dashboard/pdv", permission: "pos.use" },
   { prefix: "/dashboard/financeiro", permission: "finance.view" },
   { prefix: "/dashboard/configuracoes", permission: "settings.view" },

@@ -2,8 +2,8 @@ import type { PaymentMethod, SaleStatus } from "@/types/database.types";
 
 export const SALE_STATUS_LABELS: Record<SaleStatus, string> = {
   open: "Aberta",
-  completed: "Concluída",
-  partially_paid: "Parcialmente paga",
+  completed: "Pago / concluído",
+  partially_paid: "Parcialmente pago",
   cancelled: "Cancelada",
 };
 

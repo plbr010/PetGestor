@@ -1,13 +1,16 @@
 import { notFound } from "next/navigation";
 
 import { CancelSaleForm } from "@/features/pos/components/cancel-sale-form";
+import { RegisterSalePaymentForm } from "@/features/pos/components/register-sale-payment-form";
 import { SaleReceipt } from "@/features/pos/components/sale-receipt";
 import { PosSubnav } from "@/features/pos/components/pos-subnav";
+import { canReceiveSalePayment, computeSaleBalanceCents } from "@/features/pos/balance";
 import { requireSaleById } from "@/features/pos/queries";
 import { canCancelSale } from "@/features/pos/status";
 import { getSaleStatusLabel, formatSaleNumber } from "@/features/pos/utils";
 import { PAYMENT_METHOD_LABELS } from "@/features/finance/status";
 import { formatQuantity } from "@/features/inventory/stock-engine";
+import { hasPermission } from "@/lib/auth/permissions";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { isValidUuid } from "@/lib/security/uuid";
 import { formatCentsToBRL } from "@/lib/money";
@@ -39,6 +42,18 @@ export default async function SaleDetailPage({ params, searchParams }: SaleDetai
 
   const sale = await requireSaleById(context.membership.company.id, id);
   const activePayments = sale.payments.filter((payment) => !payment.cancelledAt);
+  const balanceCents = computeSaleBalanceCents(sale.totalCents, sale.paidCents);
+  const showRegisterPayment =
+    canReceiveSalePayment({
+      status: sale.status,
+      cancelledAt: sale.cancelledAt,
+      totalCents: sale.totalCents,
+      paidCents: sale.paidCents,
+    }) && hasPermission(context.membership, "pos.receive_payment");
+  const showCancel =
+    canCancelSale(sale.status, sale.cancelledAt) &&
+    hasPermission(context.membership, "pos.cancel_sale");
+
   const grossMarginCents = sale.items.reduce((sum, item) => {
     const revenue = Math.round(item.quantity * item.unitPriceCents);
     const cost = Math.round(item.quantity * item.costPriceCentsSnapshot);
@@ -106,6 +121,20 @@ export default async function SaleDetailPage({ params, searchParams }: SaleDetai
                   <dt>Total</dt>
                   <dd>{formatCentsToBRL(sale.totalCents)}</dd>
                 </div>
+                <div className="flex justify-between">
+                  <dt>Pago</dt>
+                  <dd>{formatCentsToBRL(sale.paidCents)}</dd>
+                </div>
+                <div
+                  className={
+                    balanceCents > 0
+                      ? "flex justify-between font-medium text-amber-700"
+                      : "flex justify-between text-muted-foreground"
+                  }
+                >
+                  <dt>Saldo pendente</dt>
+                  <dd>{formatCentsToBRL(balanceCents)}</dd>
+                </div>
                 <div className="flex justify-between text-muted-foreground">
                   <dt>Lucro bruto (snapshot)</dt>
                   <dd>{formatCentsToBRL(grossMarginCents)}</dd>
@@ -118,15 +147,24 @@ export default async function SaleDetailPage({ params, searchParams }: SaleDetai
             <Card>
               <CardHeader>
                 <CardTitle>Pagamentos</CardTitle>
+                <CardDescription>Cada pagamento permanece identificável</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {activePayments.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhum pagamento registrado.</p>
                 ) : (
                   activePayments.map((payment) => (
-                    <div key={payment.id} className="flex justify-between text-sm">
-                      <span>{PAYMENT_METHOD_LABELS[payment.paymentMethod]}</span>
-                      <span>{formatCentsToBRL(payment.amountCents)}</span>
+                    <div key={payment.id} className="flex justify-between gap-3 text-sm">
+                      <div>
+                        <p>{PAYMENT_METHOD_LABELS[payment.paymentMethod]}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Intl.DateTimeFormat("pt-BR", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          }).format(new Date(payment.paidAt))}
+                        </p>
+                      </div>
+                      <span className="font-medium">{formatCentsToBRL(payment.amountCents)}</span>
                     </div>
                   ))
                 )}
@@ -136,12 +174,16 @@ export default async function SaleDetailPage({ params, searchParams }: SaleDetai
                     <span>{formatCentsToBRL(sale.changeCents)}</span>
                   </div>
                 ) : null}
-                {sale.paidCents < sale.totalCents ? (
-                  <div className="flex justify-between text-amber-700">
-                    <span>Saldo pendente</span>
-                    <span>{formatCentsToBRL(sale.totalCents - sale.paidCents)}</span>
-                  </div>
-                ) : null}
+                <div className="flex justify-between border-t pt-3 text-sm">
+                  <span className="text-muted-foreground">Total pago</span>
+                  <span className="font-medium">{formatCentsToBRL(sale.paidCents)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Saldo</span>
+                  <span className={balanceCents > 0 ? "font-medium text-amber-700" : ""}>
+                    {formatCentsToBRL(balanceCents)}
+                  </span>
+                </div>
               </CardContent>
             </Card>
 
@@ -178,9 +220,15 @@ export default async function SaleDetailPage({ params, searchParams }: SaleDetai
               </CardContent>
             </Card>
 
-            {canCancelSale(sale.status, sale.cancelledAt) ? (
-              <CancelSaleForm saleId={sale.id} />
+            {showRegisterPayment ? (
+              <RegisterSalePaymentForm
+                key={`${sale.id}-${sale.paidCents}`}
+                saleId={sale.id}
+                remainingCents={balanceCents}
+              />
             ) : null}
+
+            {showCancel ? <CancelSaleForm saleId={sale.id} /> : null}
           </div>
         </div>
 
