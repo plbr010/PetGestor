@@ -4,6 +4,8 @@ import { ServiceOrdersBoard } from "@/features/service-orders/components/service
 import { parseServiceOrderStatusFilter } from "@/features/service-orders/status";
 import { getServiceOrdersForToday } from "@/features/service-orders/queries";
 import { parseServiceOrderDate } from "@/features/service-orders/utils";
+import { WorkflowGuidePanel } from "@/features/onboarding-tour/components/workflow-guide-panel";
+import { MarkOnboardingPageView } from "@/features/onboarding-tour/components/mark-onboarding-page-view";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -39,6 +41,9 @@ export default async function AtendimentosPage({ searchParams }: AtendimentosPag
         description="Acompanhe os pets desde a chegada até a entrega."
       />
       <main className="flex-1 space-y-6 overflow-x-hidden p-4 sm:p-6">
+        <MarkOnboardingPageView step="workflow" />
+        <WorkflowGuidePanel />
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Filtros</CardTitle>

@@ -331,6 +331,28 @@ appointments → service_orders (1:1)
 
 Ver `docs/SERVICE_ORDERS.md`. **Migration pendente de aplicação remota.**
 
+## Onboarding de ativação
+
+Migration: `supabase/migrations/20260825200000_onboarding_progress.sql`
+
+### Tabela `onboarding_progress`
+
+Progresso por `(company_id, user_id)` — isolamento multi-tenant via RLS (`user_id = auth.uid()` + `is_company_member`).
+
+| Coluna | Notas |
+|--------|-------|
+| `welcome_seen_at` | Modal de boas-vindas dispensado |
+| `guided_active` / `guided_skipped_at` | Tutorial guiado ativo ou pulado |
+| `last_guided_step` | Retomar guia |
+| `workflow_step_viewed_at` / `finance_step_viewed_at` | Etapas educativas |
+| `onboarding_completed_at` / `checklist_dismissed_at` | Conclusão |
+
+Etapas de dados (serviço, funcionário, tutor+pet, agendamento) são **detectadas automaticamente** pelos counts da empresa — não dependem só de flags.
+
+RPC: `upsert_onboarding_progress(p_company_id, p_patch)` (SECURITY DEFINER, `auth.uid()`).
+
+Compat: `profiles.onboarding_tutorial_completed_at` continua sincronizado ao concluir.
+
 ## Aplicação da migration (Etapa 4)
 
 Ver `docs/CUSTOMERS_PETS.md`.

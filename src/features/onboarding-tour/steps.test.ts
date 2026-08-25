@@ -11,9 +11,9 @@ import {
 } from "@/features/onboarding-tour/steps";
 
 describe("onboarding tour steps", () => {
-  it("define 8 etapas (7 módulos + tela final)", () => {
-    expect(ONBOARDING_TOUR_STEP_COUNT).toBe(8);
-    expect(ONBOARDING_TOUR_STEPS).toHaveLength(8);
+  it("define etapas de ativação (welcome → setup → complete)", () => {
+    expect(ONBOARDING_TOUR_STEP_COUNT).toBe(9);
+    expect(ONBOARDING_TOUR_STEPS).toHaveLength(9);
     expect(ONBOARDING_TOUR_STEPS.at(-1)?.targetId).toBeNull();
   });
 
@@ -29,7 +29,7 @@ describe("onboarding tour steps", () => {
   it("navega etapas e identifica a última", () => {
     expect(getOnboardingTourStep(0)?.id).toBe("welcome");
     expect(isLastOnboardingTourStep(0)).toBe(false);
-    expect(isLastOnboardingTourStep(7)).toBe(true);
+    expect(isLastOnboardingTourStep(8)).toBe(true);
     expect(getOnboardingTourStep(99)).toBeNull();
   });
 });
@@ -42,20 +42,20 @@ describe("onboarding tour security surface", () => {
     );
 
     expect(source).toContain("requireUser");
-    expect(source).toContain('rpc("complete_onboarding_tutorial")');
+    expect(source).toContain('rpc("upsert_onboarding_progress"');
     expect(source).not.toMatch(/formData\.get\(["']user/);
-    expect(source).not.toContain("userId:");
   });
 
-  it("migration usa auth.uid e não aceita user_id arbitrário", () => {
+  it("migration de progresso usa auth.uid e isolamento por empresa", () => {
     const migration = readFileSync(
-      join(process.cwd(), "supabase/migrations/20260814210000_onboarding_tutorial.sql"),
+      join(process.cwd(), "supabase/migrations/20260825200000_onboarding_progress.sql"),
       "utf8",
     );
 
-    expect(migration).toContain("onboarding_tutorial_completed_at");
-    expect(migration).toContain("complete_onboarding_tutorial");
+    expect(migration).toContain("onboarding_progress");
+    expect(migration).toContain("upsert_onboarding_progress");
     expect(migration).toContain("auth.uid()");
+    expect(migration).toContain("private.is_company_member");
     expect(migration).not.toMatch(/p_user_id/);
   });
 
@@ -71,15 +71,25 @@ describe("onboarding tour security surface", () => {
 
     expect(adminLayout).not.toContain("OnboardingTour");
     expect(dashboardLayout).toContain("OnboardingTourProvider");
+    expect(dashboardLayout).toContain("OnboardingExperienceLayer");
   });
 
-  it("configurações expõe Ver tutorial novamente", () => {
+  it("configurações expõe Refazer tutorial", () => {
     const settings = readFileSync(
       join(process.cwd(), "src/components/dashboard/profile-settings-content.tsx"),
       "utf8",
     );
+    const help = readFileSync(
+      join(
+        process.cwd(),
+        "src/features/onboarding-tour/components/restart-onboarding-tour-card.tsx",
+      ),
+      "utf8",
+    );
 
     expect(settings).toContain("RestartOnboardingTourCard");
+    expect(help).toContain("Refazer tutorial do PetGestor");
+    expect(help).toContain("wa.me/5532998064217");
   });
 
   it("overlay mobile usa card inferior e controles acessíveis", () => {
@@ -97,5 +107,13 @@ describe("onboarding tour security surface", () => {
     expect(overlay).toContain("safe-area-inset-bottom");
     expect(overlay).toContain("Escape");
     expect(overlay).toContain("readDesktopTargetRect");
+  });
+
+  it("dashboard inclui checklist de primeiros passos", () => {
+    const page = readFileSync(
+      join(process.cwd(), "src/app/(dashboard)/dashboard/page.tsx"),
+      "utf8",
+    );
+    expect(page).toContain("OnboardingChecklistCard");
   });
 });

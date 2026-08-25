@@ -1,7 +1,8 @@
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { DashboardUserProvider } from "@/components/layout/dashboard-user-provider";
-import { OnboardingTourOverlay } from "@/features/onboarding-tour/components/onboarding-tour-overlay";
+import { OnboardingExperienceLayer } from "@/features/onboarding-tour/components/onboarding-experience-layer";
 import { OnboardingTourProvider } from "@/features/onboarding-tour/onboarding-tour-provider";
+import { loadOnboardingSnapshot } from "@/features/onboarding-tour/queries";
 import { TrialBanner } from "@/features/subscription/components/trial-banner";
 import { getCompanyEntitlement } from "@/features/subscription/queries";
 import { requireCompany } from "@/features/companies/queries";
@@ -27,10 +28,18 @@ export default async function AuthenticatedAppLayout({
   const showTrialBanner =
     !platformAdmin && hasPermission(dashboardContext.membership, "subscription.manage");
 
+  const onboardingSnapshot = await loadOnboardingSnapshot({
+    companyId: dashboardContext.membership.company.id,
+    userId: user.id,
+    legacyTutorialCompletedAt: dashboardContext.profile.onboardingTutorialCompletedAt,
+  });
+
   return (
     <DashboardUserProvider value={{ ...dashboardContext, isPlatformAdmin: platformAdmin }}>
       <OnboardingTourProvider
-        tutorialCompletedAt={dashboardContext.profile.onboardingTutorialCompletedAt}
+        initialSnapshot={onboardingSnapshot}
+        companyId={dashboardContext.membership.company.id}
+        userId={user.id}
       >
         <div className="flex min-h-screen flex-col">
           {showTrialBanner ? <TrialBanner entitlement={entitlement} /> : null}
@@ -39,7 +48,7 @@ export default async function AuthenticatedAppLayout({
             <div className="flex min-w-0 flex-1 flex-col">{children}</div>
           </div>
         </div>
-        <OnboardingTourOverlay />
+        <OnboardingExperienceLayer />
       </OnboardingTourProvider>
     </DashboardUserProvider>
   );
