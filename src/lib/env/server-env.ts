@@ -2,6 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
+import { requireAppUrl } from "@/lib/env/resolve-app-url";
+
 const optionalNonEmpty = z
   .string()
   .trim()
@@ -42,9 +44,8 @@ export function getServerEnv() {
 }
 
 export function getAppUrl(): string {
-  const env = getServerEnv();
-  const url = env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return url.replace(/\/$/, "");
+  // Mesma ordem que getSiteUrl (sem headers): APP_URL → NEXT_PUBLIC_APP_URL → VERCEL_URL → localhost só em dev.
+  return requireAppUrl();
 }
 
 export function getMercadoPagoAccessToken(): string {

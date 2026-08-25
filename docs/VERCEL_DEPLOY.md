@@ -62,6 +62,23 @@ APP_URL=https://seudominio.com
 
 **Não** use `http://localhost:3000` nem túneis (`loca.lt`, etc.) em Production.
 
+Produção atual:
+
+```env
+APP_URL=https://pet-gestor-sepia.vercel.app
+```
+
+### Supabase → Authentication → URL Configuration
+
+No painel do projeto Supabase (Production):
+
+| Campo | Valor |
+|---|---|
+| **Site URL** | `https://pet-gestor-sepia.vercel.app` |
+| **Redirect URLs** | incluir pelo menos: `https://pet-gestor-sepia.vercel.app/**` (ou as rotas `/auth/confirm**`, `/auth/callback**`, `/convite`) |
+
+Sem Site URL / Redirect URLs corretos, o Supabase pode reescrever links de e-mail para o valor antigo (ex.: `http://localhost:3000`), mesmo com `redirectTo` certo no app.
+
 ### O que NÃO é necessário no build
 
 Estas secrets **não** precisam existir para o `next build` concluir. Continuam obrigatórias no **runtime** das features que as usam:
