@@ -2202,6 +2202,68 @@ export type Database = {
           },
         ];
       };
+      cash_sessions: {
+        Row: {
+          id: string;
+          company_id: string;
+          status: "open" | "closed";
+          opened_by: string;
+          opened_at: string;
+          opening_balance_cents: number;
+          closed_by: string | null;
+          closed_at: string | null;
+          counted_cash_cents: number | null;
+          expected_cash_cents: number | null;
+          difference_cents: number | null;
+          notes: string | null;
+          summary: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          status?: "open" | "closed";
+          opened_by: string;
+          opened_at?: string;
+          opening_balance_cents?: number;
+          closed_by?: string | null;
+          closed_at?: string | null;
+          counted_cash_cents?: number | null;
+          expected_cash_cents?: number | null;
+          difference_cents?: number | null;
+          notes?: string | null;
+          summary?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          status?: "open" | "closed";
+          opened_by?: string;
+          opened_at?: string;
+          opening_balance_cents?: number;
+          closed_by?: string | null;
+          closed_at?: string | null;
+          counted_cash_cents?: number | null;
+          expected_cash_cents?: number | null;
+          difference_cents?: number | null;
+          notes?: string | null;
+          summary?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       sales: {
         Row: {
           id: string;
@@ -2612,6 +2674,31 @@ export type Database = {
         Args: {
           p_sale_id: string;
           p_reason: string;
+        };
+        Returns: string;
+      };
+      register_sale_payment: {
+        Args: {
+          p_sale_id: string;
+          p_amount_cents: number;
+          p_payment_method: string;
+          p_idempotency_key: string;
+          p_paid_at?: string;
+        };
+        Returns: string;
+      };
+      open_cash_session: {
+        Args: {
+          p_opening_balance_cents?: number;
+          p_notes?: string | null;
+        };
+        Returns: string;
+      };
+      close_cash_session: {
+        Args: {
+          p_session_id: string;
+          p_counted_cash_cents: number;
+          p_notes?: string | null;
         };
         Returns: string;
       };

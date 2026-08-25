@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 const items = [
   { key: "pdv", href: "/dashboard/pdv", label: "Nova venda" },
   { key: "vendas", href: "/dashboard/pdv/vendas", label: "Histórico" },
+  { key: "caixa", href: "/dashboard/pdv/caixa", label: "Caixa" },
 ] as const;
 
 export function PosSubnav({ current }: { current: (typeof items)[number]["key"] }) {

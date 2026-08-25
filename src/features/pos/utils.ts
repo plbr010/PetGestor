@@ -18,8 +18,12 @@ export function mapPosError(message: string | undefined): string {
     return "Desconto maior que o subtotal.";
   }
 
-  if (code.includes("payment_exceeds_total")) {
-    return "Pagamento excede o total da venda.";
+  if (code.includes("payment_exceeds_total") || code.includes("payment_exceeds_balance")) {
+    return "O pagamento não pode ultrapassar o saldo pendente.";
+  }
+
+  if (code.includes("sale_already_paid")) {
+    return "Esta venda já está totalmente paga.";
   }
 
   if (code.includes("empty_sale_items")) {
@@ -40,6 +44,34 @@ export function mapPosError(message: string | undefined): string {
 
   if (code.includes("sale_not_found")) {
     return "Venda não encontrada.";
+  }
+
+  if (code.includes("invalid_payment_amount")) {
+    return "Informe um valor de pagamento válido.";
+  }
+
+  if (code.includes("invalid_payment_method")) {
+    return "Forma de pagamento inválida.";
+  }
+
+  if (code.includes("invalid_idempotency_key")) {
+    return "Chave de idempotência inválida. Recarregue e tente novamente.";
+  }
+
+  if (code.includes("cash_session_already_open")) {
+    return "Já existe um caixa aberto. Feche-o antes de abrir outro.";
+  }
+
+  if (code.includes("cash_session_already_closed")) {
+    return "Esta sessão de caixa já foi fechada.";
+  }
+
+  if (code.includes("cash_session_not_found")) {
+    return "Sessão de caixa não encontrada.";
+  }
+
+  if (code.includes("invalid_opening_balance") || code.includes("invalid_counted_cash")) {
+    return "Informe um valor em dinheiro válido.";
   }
 
   return "Não foi possível concluir a operação. Verifique os dados e tente novamente.";

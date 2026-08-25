@@ -50,6 +50,38 @@ export const cancelSaleSchema = z.object({
   reason: z.string().trim().min(3, "Informe um motivo com pelo menos 3 caracteres.").max(500),
 });
 
+export const registerSalePaymentSchema = z.object({
+  amountCents: z.number().int().positive("Informe um valor maior que zero.").max(99_999_999),
+  paymentMethod: z.enum(paymentMethods),
+  idempotencyKey: z.string().uuid(),
+  paidAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Informe data e hora válidas.")
+    .optional()
+    .nullable(),
+});
+
+export const openCashSessionSchema = z.object({
+  openingBalanceCents: z.number().int().min(0).max(99_999_999),
+  notes: z
+    .string()
+    .trim()
+    .max(500)
+    .transform((value) => (value.length === 0 ? undefined : value))
+    .optional(),
+});
+
+export const closeCashSessionSchema = z.object({
+  sessionId: z.string().uuid(),
+  countedCashCents: z.number().int().min(0).max(99_999_999),
+  notes: z
+    .string()
+    .trim()
+    .max(500)
+    .transform((value) => (value.length === 0 ? undefined : value))
+    .optional(),
+});
+
 export function parseCompleteSaleJson(raw: string) {
   try {
     const parsed = JSON.parse(raw) as unknown;
@@ -62,6 +94,37 @@ export function parseCompleteSaleJson(raw: string) {
 export function parseCancelSaleForm(formData: FormData) {
   return cancelSaleSchema.safeParse({
     reason: formData.get("reason"),
+  });
+}
+
+export function parseRegisterSalePaymentForm(formData: FormData) {
+  const amountCents = parsePaymentAmountInput(String(formData.get("amount") ?? ""));
+  const paidAtRaw = String(formData.get("paidAt") ?? "").trim();
+
+  return registerSalePaymentSchema.safeParse({
+    amountCents: amountCents ?? 0,
+    paymentMethod: formData.get("paymentMethod"),
+    idempotencyKey: formData.get("idempotencyKey"),
+    paidAt: paidAtRaw.length > 0 ? paidAtRaw : null,
+  });
+}
+
+export function parseOpenCashSessionForm(formData: FormData) {
+  const opening = parsePaymentAmountInput(String(formData.get("openingBalance") ?? "0"));
+
+  return openCashSessionSchema.safeParse({
+    openingBalanceCents: opening ?? 0,
+    notes: formData.get("notes")?.toString() || undefined,
+  });
+}
+
+export function parseCloseCashSessionForm(formData: FormData) {
+  const counted = parsePaymentAmountInput(String(formData.get("countedCash") ?? ""));
+
+  return closeCashSessionSchema.safeParse({
+    sessionId: formData.get("sessionId"),
+    countedCashCents: counted ?? -1,
+    notes: formData.get("notes")?.toString() || undefined,
   });
 }
 

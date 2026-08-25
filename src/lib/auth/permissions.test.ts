@@ -181,6 +181,8 @@ describe("route permissions", () => {
     expect(getRequiredPermissionForPath("/dashboard/estoque")).toBe("inventory.view");
     expect(getRequiredPermissionForPath("/dashboard/estoque/abc/ajuste")).toBe("inventory.adjust");
     expect(getRequiredPermissionForPath("/dashboard/pdv")).toBe("pos.use");
+    expect(getRequiredPermissionForPath("/dashboard/pdv/caixa")).toBe("pos.close_cash");
+    expect(getRequiredPermissionForPath("/dashboard/pdv/vendas")).toBe("pos.use");
     expect(getRequiredPermissionForPath("/dashboard/configuracoes")).toBe("settings.view");
     expect(getRequiredPermissionForPath("/dashboard/funcionarios")).toBe("employees.view");
     expect(getRequiredPermissionForPath("/dashboard/tutores")).toBe("customers.view");

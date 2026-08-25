@@ -23,6 +23,14 @@ import {
   validatePayments,
 } from "@/features/pos/cart-engine";
 import { completeSaleSchema, parseDiscountPercentInput } from "@/features/pos/schemas";
+import {
+  canReceiveSalePayment,
+  computeCashDifferenceCents,
+  computeExpectedCashCents,
+  computeSaleBalanceCents,
+  emptyCashMethodTotals,
+  sumCashMethodTotals,
+} from "@/features/pos/balance";
 import type { CartLine } from "@/features/pos/types";
 
 const COMPANY_A = "11111111-1111-4111-8111-111111111111";
@@ -380,5 +388,50 @@ describe("PDV / vendas", () => {
     ]);
 
     expect(next.currentStock).toBe(0);
+  });
+
+  it("saldo pendente nunca negativo e segundo pagamento zera", () => {
+    expect(computeSaleBalanceCents(20000, 8000)).toBe(12000);
+    expect(computeSaleBalanceCents(20000, 20000)).toBe(0);
+    expect(computeSaleBalanceCents(20000, 25000)).toBe(0);
+    expect(determineSaleStatus(20000, 8000)).toBe("partially_paid");
+    expect(determineSaleStatus(20000, 20000)).toBe("completed");
+  });
+
+  it("registrar pagamento só em parcialmente paga com saldo", () => {
+    expect(
+      canReceiveSalePayment({
+        status: "partially_paid",
+        cancelledAt: null,
+        totalCents: 20000,
+        paidCents: 8000,
+      }),
+    ).toBe(true);
+    expect(
+      canReceiveSalePayment({
+        status: "completed",
+        cancelledAt: null,
+        totalCents: 20000,
+        paidCents: 20000,
+      }),
+    ).toBe(false);
+    expect(
+      canReceiveSalePayment({
+        status: "partially_paid",
+        cancelledAt: "2026-08-25T12:00:00.000Z",
+        totalCents: 20000,
+        paidCents: 8000,
+      }),
+    ).toBe(false);
+  });
+
+  it("fechamento — dinheiro físico esperado ignora PIX/cartão", () => {
+    const totals = emptyCashMethodTotals();
+    totals.cash = 8000;
+    totals.pix = 12000;
+    totals.debit_card = 5000;
+    expect(sumCashMethodTotals(totals)).toBe(25000);
+    expect(computeExpectedCashCents(10000, totals.cash)).toBe(18000);
+    expect(computeCashDifferenceCents(17500, 18000)).toBe(-500);
   });
 });

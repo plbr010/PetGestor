@@ -77,6 +77,16 @@ export function SaleReceipt({
             <dt>Total</dt>
             <dd>{formatCentsToBRL(sale.totalCents)}</dd>
           </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">Pago</dt>
+            <dd>{formatCentsToBRL(sale.paidCents)}</dd>
+          </div>
+          {sale.paidCents < sale.totalCents && !sale.cancelledAt ? (
+            <div className="flex justify-between font-medium">
+              <dt>Saldo pendente</dt>
+              <dd>{formatCentsToBRL(Math.max(0, sale.totalCents - sale.paidCents))}</dd>
+            </div>
+          ) : null}
         </dl>
 
         <div className="my-4 border-t border-dashed" />
