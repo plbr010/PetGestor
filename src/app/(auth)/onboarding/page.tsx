@@ -29,7 +29,7 @@ export default async function OnboardingPage() {
   const defaultPhone = typeof metadata.phone === "string" ? metadata.phone : "";
 
   return (
-    <AuthShell>
+    <AuthShell showLogout>
       <OnboardingForm
         defaultFullName={defaultFullName}
         defaultCompanyName={defaultCompanyName}

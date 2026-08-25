@@ -1,3 +1,11 @@
+## [0.32.1] — 2026-08-25
+
+### Adicionado — Botão Sair mais visível
+
+- “Sair” sempre no header do dashboard (também no mobile)
+- “Sair da conta” em Configurações
+- “Sair da conta” no onboarding e no fluxo de convite
+
 ## [0.32.0] — 2026-08-25
 
 ### Alterado — Trial gratuito de 7 dias
