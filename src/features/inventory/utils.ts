@@ -45,6 +45,10 @@ export function formatUnitLabel(unit: ProductUnit): string {
 }
 
 export function formatMovementType(type: StockMovementType, reason?: string | null): string {
+  if (reason === "service_consumption") {
+    return "Consumo em atendimento";
+  }
+
   if (type === "exit" && reason && reason in STOCK_EXIT_REASON_LABELS) {
     return STOCK_EXIT_REASON_LABELS[reason as StockExitReason];
   }

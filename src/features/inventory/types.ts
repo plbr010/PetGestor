@@ -65,6 +65,8 @@ export type StockMovementView = {
   notes: string | null;
   supplierId: string | null;
   supplierName: string | null;
+  referenceType: string | null;
+  referenceId: string | null;
   createdByName: string;
   createdAt: string;
 };

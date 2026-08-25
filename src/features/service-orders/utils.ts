@@ -26,6 +26,29 @@ export function mapServiceOrderError(message: string | undefined): string {
     return "Esta ordem não pode mais ser editada.";
   }
 
+  if (code.includes("consumption_already_applied")) {
+    return "Este consumo já foi baixado do estoque e não pode ser alterado.";
+  }
+
+  if (code.includes("invalid_consumption_quantity")) {
+    return "Informe uma quantidade válida.";
+  }
+
+  if (code.includes("product_not_found")) {
+    return "Produto não encontrado ou inativo.";
+  }
+
+  if (code.includes("insufficient_stock")) {
+    const parts = code.split("|");
+    if (parts.length >= 4) {
+      const productName = parts[1];
+      const needed = parts[2];
+      const available = parts[3];
+      return `Estoque insuficiente de ${productName}. Necessário: ${needed}. Disponível: ${available}.`;
+    }
+    return "Estoque insuficiente para um ou mais insumos deste atendimento.";
+  }
+
   return "Não foi possível concluir a operação. Tente novamente.";
 }
 

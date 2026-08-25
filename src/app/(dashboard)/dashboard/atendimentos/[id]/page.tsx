@@ -8,8 +8,13 @@ import {
 import { ServiceOrderFinancePanel } from "@/features/finance/components/service-order-finance-panel";
 import { getFinancialEntryByServiceOrderId } from "@/features/finance/queries";
 import { ServiceOrderActions } from "@/features/service-orders/components/service-order-actions";
+import { ServiceOrderConsumptionsPanel } from "@/features/service-orders/components/service-order-consumptions-panel";
 import { ServiceOrderNotesForm } from "@/features/service-orders/components/service-order-notes-form";
 import { ServiceOrderStatusBadge } from "@/features/service-orders/components/service-order-status-badge";
+import {
+  ensureServiceOrderConsumptionsSeeded,
+  getServiceOrderConsumptions,
+} from "@/features/service-orders/consumption-queries";
 import { requireServiceOrderById } from "@/features/service-orders/queries";
 import {
   formatAppointmentTimeRange,
@@ -20,6 +25,8 @@ import {
   formatTimestampLabel,
 } from "@/features/service-orders/utils";
 import { formatDurationLabel } from "@/features/services/utils";
+import { getProductPickerOptions } from "@/features/inventory/product-picker";
+import { hasPermission } from "@/lib/auth/permissions";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { formatPhoneDisplay } from "@/lib/phone";
 import { formatUtcDateInTimezone } from "@/lib/timezone";
@@ -46,17 +53,35 @@ export default async function ServiceOrderDetailPage({
   const { id } = await params;
   const query = await searchParams;
   const timeZone = context.membership.company.timezone;
-  const order = await requireServiceOrderById(context.membership.company.id, id);
-  const financialEntry = await getFinancialEntryByServiceOrderId(
-    context.membership.company.id,
-    order.id,
-  );
-  const [packageCredits, packageUsage, attachments] = await Promise.all([
-    getPackageCreditsForServiceOrder(context.membership.company.id, order.id, timeZone),
-    getPackageUsageForServiceOrder(context.membership.company.id, order.id),
-    getServiceOrderAttachments(context.membership.company.id, order.id),
+  const companyId = context.membership.company.id;
+  const order = await requireServiceOrderById(companyId, id);
+
+  if (order.status === "waiting" || order.status === "in_progress") {
+    await ensureServiceOrderConsumptionsSeeded(order.id);
+  }
+
+  const [
+    financialEntry,
+    packageCredits,
+    packageUsage,
+    attachments,
+    consumptions,
+    products,
+  ] = await Promise.all([
+    getFinancialEntryByServiceOrderId(companyId, order.id),
+    getPackageCreditsForServiceOrder(companyId, order.id, timeZone),
+    getPackageUsageForServiceOrder(companyId, order.id),
+    getServiceOrderAttachments(companyId, order.id),
+    getServiceOrderConsumptions(companyId, order.id),
+    getProductPickerOptions(companyId),
   ]);
+
   const localDate = formatUtcDateInTimezone(order.appointment.scheduled_start, timeZone);
+  const canEditConsumptions = hasPermission(
+    context.membership,
+    "service_orders.update_status",
+  );
+  const showCost = hasPermission(context.membership, "inventory.view");
 
   return (
     <>
@@ -129,6 +154,22 @@ export default async function ServiceOrderDetailPage({
           </CardHeader>
           <CardContent>
             <ServiceOrderNotesForm order={order} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Produtos utilizados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ServiceOrderConsumptionsPanel
+              serviceOrderId={order.id}
+              status={order.status}
+              consumptions={consumptions}
+              products={products}
+              canEdit={canEditConsumptions}
+              showCost={showCost}
+            />
           </CardContent>
         </Card>
 

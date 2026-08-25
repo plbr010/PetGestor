@@ -49,6 +49,16 @@ Agendamento → Pet chegou (check-in) → Aguardando → Em atendimento → Pron
 
 **Importante:** quando o serviço termina (`ready`), o appointment fica `completed` (serviço contratado concluído). O pet ainda aguarda retirada — a ordem fica `ready`.
 
+## Insumos e estoque
+
+1. Configure a receita em **Serviços** (produtos + quantidade padrão na unidade do produto).
+2. No check-in, a OS recebe cópia editável em `service_order_consumptions`.
+3. Antes de marcar pronto: ajuste quantidade real, adicione ou remova insumos.
+4. **Marcar como pronto** baixa o estoque (FEFO, idempotente). Entrega (`completed`) não mexe no estoque.
+5. Cancelamento só em `waiting` — antes da baixa. Não há reabertura de OS nesta etapa.
+
+Custo de insumos é gerencial (não altera o preço do cliente). Exibido a quem tem `inventory.view`.
+
 ## Check-in
 
 RPC `check_in_appointment`:
@@ -76,10 +86,14 @@ Somente `waiting → cancelled`. Ordens em `in_progress` não podem ser cancelad
 |-----|-----|
 | `check_in_appointment` | Receber pet |
 | `start_service_order` | Iniciar atendimento |
-| `mark_service_order_ready` | Serviço concluído |
+| `mark_service_order_ready` | Serviço concluído + baixa de insumos |
 | `complete_service_order` | Entrega ao tutor |
 | `cancel_service_order` | Cancelar ordem aguardando |
 | `update_service_order_notes` | Atualizar observações |
+| `seed_service_order_consumptions` | Garantir seed da receita |
+| `upsert_service_order_consumption` | Ajustar/adicionar insumo |
+| `remove_service_order_consumption` | Remover insumo antes da baixa |
+| `replace_service_product_recipes` | Salvar receita do serviço |
 
 `SECURITY DEFINER`, `auth.uid()` obrigatório, `EXECUTE` apenas `authenticated`.
 

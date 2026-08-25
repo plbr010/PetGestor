@@ -2202,6 +2202,72 @@ export type Database = {
           },
         ];
       };
+      service_order_consumptions: {
+        Row: {
+          id: string;
+          company_id: string;
+          service_order_id: string;
+          product_id: string;
+          product_name_snapshot: string;
+          unit: ProductUnit;
+          quantity: number;
+          unit_cost_cents_snapshot: number | null;
+          source: "recipe" | "manual";
+          stock_movement_id: string | null;
+          consumed_at: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          service_order_id: string;
+          product_id: string;
+          product_name_snapshot: string;
+          unit: ProductUnit;
+          quantity: number;
+          unit_cost_cents_snapshot?: number | null;
+          source?: "recipe" | "manual";
+          stock_movement_id?: string | null;
+          consumed_at?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          service_order_id?: string;
+          product_id?: string;
+          product_name_snapshot?: string;
+          unit?: ProductUnit;
+          quantity?: number;
+          unit_cost_cents_snapshot?: number | null;
+          source?: "recipe" | "manual";
+          stock_movement_id?: string | null;
+          consumed_at?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_order_consumptions_so_company_fkey";
+            columns: ["service_order_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "service_orders";
+            referencedColumns: ["id", "company_id"];
+          },
+          {
+            foreignKeyName: "service_order_consumptions_product_company_fkey";
+            columns: ["product_id", "company_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id", "company_id"];
+          },
+        ];
+      };
       cash_sessions: {
         Row: {
           id: string;
@@ -2552,6 +2618,30 @@ export type Database = {
       };
       mark_service_order_ready: {
         Args: { p_service_order_id: string };
+        Returns: string;
+      };
+      replace_service_product_recipes: {
+        Args: {
+          p_service_id: string;
+          p_items?: Json;
+        };
+        Returns: string;
+      };
+      seed_service_order_consumptions: {
+        Args: { p_service_order_id: string };
+        Returns: string;
+      };
+      upsert_service_order_consumption: {
+        Args: {
+          p_service_order_id: string;
+          p_product_id: string;
+          p_quantity: number;
+          p_source?: string;
+        };
+        Returns: string;
+      };
+      remove_service_order_consumption: {
+        Args: { p_consumption_id: string };
         Returns: string;
       };
       complete_service_order: {

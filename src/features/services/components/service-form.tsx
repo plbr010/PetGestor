@@ -6,7 +6,10 @@ import {
   createServiceAction,
   type ServiceActionState,
 } from "@/features/services/actions";
+import { ServiceRecipeEditor } from "@/features/services/components/service-recipe-editor";
+import type { ServiceRecipeItem } from "@/features/services/recipe-types";
 import type { ServiceDetail } from "@/features/services/types";
+import type { ProductPickerOption } from "@/features/inventory/product-picker";
 import {
   MAX_DURATION_MINUTES,
   MIN_DURATION_MINUTES,
@@ -29,6 +32,8 @@ type ServiceFormProps = {
   mode: "create" | "edit";
   service?: ServiceDetail;
   cancelHref: string;
+  products: ProductPickerOption[];
+  recipes?: ServiceRecipeItem[];
   action?: (
     state: ServiceActionState,
     formData: FormData,
@@ -39,7 +44,14 @@ function getDefaultSizePrice(service: ServiceDetail | undefined, size: (typeof P
   return service?.sizePrices.find((row) => row.size === size);
 }
 
-export function ServiceForm({ mode, service, cancelHref, action }: ServiceFormProps) {
+export function ServiceForm({
+  mode,
+  service,
+  cancelHref,
+  products,
+  recipes = [],
+  action,
+}: ServiceFormProps) {
   const [pricingMode, setPricingMode] = useState<ServicePricingMode>(
     service?.pricing_mode ?? "fixed",
   );
@@ -194,6 +206,8 @@ export function ServiceForm({ mode, service, cancelHref, action }: ServiceFormPr
         />
         <Label htmlFor="active">Serviço ativo</Label>
       </div>
+
+      <ServiceRecipeEditor products={products} initialRecipes={recipes} />
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button type="submit" disabled={isPending}>

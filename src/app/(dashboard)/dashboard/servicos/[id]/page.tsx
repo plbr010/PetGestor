@@ -1,5 +1,6 @@
 import { ArchiveServiceButton } from "@/features/services/components/archive-service-button";
 import { ToggleServiceActiveButton } from "@/features/services/components/toggle-service-active-button";
+import { getServiceRecipes } from "@/features/services/recipe-queries";
 import { requireServiceById } from "@/features/services/queries";
 import {
   formatDurationLabel,
@@ -8,6 +9,8 @@ import {
   PET_SIZE_LABELS,
   PRICING_MODE_LABELS,
 } from "@/features/services/utils";
+import { formatQuantity } from "@/features/inventory/stock-engine";
+import { PRODUCT_UNIT_SHORT_LABELS } from "@/features/inventory/units";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { formatCentsToBRL } from "@/lib/money";
 import { formatDateTimeDisplay } from "@/lib/pet-display";
@@ -35,7 +38,11 @@ export default async function ServiceDetailPage({
   const context = await requireCompanyContext();
   const { id } = await params;
   const query = await searchParams;
-  const service = await requireServiceById(context.membership.company.id, id);
+  const companyId = context.membership.company.id;
+  const [service, recipes] = await Promise.all([
+    requireServiceById(companyId, id),
+    getServiceRecipes(companyId, id),
+  ]);
 
   return (
     <>
@@ -170,6 +177,34 @@ export default async function ServiceDetailPage({
             </Card>
           )}
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Produtos e insumos utilizados</CardTitle>
+            <CardDescription>
+              Consumo interno padrão — não altera o preço cobrado ao cliente
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recipes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum insumo configurado.</p>
+            ) : (
+              <ul className="space-y-3">
+                {recipes.map((recipe) => (
+                  <li key={recipe.id} className="flex justify-between gap-3 text-sm">
+                    <span className="font-medium">{recipe.productName}</span>
+                    <span className="text-muted-foreground">
+                      {formatQuantity(
+                        recipe.quantity,
+                        PRODUCT_UNIT_SHORT_LABELS[recipe.unit],
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </>
   );

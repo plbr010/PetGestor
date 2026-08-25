@@ -1,8 +1,13 @@
 import { ServiceForm } from "@/features/services/components/service-form";
+import { getProductPickerOptions } from "@/features/inventory/product-picker";
+import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function NewServicePage() {
+export default async function NewServicePage() {
+  const context = await requireCompanyContext();
+  const products = await getProductPickerOptions(context.membership.company.id);
+
   return (
     <>
       <DashboardHeader title="Novo serviço" description="cadastro de serviço" />
@@ -12,7 +17,11 @@ export default function NewServicePage() {
             <CardTitle>Informações do serviço</CardTitle>
           </CardHeader>
           <CardContent>
-            <ServiceForm mode="create" cancelHref="/dashboard/servicos" />
+            <ServiceForm
+              mode="create"
+              cancelHref="/dashboard/servicos"
+              products={products}
+            />
           </CardContent>
         </Card>
       </main>

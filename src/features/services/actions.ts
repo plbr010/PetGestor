@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { parseServiceForm } from "@/features/services/schemas";
 import { sizePricesToRpcPayload } from "@/features/services/utils";
+import { parseQuantityInput } from "@/features/inventory/stock-engine";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import {
   didMutateAccessibleRow,
@@ -23,7 +24,68 @@ function mapRpcError(error: { code?: string; message?: string } | null): string 
     return "Não foi possível concluir a operação. Tente novamente.";
   }
 
+  const message = error.message ?? "";
+  if (message.includes("product_not_found")) {
+    return "Um dos produtos da receita não foi encontrado.";
+  }
+  if (message.includes("invalid_recipe_quantity") || message.includes("duplicate_recipe_product")) {
+    return "Revise os produtos e quantidades da receita.";
+  }
+
   return GENERIC_NOT_FOUND_MESSAGE;
+}
+
+function parseRecipesJson(formData: FormData): { product_id: string; quantity: number }[] | null {
+  const raw = formData.get("recipes_json");
+  if (typeof raw !== "string" || raw.trim().length === 0) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+
+    const items: { product_id: string; quantity: number }[] = [];
+    for (const row of parsed) {
+      if (!row || typeof row !== "object") {
+        return null;
+      }
+      const record = row as Record<string, unknown>;
+      const productId = String(record.product_id ?? "");
+      const quantity =
+        typeof record.quantity === "number"
+          ? record.quantity
+          : parseQuantityInput(String(record.quantity ?? ""));
+      if (!isValidUuid(productId) || quantity == null) {
+        return null;
+      }
+      items.push({ product_id: productId, quantity });
+    }
+    return items;
+  } catch {
+    return null;
+  }
+}
+
+async function saveServiceRecipes(serviceId: string, formData: FormData): Promise<string | null> {
+  const recipes = parseRecipesJson(formData);
+  if (recipes == null) {
+    return "Revise os produtos e quantidades da receita.";
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("replace_service_product_recipes", {
+    p_service_id: serviceId,
+    p_items: recipes,
+  });
+
+  if (error) {
+    return mapRpcError(error);
+  }
+
+  return null;
 }
 
 export async function createServiceAction(
@@ -57,6 +119,11 @@ export async function createServiceAction(
 
   if (error || !data) {
     return { error: "Não foi possível cadastrar o serviço. Tente novamente." };
+  }
+
+  const recipeError = await saveServiceRecipes(String(data), formData);
+  if (recipeError) {
+    return { error: recipeError };
   }
 
   revalidatePath("/dashboard/servicos");
@@ -101,6 +168,11 @@ export async function updateServiceAction(
 
   if (error || !data) {
     return { error: mapRpcError(error) };
+  }
+
+  const recipeError = await saveServiceRecipes(serviceId, formData);
+  if (recipeError) {
+    return { error: recipeError };
   }
 
   revalidatePath("/dashboard/servicos");
