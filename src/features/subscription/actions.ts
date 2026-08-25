@@ -21,6 +21,7 @@ import {
   createPendingSubscription,
   getSubscription,
   cancelSubscription as cancelMercadoPagoSubscription,
+  MercadoPagoApiError,
 } from "@/features/subscription/providers/mercado-pago";
 import { getCompanySubscription, requireCompanySubscription } from "@/features/subscription/queries";
 import { syncSubscriptionFromProvider } from "@/features/subscription/sync";
@@ -35,6 +36,7 @@ import {
   type BillingInterval,
 } from "@/config/subscription";
 import {
+  assertMercadoPagoCheckoutReady,
   assertMercadoPagoSandboxPayerEmail,
   BillingConfigError,
   getAppUrl,
@@ -143,14 +145,70 @@ function getCheckoutFailureStage(error: unknown): string {
   return "unknown";
 }
 
+function mapMercadoPagoCheckoutFailure(error: unknown): string {
+  if (!(error instanceof MercadoPagoApiError)) {
+    return "O Mercado Pago recusou iniciar o checkout. Verifique a conta MP ou tente de novo em instantes.";
+  }
+
+  const haystack = [
+    error.mpMessage,
+    error.mpError,
+    ...error.causeDescriptions,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    haystack.includes("payer and collector") ||
+    haystack.includes("same user") ||
+    haystack.includes("collector cannot be the same")
+  ) {
+    return "O Mercado Pago não permite que o pagador seja a mesma conta vendedora. Teste com outro e-mail de comprador (não use o e-mail da conta MP do PetGestor).";
+  }
+
+  if (haystack.includes("invalid_email") || haystack.includes("invalid email")) {
+    return "E-mail do pagador inválido para o ambiente do Mercado Pago. Em teste, use um e-mail @testuser.com de Comprador.";
+  }
+
+  if (haystack.includes("unauthorized") || error.status === 401) {
+    return "Access Token do Mercado Pago inválido ou expirado. Confira MERCADO_PAGO_ACCESS_TOKEN na Vercel.";
+  }
+
+  if (error.status === 403) {
+    return "A conta Mercado Pago não tem permissão para criar esta assinatura. Confira se as assinaturas estão habilitadas na aplicação.";
+  }
+
+  if (haystack.includes("back_url") || haystack.includes("back url")) {
+    return "URL de retorno inválida. Confira APP_URL / NEXT_PUBLIC_APP_URL na Vercel (deve ser HTTPS do domínio público).";
+  }
+
+  const detail =
+    error.causeDescriptions[0] ??
+    (typeof error.mpMessage === "string" && error.mpMessage.length > 0
+      ? error.mpMessage
+      : null);
+
+  if (detail) {
+    // Mostra a causa real do MP (sem token) para destravar suporte/configuração.
+    return `O Mercado Pago recusou o checkout (${error.status}): ${detail}`;
+  }
+
+  return `O Mercado Pago recusou iniciar o checkout (HTTP ${error.status}). Confira Access Token, ENVIRONMENT=production e APP_URL HTTPS na Vercel.`;
+}
+
 function mapCheckoutError(error: unknown): string {
   if (error instanceof BillingConfigError) {
-    return "Mercado Pago ainda não está configurado neste ambiente.";
+    return error.message;
+  }
+
+  if (error instanceof MercadoPagoApiError) {
+    return mapMercadoPagoCheckoutFailure(error);
   }
 
   if (error instanceof Error) {
     if (error.message === "mercado_pago_checkout_failed") {
-      return "O Mercado Pago recusou iniciar o checkout. Verifique a conta MP ou tente de novo em instantes.";
+      return mapMercadoPagoCheckoutFailure(error);
     }
     if (error.message === "billing_subscription_update_failed") {
       return "Não foi possível salvar a assinatura. Confirme se a migration anual foi aplicada no Supabase.";
@@ -406,6 +464,8 @@ export async function createSubscriptionCheckoutAction(
     const appUrl = getAppUrl();
     const backUrl = new URL("/assinatura/retorno", appUrl).toString();
 
+    assertMercadoPagoCheckoutReady(backUrl);
+
     const payload = buildCreatePendingPreapprovalPayload({
       companyId,
       payerEmail,
@@ -439,7 +499,7 @@ export async function createSubscriptionCheckoutAction(
       preapproval = await createPendingSubscription(payload);
     } catch (error) {
       annotateCheckoutErrorStage(error, "before_mercado_pago");
-      if (error instanceof BillingConfigError) {
+      if (error instanceof BillingConfigError || error instanceof MercadoPagoApiError) {
         throw error;
       }
       const checkoutError = new Error("mercado_pago_checkout_failed");

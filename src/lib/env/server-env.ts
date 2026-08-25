@@ -43,8 +43,72 @@ export function getServerEnv() {
 
 export function getAppUrl(): string {
   const env = getServerEnv();
-  const url = env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  let url = env.APP_URL ?? env.NEXT_PUBLIC_APP_URL;
+
+  // Em deploy Vercel, evita back_url localhost se APP_URL não estiver setada.
+  const vercelUrl = process.env.VERCEL_URL?.replace(/\/$/, "");
+  if ((!url || /localhost|127\.0\.0\.1/i.test(url)) && vercelUrl) {
+    url = `https://${vercelUrl}`;
+  }
+
+  if (!url) {
+    url = "http://localhost:3000";
+  }
+
   return url.replace(/\/$/, "");
+}
+
+/**
+ * Valida config mínima antes do POST /preapproval.
+ * Falhas aqui viram mensagem clara (não “recusou checkout” genérico).
+ */
+export function assertMercadoPagoCheckoutReady(backUrl: string): void {
+  const env = getServerEnv();
+  const token = env.MERCADO_PAGO_ACCESS_TOKEN;
+
+  if (!token) {
+    throw new BillingConfigError(
+      "Mercado Pago não configurado. Adicione MERCADO_PAGO_ACCESS_TOKEN na Vercel.",
+    );
+  }
+
+  const looksLikeTestToken =
+    token.startsWith("TEST-") || token.includes("TEST");
+  // Tokens de produção do MP costumam começar com APP_USR- (sem "TEST").
+  const looksLikeProdToken = token.startsWith("APP_USR-") && !looksLikeTestToken;
+
+  if (env.MERCADO_PAGO_ENVIRONMENT === "production" && looksLikeTestToken) {
+    throw new BillingConfigError(
+      "MERCADO_PAGO_ENVIRONMENT=production, mas o Access Token parece de teste. Use as Credenciais de produção na Vercel.",
+    );
+  }
+
+  if (env.MERCADO_PAGO_ENVIRONMENT === "test" && looksLikeProdToken) {
+    throw new BillingConfigError(
+      "MERCADO_PAGO_ENVIRONMENT=test, mas o Access Token parece de produção. Na Vercel Production use ENVIRONMENT=production com token de produção.",
+    );
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(backUrl);
+  } catch {
+    throw new BillingConfigError(
+      "APP_URL inválida. Configure APP_URL com a URL HTTPS pública do app (ex.: https://seu-app.vercel.app).",
+    );
+  }
+
+  if (parsed.protocol !== "https:" && env.MERCADO_PAGO_ENVIRONMENT === "production") {
+    throw new BillingConfigError(
+      "Em produção o Mercado Pago exige back_url HTTPS. Configure APP_URL com https://…",
+    );
+  }
+
+  if (/localhost|127\.0\.0\.1/i.test(parsed.hostname) && process.env.VERCEL) {
+    throw new BillingConfigError(
+      "APP_URL aponta para localhost neste deploy. Defina APP_URL=https://pet-gestor-sepia.vercel.app (ou seu domínio) na Vercel e faça redeploy.",
+    );
+  }
 }
 
 export function getMercadoPagoAccessToken(): string {
