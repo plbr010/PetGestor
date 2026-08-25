@@ -8,9 +8,7 @@ export const brand = {
     "SaaS de gestão para pet shops: agenda, clientes, pets, serviços e financeiro básico.",
   locale: "pt-BR",
   supportWhatsApp: {
-    /** Número E.164 sem `+` (wa.me). */
-    phoneDigits: "5532998064217",
-    /** Telefone BR local para `buildWhatsAppUrl`. */
+    /** Telefone BR (DDD + número) usado em `buildWhatsAppUrl` → wa.me/55… */
     phoneLocal: "32998064217",
     prefillMessage: "Olá, tenho uma dúvida sobre o PetGestor.",
   },
