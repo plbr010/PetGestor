@@ -1,3 +1,20 @@
+## [0.34.0] — 2026-08-25
+
+### Adicionado — Busca global no header
+
+- Campo “Buscar no PetGestor…” (desktop + painel mobile)
+- Server-side com permissões e `company_id` do contexto autenticado
+- Grupos: clientes, pets, agenda, atendimentos, funcionários, serviços, produtos, vendas, pacotes
+- Debounce 300ms, mínimo 2 caracteres, máx. 5 resultados/categoria + “Ver todos”
+- Ranking simples (exact → prefix → contains), telefone sem máscara, fold de acentos no ranking
+- Atalho Ctrl/Cmd+K
+- Índices `pg_trgm` para ILIKE
+
+### Migration
+
+- `20260825150000_global_search_indexes.sql` (**aplicar no Supabase**)
+- Atalho: `docs/sql/APPLY-global-search-indexes.sql`
+
 ## [0.33.0] — 2026-08-25
 
 ### Adicionado — Central de notificações (sino)

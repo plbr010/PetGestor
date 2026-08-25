@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { DashboardMobileNav } from "@/components/layout/dashboard-mobile-nav";
@@ -10,8 +10,8 @@ import {
   useDashboardUser,
 } from "@/components/layout/dashboard-user-provider";
 import { NotificationBell } from "@/features/app-notifications/components/notification-bell";
+import { GlobalSearch } from "@/features/global-search/components/global-search";
 import { ButtonLink } from "@/components/ui/button-link";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 type DashboardHeaderProps = {
@@ -60,18 +60,7 @@ export function DashboardHeader({ title, description }: DashboardHeaderProps) {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-md">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              className="h-10 pl-9"
-              placeholder="Buscar tutores, pets ou serviços..."
-              aria-label="Buscar tutores, pets ou serviços"
-              disabled
-            />
-          </div>
+          <GlobalSearch />
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
             <NotificationBell />
