@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import { NewPasswordForm } from "@/components/auth/new-password-form";
 import {
   getRoleLabel,
@@ -79,6 +80,16 @@ export function ProfileSettingsContent({
 
       {notificationSettings}
       {notificationHistory}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sessão</CardTitle>
+          <CardDescription>Encerre o acesso neste dispositivo.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LogoutButton className="w-full gap-2 sm:w-auto" label="Sair da conta" />
+        </CardContent>
+      </Card>
 
       <p className="text-sm text-muted-foreground">
         Esqueceu a senha atual?{" "}

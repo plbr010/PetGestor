@@ -23,7 +23,7 @@ export default async function ConvitePage() {
 
   if (pending.found) {
     return (
-      <AuthShell>
+      <AuthShell showLogout>
         <AcceptInviteCard
           companyName={pending.companyName}
           expiresAt={pending.expiresAt}
@@ -41,7 +41,7 @@ export default async function ConvitePage() {
   );
 
   return (
-    <AuthShell>
+    <AuthShell showLogout>
       <Card className="border bg-card/95 shadow-lg">
         <CardHeader>
           <CardTitle>Convite</CardTitle>

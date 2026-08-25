@@ -46,8 +46,12 @@ export function DashboardHeader({ title, description }: DashboardHeaderProps) {
             </div>
           </div>
 
-          <div className="hidden items-center gap-2 lg:flex">
-            <ButtonLink href="/dashboard/agenda/novo" size="sm">
+          <div className="flex shrink-0 items-center gap-2">
+            <ButtonLink
+              href="/dashboard/agenda/novo"
+              size="sm"
+              className="hidden lg:inline-flex"
+            >
               <Plus className="size-4" aria-hidden="true" />
               Novo agendamento
             </ButtonLink>

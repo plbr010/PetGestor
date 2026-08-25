@@ -1,15 +1,18 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { PublicHeader } from "@/components/layout/public-header";
 import { PublicFooter } from "@/components/layout/public-footer";
 
 type AuthShellProps = {
   children: ReactNode;
+  /** Mostra “Sair” para fluxos autenticados sem sidebar (onboarding, convite). */
+  showLogout?: boolean;
 };
 
-export function AuthShell({ children }: AuthShellProps) {
+export function AuthShell({ children, showLogout = false }: AuthShellProps) {
   return (
     <>
       <PublicHeader />
@@ -27,6 +30,16 @@ export function AuthShell({ children }: AuthShellProps) {
               <BrandLogo size="md" className="justify-center" />
             </Link>
             {children}
+            {showLogout ? (
+              <div className="flex justify-center pt-2">
+                <LogoutButton
+                  size="sm"
+                  variant="ghost"
+                  className="gap-2 text-muted-foreground"
+                  label="Sair da conta"
+                />
+              </div>
+            ) : null}
           </div>
         </div>
       </main>
