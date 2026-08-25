@@ -1,3 +1,12 @@
+## [0.39.0] — 2026-08-25
+
+### Adicionado — Botão flutuante de WhatsApp (site)
+
+- Componente `WhatsAppFloatingButton` fixo no canto inferior direito
+- Visível nas páginas públicas (layout `(public)`): desktop com texto + ícone; mobile só ícone circular
+- Link `wa.me` com mensagem pré-preenchida codificada; abre em nova aba (`target="_blank"`)
+- Número e mensagem em `src/config/brand.ts` (`supportWhatsApp`)
+
 ## [0.38.0] — 2026-08-25
 
 ### Adicionado — Onboarding de ativação
