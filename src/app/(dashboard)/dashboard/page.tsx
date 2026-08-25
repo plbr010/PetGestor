@@ -22,6 +22,8 @@ import { getRecentCustomers } from "@/features/customers/queries";
 import { requireCompany } from "@/features/companies/queries";
 import { formatAmountCents } from "@/features/finance/utils";
 import { InventoryDashboardCard } from "@/features/inventory/components/inventory-dashboard-card";
+import { OnboardingChecklistCard } from "@/features/onboarding-tour/components/checklist-card";
+import { loadOnboardingSnapshot } from "@/features/onboarding-tour/queries";
 import { PosDashboardCard } from "@/features/pos/components/pos-dashboard-card";
 import { hasPermission } from "@/lib/auth/permissions";
 import { formatDashboardPartialErrors } from "@/features/dashboard/partial-errors";
@@ -43,6 +45,7 @@ export default async function DashboardHomePage({
   const [
     homeData,
     recentCustomers,
+    onboardingSnapshot,
   ] = await Promise.all([
     loadDashboardHomeData(
       context.membership.company.id,
@@ -51,6 +54,11 @@ export default async function DashboardHomePage({
       context.membership,
     ),
     getRecentCustomers(context.membership.company.id, 5),
+    loadOnboardingSnapshot({
+      companyId: context.membership.company.id,
+      userId: user.id,
+      legacyTutorialCompletedAt: context.profile.onboardingTutorialCompletedAt,
+    }),
   ]);
 
   const {
@@ -172,6 +180,8 @@ export default async function DashboardHomePage({
         {partialErrorMessage ? (
           <FormFeedback message={partialErrorMessage} variant="error" />
         ) : null}
+
+        <OnboardingChecklistCard snapshot={onboardingSnapshot} />
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           {stats.map((stat) => (

@@ -83,6 +83,7 @@ export function AgendaInteractiveShell({
         <Button
           type="button"
           className="min-h-11"
+          data-tour-id="cta-new-appointment"
           onClick={() => openCreateSheet({ time: "09:00" })}
         >
           Agendamento rápido

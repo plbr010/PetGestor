@@ -74,7 +74,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
               {result.total === 1 ? "funcionário cadastrado" : "funcionários cadastrados"}
             </p>
           </div>
-          <ButtonLink href="/dashboard/funcionarios/novo">
+          <ButtonLink href="/dashboard/funcionarios/novo" data-tour-id="cta-new-employee">
             <Plus className="size-4" aria-hidden="true" />
             Novo funcionário
           </ButtonLink>

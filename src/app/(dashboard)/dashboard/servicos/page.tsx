@@ -74,7 +74,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
             <ButtonLink href="/dashboard/servicos/pacotes" variant="outline">
               Pacotes
             </ButtonLink>
-            <ButtonLink href="/dashboard/servicos/novo">
+            <ButtonLink href="/dashboard/servicos/novo" data-tour-id="cta-new-service">
               <Plus className="size-4" aria-hidden="true" />
               Novo serviço
             </ButtonLink>

@@ -60,7 +60,7 @@ export default async function CustomerDetailPage({
             <ButtonLink href={`/dashboard/tutores/${id}/editar`} variant="outline">
               Editar tutor
             </ButtonLink>
-            <ButtonLink href={`/dashboard/pets/novo?tutor=${id}`}>
+            <ButtonLink href={`/dashboard/pets/novo?tutor=${id}`} data-tour-id="cta-add-pet">
               <Plus className="size-4" aria-hidden="true" />
               Adicionar pet
             </ButtonLink>
