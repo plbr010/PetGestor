@@ -1,3 +1,19 @@
+## [0.41.2] — 2026-09-01
+
+### Corrigido — PDV `next_sale_number`
+
+- Migration `20260901220000_fix_next_sale_number.sql`: remove `FOR UPDATE` inválido com `max()`
+- Usa `pg_advisory_xact_lock` para serializar numeração por empresa
+- Incluído no `docs/sql/SEED-demo-account.sql` e `docs/sql/APPLY-pdv-next-sale-number-fix.sql`
+
+## [0.41.1] — 2026-09-01
+
+### Adicionado — Seed demo via SQL Editor
+
+- Script `docs/sql/SEED-demo-account.sql` cria a conta demo completa direto no Supabase
+- Função `public.seed_demo_account(boolean)` — idempotente; `true` recria do zero
+- `docs/DEMO.md` atualizado com instruções SQL
+
 ## [0.41.0] — 2026-09-01
 
 ### Adicionado — Seed da conta demonstrativa completa
