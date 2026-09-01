@@ -2814,6 +2814,10 @@ export type Database = {
         Args: { p_customer_package_id: string };
         Returns: string;
       };
+      purge_company_for_platform_admin: {
+        Args: { p_company_id: string };
+        Returns: undefined;
+      };
       register_stock_movement: {
         Args: {
           p_product_id: string;

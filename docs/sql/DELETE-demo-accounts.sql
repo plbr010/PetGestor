@@ -1,5 +1,7 @@
 -- PetGestor — remover contas demo manualmente (Supabase SQL Editor)
--- Use apenas se não puder executar a limpeza pelo painel /admin.
+--
+-- Pré-requisito: aplicar docs/sql/APPLY-company-purge.sql (migration 20260901220000)
+-- para contornar stock_movements imutáveis.
 --
 -- Critérios (espelham src/config/demo-accounts.ts):
 --   - Nome da empresa = "Pet Shop Amigo Fiel"
@@ -27,11 +29,12 @@ WHERE lower(trim(c.name)) = lower('Pet Shop Amigo Fiel')
    OR u.email ILIKE '%@demo.%'
    OR u.email ILIKE '%cursoragent@%'
    OR u.email ILIKE '%users.noreply.github.com%'
+   OR u.email ILIKE 'demo.%'
 ORDER BY c.created_at DESC;
 
--- 2) Apagar empresas demo (cascade remove dados operacionais)
--- DELETE FROM public.companies
--- WHERE id IN (
+-- 2) Apagar empresas demo (usa purge com bypass de stock_movements)
+-- SELECT public.purge_company_for_platform_admin(id)
+-- FROM (
 --   SELECT c.id
 --   FROM public.companies c
 --   JOIN public.company_members cm ON cm.company_id = c.id AND cm.role = 'owner'
@@ -41,7 +44,8 @@ ORDER BY c.created_at DESC;
 --      OR u.email ILIKE '%@demo.%'
 --      OR u.email ILIKE '%cursoragent@%'
 --      OR u.email ILIKE '%users.noreply.github.com%'
--- );
+--      OR u.email ILIKE 'demo.%'
+-- ) AS demo_companies;
 
 -- 3) Apagar usuários órfãos (sem membership restante)
 -- DELETE FROM auth.users u
@@ -53,7 +57,8 @@ ORDER BY c.created_at DESC;
 --   OR u.email ILIKE '%@demo.%'
 --   OR u.email ILIKE '%cursoragent@%'
 --   OR u.email ILIKE '%users.noreply.github.com%'
+--   OR u.email ILIKE 'demo.%'
 -- );
 
 -- Arquivos no bucket `company-files/{company_id}/...` devem ser removidos
--- antes ou depois via Storage API / painel admin (a limpeza via app já faz isso).
+-- via Storage API / painel admin (a limpeza via app já faz isso).

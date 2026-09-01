@@ -319,14 +319,13 @@ export async function deleteDemoAccounts(
       continue;
     }
 
-    const { error: deleteCompanyError } = await admin
-      .from("companies")
-      .delete()
-      .eq("id", companyId);
+    const { error: purgeCompanyError } = await admin.rpc("purge_company_for_platform_admin", {
+      p_company_id: companyId,
+    });
 
-    if (deleteCompanyError) {
+    if (purgeCompanyError) {
       result.errors.push(
-        `Falha ao apagar empresa ${candidate.companyName}: ${deleteCompanyError.message}`,
+        `Falha ao apagar empresa ${candidate.companyName}: ${purgeCompanyError.message}`,
       );
       continue;
     }

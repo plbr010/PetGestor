@@ -20,6 +20,7 @@ describe("demo account identification", () => {
   it("identifica e-mails típicos de contas de teste", () => {
     expect(isDemoOwnerEmail("mariana+demo@example.com")).toBe(true);
     expect(isDemoOwnerEmail("user@demo.petgestor.com")).toBe(true);
+    expect(isDemoOwnerEmail("demo.mariana@gmail.com")).toBe(true);
     expect(isDemoOwnerEmail("cursoragent@cursor.com")).toBe(true);
     expect(isDemoOwnerEmail("plbrpc@gmail.com")).toBe(false);
   });

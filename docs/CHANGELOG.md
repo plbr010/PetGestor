@@ -8,6 +8,11 @@
 - Confirmação obrigatória (`APAGAR DEMO`); contas de platform admin nunca são elegíveis
 - SQL manual alternativo: `docs/sql/DELETE-demo-accounts.sql`
 
+### Migration
+
+- `20260901220000_company_purge.sql` — RPC `purge_company_for_platform_admin` (bypass de `stock_movements` imutáveis)
+- Atalho: `docs/sql/APPLY-company-purge.sql` (**aplicar no Supabase antes de usar a limpeza**)
+
 ## [0.39.0] — 2026-08-25
 
 ### Adicionado — Botão flutuante de WhatsApp (site + dashboard)

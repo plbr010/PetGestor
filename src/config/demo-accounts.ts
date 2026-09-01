@@ -17,6 +17,7 @@ export const DEMO_COMPANY_IDS: string[] = [];
 export const DEMO_OWNER_EMAIL_PATTERNS = [
   /\+demo@/i,
   /@demo\./i,
+  /^demo\./i,
   /cursoragent@/i,
   /users\.noreply\.github\.com/i,
 ] as const;
