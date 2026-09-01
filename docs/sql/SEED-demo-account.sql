@@ -17,6 +17,28 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ---------------------------------------------------------------------------
+-- Correção PDV: next_sale_number (necessário antes do seed em bancos antigos)
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION private.next_sale_number(p_company_id uuid)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, private
+AS $$
+DECLARE
+  v_next integer;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext(p_company_id::text));
+
+  SELECT coalesce(max(sale_number), 0) + 1 INTO v_next
+  FROM public.sales
+  WHERE company_id = p_company_id;
+
+  RETURN v_next;
+END;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Impersona usuário autenticado (para RPCs que usam auth.uid())
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION private.seed_demo_set_auth(p_user_id uuid)
@@ -149,7 +171,7 @@ BEGIN
     v_candidate := (now() AT TIME ZONE p_timezone)::date + v_attempt;
     v_weekday := EXTRACT(DOW FROM v_candidate)::integer;
 
-    IF v_weekday = 0 THEN
+    IF v_weekday = 0 OR v_weekday = 6 THEN
       CONTINUE;
     END IF;
 

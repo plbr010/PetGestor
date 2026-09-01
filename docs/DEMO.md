@@ -30,6 +30,8 @@ A conta demo popula o **Pet Shop Amigo Fiel** com dados fictícios cobrindo todo
 3. Clique em **Run**
 4. Entre em `/entrar` com as credenciais acima
 
+> O script já inclui correções conhecidas (ex.: `next_sale_number` do PDV). Se o PDV falhar isoladamente, aplique também [`docs/sql/APPLY-pdv-next-sale-number-fix.sql`](sql/APPLY-pdv-next-sale-number-fix.sql).
+
 Para recriar do zero (apaga a empresa demo e recria):
 
 ```sql
