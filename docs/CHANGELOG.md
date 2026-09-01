@@ -1,3 +1,12 @@
+## [0.41.0] — 2026-09-01
+
+### Adicionado — Seed da conta demonstrativa completa
+
+- Script `npm run seed:demo` popula o **Pet Shop Amigo Fiel** com dados fictícios em todos os módulos
+- Tutores, pets, serviços, equipe, agenda, atendimentos, estoque, pacotes, financeiro, PDV e notificações
+- Credenciais padrão e documentação em `docs/DEMO.md`
+- Dados centralizados em `src/config/demo-seed-data.ts`
+
 ## [0.40.0] — 2026-09-01
 
 ### Adicionado — Limpeza de contas demo (painel admin)
