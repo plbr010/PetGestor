@@ -23,6 +23,23 @@ A conta demo popula o **Pet Shop Amigo Fiel** com dados fictícios cobrindo todo
 
 ## Executar o seed
 
+### Opção A — SQL Editor (recomendado se não quiser rodar Node)
+
+1. Abra o **SQL Editor** do Supabase
+2. Cole o conteúdo de [`docs/sql/SEED-demo-account.sql`](sql/SEED-demo-account.sql)
+3. Clique em **Run**
+4. Entre em `/entrar` com as credenciais acima
+
+Para recriar do zero (apaga a empresa demo e recria):
+
+```sql
+SELECT public.seed_demo_account(true);
+```
+
+Se as funções já existirem, basta executar a linha acima.
+
+### Opção B — Script Node
+
 ```bash
 npm run seed:demo
 ```
@@ -60,5 +77,5 @@ Opções:
 
 - `src/config/demo-seed-data.ts` — dados fictícios
 - `src/features/demo/seed-demo-account.ts` — lógica de seed
-- `scripts/seed-demo-account.ts` — CLI
+- `docs/sql/SEED-demo-account.sql` — seed via SQL Editor (sem Node)
 - `src/config/demo-data.ts` — preview estático da landing (marketing)

@@ -1,3 +1,11 @@
+## [0.41.1] — 2026-09-01
+
+### Adicionado — Seed demo via SQL Editor
+
+- Script `docs/sql/SEED-demo-account.sql` cria a conta demo completa direto no Supabase
+- Função `public.seed_demo_account(boolean)` — idempotente; `true` recria do zero
+- `docs/DEMO.md` atualizado com instruções SQL
+
 ## [0.41.0] — 2026-09-01
 
 ### Adicionado — Seed da conta demonstrativa completa
