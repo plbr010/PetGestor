@@ -1,3 +1,13 @@
+## [0.40.0] — 2026-09-01
+
+### Adicionado — Limpeza de contas demo (painel admin)
+
+- Card em `/admin` para listar e apagar contas de demonstração (ex.: screenshots de marketing)
+- Critérios: nome "Pet Shop Amigo Fiel", e-mails de teste ou IDs explícitos em `src/config/demo-accounts.ts`
+- Remove empresa (cascade), arquivos do bucket `company-files` e usuários órfãos via service role
+- Confirmação obrigatória (`APAGAR DEMO`); contas de platform admin nunca são elegíveis
+- SQL manual alternativo: `docs/sql/DELETE-demo-accounts.sql`
+
 ## [0.39.0] — 2026-08-25
 
 ### Adicionado — Botão flutuante de WhatsApp (site + dashboard)
