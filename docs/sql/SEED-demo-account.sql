@@ -131,6 +131,57 @@ $$;
 REVOKE ALL ON FUNCTION private.seed_demo_ensure_user(text, text, text) FROM PUBLIC;
 
 -- ---------------------------------------------------------------------------
+-- Próximo dia útil (seg–sáb) com horário comercial ainda no futuro
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION private.seed_demo_next_business_date(p_timezone text)
+RETURNS date
+LANGUAGE plpgsql
+STABLE
+SET search_path = public, private, auth
+AS $$
+DECLARE
+  v_attempt integer;
+  v_candidate date;
+  v_weekday integer;
+  v_first_slot timestamptz;
+BEGIN
+  FOR v_attempt IN 0..21 LOOP
+    v_candidate := (now() AT TIME ZONE p_timezone)::date + v_attempt;
+    v_weekday := EXTRACT(DOW FROM v_candidate)::integer;
+
+    IF v_weekday = 0 THEN
+      CONTINUE;
+    END IF;
+
+    v_first_slot := (v_candidate + time '08:30') AT TIME ZONE p_timezone;
+
+    IF v_first_slot > now() THEN
+      RETURN v_candidate;
+    END IF;
+  END LOOP;
+
+  RETURN (now() AT TIME ZONE p_timezone)::date + 1;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION private.seed_demo_next_business_date(text) FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION private.seed_demo_at_local_time(
+  p_timezone text,
+  p_local_date date,
+  p_local_time time
+)
+RETURNS timestamptz
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public, private, auth
+AS $$
+  SELECT (p_local_date + p_local_time) AT TIME ZONE p_timezone;
+$$;
+
+REVOKE ALL ON FUNCTION private.seed_demo_at_local_time(text, date, time) FROM PUBLIC;
+
+-- ---------------------------------------------------------------------------
 -- Seed principal
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.seed_demo_account(p_reseed boolean DEFAULT false)
@@ -197,6 +248,7 @@ DECLARE
   v_apt5 uuid;
   v_recurrence_id uuid;
   v_order_id uuid;
+  v_schedule_date date;
 
   v_customer_count integer;
   v_now timestamptz := now();
@@ -498,12 +550,34 @@ BEGIN
     p_payment_method => 'credit_card'::text
   );
 
-  -- Agenda (horários escalonados — sempre no futuro)
-  v_apt1 := public.create_appointment(v_pet_thor, v_svc_banho, v_emp_rafaela, v_now + interval '2 hours', 'large'::text, 'Agendamento demonstrativo'::text);
-  v_apt2 := public.create_appointment(v_pet_luna, v_svc_consulta, v_emp_pedro, v_now + interval '4 hours', 'medium'::text, 'Agendamento demonstrativo'::text);
-  v_apt3 := public.create_appointment(v_pet_mel, v_svc_hidratacao, v_emp_pedro, v_now + interval '6 hours', 'small'::text, 'Agendamento demonstrativo'::text);
-  v_apt4 := public.create_appointment(v_pet_bob, v_svc_tosa, v_emp_rafaela, v_now + interval '8 hours', 'medium'::text, 'Agendamento demonstrativo'::text);
-  v_apt5 := public.create_appointment(v_pet_nina, v_svc_banho, v_emp_pedro, v_now + interval '10 hours', 'small'::text, 'Agendamento demonstrativo'::text);
+  -- Agenda (horários dentro do expediente 08:00–18:00, seg–sáb)
+  v_schedule_date := private.seed_demo_next_business_date(v_timezone);
+
+  v_apt1 := public.create_appointment(
+    v_pet_thor, v_svc_banho, v_emp_rafaela,
+    private.seed_demo_at_local_time(v_timezone, v_schedule_date, time '08:30'),
+    'large'::text, 'Agendamento demonstrativo'::text
+  );
+  v_apt2 := public.create_appointment(
+    v_pet_luna, v_svc_consulta, v_emp_pedro,
+    private.seed_demo_at_local_time(v_timezone, v_schedule_date, time '10:00'),
+    'medium'::text, 'Agendamento demonstrativo'::text
+  );
+  v_apt3 := public.create_appointment(
+    v_pet_mel, v_svc_hidratacao, v_emp_pedro,
+    private.seed_demo_at_local_time(v_timezone, v_schedule_date, time '11:30'),
+    'small'::text, 'Agendamento demonstrativo'::text
+  );
+  v_apt4 := public.create_appointment(
+    v_pet_bob, v_svc_tosa, v_emp_rafaela,
+    private.seed_demo_at_local_time(v_timezone, v_schedule_date, time '14:00'),
+    'medium'::text, 'Agendamento demonstrativo'::text
+  );
+  v_apt5 := public.create_appointment(
+    v_pet_nina, v_svc_banho, v_emp_pedro,
+    private.seed_demo_at_local_time(v_timezone, v_schedule_date, time '16:00'),
+    'small'::text, 'Agendamento demonstrativo'::text
+  );
 
   -- Recorrência semanal (Thor)
   INSERT INTO public.appointment_recurrences (
@@ -518,7 +592,7 @@ BEGIN
     preferred_date, preferred_period, notes, created_by
   ) VALUES (
     v_company_id, v_cust_roberto, v_pet_bob, v_svc_tosa, v_emp_rafaela,
-    (v_now AT TIME ZONE v_timezone)::date + 3,
+    v_schedule_date + 3,
     'morning',
     'Lista de espera demo — cliente flexível no horário.',
     v_user_id
@@ -530,8 +604,8 @@ BEGIN
   ) VALUES (
     v_company_id,
     v_emp_rafaela,
-    v_now + interval '1 day' + interval '12 hours',
-    v_now + interval '1 day' + interval '13 hours',
+    private.seed_demo_at_local_time(v_timezone, v_schedule_date, time '12:00'),
+    private.seed_demo_at_local_time(v_timezone, v_schedule_date, time '13:00'),
     'Almoço / pausa demonstrativa',
     v_user_id
   );
