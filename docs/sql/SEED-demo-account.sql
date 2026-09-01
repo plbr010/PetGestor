@@ -329,9 +329,9 @@ BEGIN
 
   -- Serviços
   v_svc_banho := public.create_service_with_prices(
-    'Banho e tosa',
-    'Banho completo com tosa higiênica e secagem.',
-    'by_size',
+    'Banho e tosa'::text,
+    'Banho completo com tosa higiênica e secagem.'::text,
+    'by_size'::text,
     NULL,
     90,
     true,
@@ -344,9 +344,9 @@ BEGIN
   );
 
   v_svc_consulta := public.create_service_with_prices(
-    'Consulta veterinária',
-    'Avaliação clínica com profissional parceiro.',
-    'fixed',
+    'Consulta veterinária'::text,
+    'Avaliação clínica com profissional parceiro.'::text,
+    'fixed'::text,
     12000,
     45,
     true,
@@ -354,9 +354,9 @@ BEGIN
   );
 
   v_svc_hidratacao := public.create_service_with_prices(
-    'Hidratação',
-    'Máscara hidratante para pelos ressecados.',
-    'fixed',
+    'Hidratação'::text,
+    'Máscara hidratante para pelos ressecados.'::text,
+    'fixed'::text,
     6500,
     30,
     true,
@@ -364,9 +364,9 @@ BEGIN
   );
 
   v_svc_tosa := public.create_service_with_prices(
-    'Tosa higiênica',
-    'Tosa nas áreas íntimas, patas e focinho.',
-    'fixed',
+    'Tosa higiênica'::text,
+    'Tosa nas áreas íntimas, patas e focinho.'::text,
+    'fixed'::text,
     5500,
     40,
     true,
@@ -466,10 +466,10 @@ BEGIN
     1200, 2490, 0, 6, true, true, v_user_id
   ) RETURNING id INTO v_prod_coleira;
 
-  PERFORM public.register_stock_movement(v_prod_shampoo, 'entry', 24, gen_random_uuid(), 1800, 'purchase', 'Estoque inicial demo', v_sup_petmax, 'LOTE-DEMO-SHP', NULL, NULL, NULL, NULL);
-  PERFORM public.register_stock_movement(v_prod_condicionador, 'entry', 18, gen_random_uuid(), 2200, 'purchase', 'Estoque inicial demo', v_sup_petmax, 'LOTE-DEMO-CND', NULL, NULL, NULL, NULL);
-  PERFORM public.register_stock_movement(v_prod_racao, 'entry', 12, gen_random_uuid(), 14500, 'purchase', 'Estoque inicial demo', v_sup_petmax, 'LOTE-DEMO-RAC', NULL, NULL, NULL, NULL);
-  PERFORM public.register_stock_movement(v_prod_coleira, 'entry', 3, gen_random_uuid(), 1200, 'purchase', 'Estoque inicial demo', v_sup_petmax, 'LOTE-DEMO-COL', NULL, NULL, NULL, NULL);
+  PERFORM public.register_stock_movement(v_prod_shampoo, 'entry'::text, 24, gen_random_uuid(), 1800, 'purchase'::text, 'Estoque inicial demo', v_sup_petmax, 'LOTE-DEMO-SHP', NULL, NULL, NULL, NULL);
+  PERFORM public.register_stock_movement(v_prod_condicionador, 'entry'::text, 18, gen_random_uuid(), 2200, 'purchase'::text, 'Estoque inicial demo', v_sup_petmax, 'LOTE-DEMO-CND', NULL, NULL, NULL, NULL);
+  PERFORM public.register_stock_movement(v_prod_racao, 'entry'::text, 12, gen_random_uuid(), 14500, 'purchase'::text, 'Estoque inicial demo', v_sup_petmax, 'LOTE-DEMO-RAC', NULL, NULL, NULL, NULL);
+  PERFORM public.register_stock_movement(v_prod_coleira, 'entry'::text, 3, gen_random_uuid(), 1200, 'purchase'::text, 'Estoque inicial demo', v_sup_petmax, 'LOTE-DEMO-COL', NULL, NULL, NULL, NULL);
 
   PERFORM public.replace_service_product_recipes(
     v_svc_banho,
@@ -490,15 +490,20 @@ BEGIN
   );
 
   PERFORM public.sell_customer_service_package(
-    v_package_id, v_cust_fernanda, v_pet_nina, v_now, 'paid', 'credit_card'
+    p_package_id => v_package_id,
+    p_customer_id => v_cust_fernanda,
+    p_pet_id => v_pet_nina,
+    p_starts_at => (v_now AT TIME ZONE v_timezone)::date,
+    p_financial_status => 'paid'::text,
+    p_payment_method => 'credit_card'::text
   );
 
   -- Agenda (horários escalonados — sempre no futuro)
-  v_apt1 := public.create_appointment(v_pet_thor, v_svc_banho, v_emp_rafaela, v_now + interval '2 hours', 'large', 'Agendamento demonstrativo');
-  v_apt2 := public.create_appointment(v_pet_luna, v_svc_consulta, v_emp_pedro, v_now + interval '4 hours', 'medium', 'Agendamento demonstrativo');
-  v_apt3 := public.create_appointment(v_pet_mel, v_svc_hidratacao, v_emp_pedro, v_now + interval '6 hours', 'small', 'Agendamento demonstrativo');
-  v_apt4 := public.create_appointment(v_pet_bob, v_svc_tosa, v_emp_rafaela, v_now + interval '8 hours', 'medium', 'Agendamento demonstrativo');
-  v_apt5 := public.create_appointment(v_pet_nina, v_svc_banho, v_emp_pedro, v_now + interval '10 hours', 'small', 'Agendamento demonstrativo');
+  v_apt1 := public.create_appointment(v_pet_thor, v_svc_banho, v_emp_rafaela, v_now + interval '2 hours', 'large'::text, 'Agendamento demonstrativo'::text);
+  v_apt2 := public.create_appointment(v_pet_luna, v_svc_consulta, v_emp_pedro, v_now + interval '4 hours', 'medium'::text, 'Agendamento demonstrativo'::text);
+  v_apt3 := public.create_appointment(v_pet_mel, v_svc_hidratacao, v_emp_pedro, v_now + interval '6 hours', 'small'::text, 'Agendamento demonstrativo'::text);
+  v_apt4 := public.create_appointment(v_pet_bob, v_svc_tosa, v_emp_rafaela, v_now + interval '8 hours', 'medium'::text, 'Agendamento demonstrativo'::text);
+  v_apt5 := public.create_appointment(v_pet_nina, v_svc_banho, v_emp_pedro, v_now + interval '10 hours', 'small'::text, 'Agendamento demonstrativo'::text);
 
   -- Recorrência semanal (Thor)
   INSERT INTO public.appointment_recurrences (
