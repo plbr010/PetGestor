@@ -53,6 +53,34 @@ export function mapAppointmentError(message: string | undefined): string {
     return "Este agendamento não pode mais ser editado.";
   }
 
+  if (code.includes("package_already_consumed")) {
+    return "Este agendamento já utilizou um pacote.";
+  }
+
+  if (code.includes("appointment_already_covered")) {
+    return "Este atendimento já está coberto por pacote.";
+  }
+
+  if (code.includes("package_pet_mismatch")) {
+    return "Este pacote não pertence a este pet.";
+  }
+
+  if (code.includes("package_not_started")) {
+    return "Este pacote ainda não está válido para uso.";
+  }
+
+  if (code.includes("package_expired")) {
+    return "Este pacote está expirado.";
+  }
+
+  if (code.includes("package_balance_unavailable")) {
+    return "Não há saldo disponível neste pacote para o serviço selecionado.";
+  }
+
+  if (code.includes("package_not_active") || code.includes("customer_package_not_found")) {
+    return "Este pacote não está disponível para o agendamento.";
+  }
+
   return "Não foi possível concluir a operação. Verifique os dados e tente novamente.";
 }
 

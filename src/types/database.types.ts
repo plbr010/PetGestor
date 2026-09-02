@@ -672,6 +672,7 @@ export type Database = {
           cancellation_reason: string | null;
           recurrence_id: string | null;
           recurrence_index: number | null;
+          customer_package_id: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -695,6 +696,7 @@ export type Database = {
           cancellation_reason?: string | null;
           recurrence_id?: string | null;
           recurrence_index?: number | null;
+          customer_package_id?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -718,6 +720,7 @@ export type Database = {
           cancellation_reason?: string | null;
           recurrence_id?: string | null;
           recurrence_index?: number | null;
+          customer_package_id?: string | null;
           created_by?: string;
           created_at?: string;
           updated_at?: string;
@@ -1571,7 +1574,7 @@ export type Database = {
           customer_package_item_id: string;
           service_id: string;
           appointment_id: string;
-          service_order_id: string;
+          service_order_id: string | null;
           quantity: number;
           status: PackageUsageStatus;
           original_price_cents_snapshot: number;
@@ -1587,7 +1590,7 @@ export type Database = {
           customer_package_item_id: string;
           service_id: string;
           appointment_id: string;
-          service_order_id: string;
+          service_order_id?: string | null;
           quantity?: number;
           status?: PackageUsageStatus;
           original_price_cents_snapshot: number;
@@ -1603,7 +1606,7 @@ export type Database = {
           customer_package_item_id?: string;
           service_id?: string;
           appointment_id?: string;
-          service_order_id?: string;
+          service_order_id?: string | null;
           quantity?: number;
           status?: PackageUsageStatus;
           original_price_cents_snapshot?: number;
@@ -2663,6 +2666,7 @@ export type Database = {
           p_scheduled_start: string;
           p_pet_size?: string | null;
           p_notes?: string | null;
+          p_customer_package_id?: string | null;
         };
         Returns: string;
       };
@@ -2687,6 +2691,7 @@ export type Database = {
           p_scheduled_start: string;
           p_pet_size?: string | null;
           p_notes?: string | null;
+          p_customer_package_id?: string | null;
         };
         Returns: string;
       };

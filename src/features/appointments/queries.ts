@@ -2,7 +2,12 @@ import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
 
 import type { AppointmentStatusFilter } from "@/features/appointments/status";
-import type { AppointmentDetail, AppointmentListItem } from "@/features/appointments/types";
+import type {
+  AppointmentCatalogPackageOption,
+  AppointmentCustomerPackageOption,
+  AppointmentDetail,
+  AppointmentListItem,
+} from "@/features/appointments/types";
 import { isRangeBlockedByTimeBlocks } from "@/features/appointments/waitlist/utils";
 import { getTimeBlocksForSlotCheck } from "@/features/appointments/time-blocks/queries";
 import { generateTimeSlots, SLOT_INTERVAL_MINUTES } from "@/features/appointments/utils";
@@ -15,7 +20,7 @@ import {
   localDateTimeToUtcIso,
 } from "@/lib/timezone";
 import { isValidUuid } from "@/lib/security/uuid";
-import type { AppointmentStatus, PetSize } from "@/types/database.types";
+import type { AppointmentStatus, CustomerPackageStatus, PetSize } from "@/types/database.types";
 
 type AppointmentFilters = {
   companyId: string;
@@ -42,6 +47,7 @@ type AppointmentRow = {
   cancellation_reason: string | null;
   created_at: string;
   updated_at: string;
+  customer_package_id?: string | null;
   pets: { id: string; name: string; photo_thumb_path?: string | null; photo_storage_path?: string | null } | { id: string; name: string; photo_thumb_path?: string | null; photo_storage_path?: string | null }[];
   customers: { id: string; name: string; phone: string } | { id: string; name: string; phone: string }[];
   employees: { id: string; name: string } | { id: string; name: string }[];
@@ -49,6 +55,29 @@ type AppointmentRow = {
 
 function unwrapJoin<T>(value: T | T[]): T {
   return Array.isArray(value) ? (value[0] ?? ({} as T)) : value;
+}
+
+async function getCustomerPackageName(
+  companyId: string,
+  customerPackageId: string | null,
+): Promise<string | null> {
+  if (!customerPackageId || !isValidUuid(customerPackageId)) {
+    return null;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("customer_service_packages")
+    .select("package_name_snapshot")
+    .eq("company_id", companyId)
+    .eq("id", customerPackageId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data.package_name_snapshot;
 }
 
 function mapAppointmentRow(row: AppointmentRow): AppointmentListItem {
@@ -75,6 +104,8 @@ function mapAppointmentRow(row: AppointmentRow): AppointmentListItem {
     pet: { id: pet.id, name: pet.name },
     customer: { id: customer.id, name: customer.name, phone: customer.phone },
     employee: { id: employee.id, name: employee.name },
+    customer_package_id: row.customer_package_id ?? null,
+    customer_package_name: null,
   };
 }
 
@@ -196,7 +227,7 @@ export async function getAppointmentById(
     .select(
       `id, scheduled_start, scheduled_end, status, service_name_snapshot, price_cents_snapshot,
        duration_minutes_snapshot, pet_size, notes, recurrence_id, recurrence_index,
-       customer_id, pet_id, service_id, employee_id,
+       customer_id, pet_id, service_id, employee_id, customer_package_id,
        cancellation_reason, created_at, updated_at,
        pets!inner(id, name, photo_thumb_path, photo_storage_path), customers!inner(id, name, phone), employees!inner(id, name)`,
     )
@@ -230,6 +261,11 @@ export async function getAppointmentById(
     cancellation_reason: row.cancellation_reason,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    customer_package_id: row.customer_package_id ?? null,
+    customer_package_name: await getCustomerPackageName(
+      companyId,
+      row.customer_package_id ?? null,
+    ),
   };
 }
 
@@ -424,7 +460,7 @@ export async function getAppointmentFormOptions(companyId: string, companyTimezo
 
   const supabase = await createSupabaseServerClient();
 
-  const [customersResult, petsResult, servicesResult, linksResult, sizePricesResult] =
+  const [customersResult, petsResult, servicesResult, linksResult, sizePricesResult, soldPackagesResult, catalogResult] =
     await Promise.all([
       supabase
         .from("customers")
@@ -455,6 +491,32 @@ export async function getAppointmentFormOptions(companyId: string, companyTimezo
         .from("service_size_prices")
         .select("service_id, size, price_cents, duration_minutes")
         .eq("company_id", companyId),
+      supabase
+        .from("customer_service_packages")
+        .select(
+          `
+          id, customer_id, pet_id, package_name_snapshot, status, starts_at, expires_at,
+          customer_service_package_items!customer_service_package_items_package_company_fkey(
+            service_id, service_name_snapshot, quantity_total, quantity_used
+          )
+        `,
+        )
+        .eq("company_id", companyId)
+        .neq("status", "cancelled")
+        .order("expires_at", { ascending: true })
+        .limit(1000),
+      supabase
+        .from("service_packages")
+        .select(
+          `
+          id, name,
+          service_package_items!service_package_items_package_company_fkey(service_id)
+        `,
+        )
+        .eq("company_id", companyId)
+        .eq("active", true)
+        .is("deleted_at", null)
+        .limit(200),
     ]);
 
   if (customersResult.error || petsResult.error || servicesResult.error || linksResult.error) {
@@ -513,6 +575,51 @@ export async function getAppointmentFormOptions(companyId: string, companyTimezo
     sizePricesByService[row.service_id] = list;
   }
 
+  const customerPackages: AppointmentCustomerPackageOption[] = [];
+
+  if (!soldPackagesResult.error) {
+    for (const row of soldPackagesResult.data ?? []) {
+      const items = (
+        row.customer_service_package_items as unknown as
+          | Array<{
+              service_id: string;
+              service_name_snapshot: string;
+              quantity_total: number;
+              quantity_used: number;
+            }>
+          | null
+      )?.map((item) => ({
+        serviceId: item.service_id,
+        serviceName: item.service_name_snapshot,
+        remaining: Math.max(item.quantity_total - item.quantity_used, 0),
+      })) ?? [];
+
+      customerPackages.push({
+        id: row.id,
+        customerId: row.customer_id,
+        petId: row.pet_id,
+        name: row.package_name_snapshot,
+        startsAt: String(row.starts_at).slice(0, 10),
+        expiresAt: String(row.expires_at).slice(0, 10),
+        status: row.status as CustomerPackageStatus,
+        items,
+      });
+    }
+  }
+
+  const catalogPackages: AppointmentCatalogPackageOption[] = [];
+
+  if (!catalogResult.error && !soldPackagesResult.error) {
+    for (const row of catalogResult.data ?? []) {
+      const items = row.service_package_items as unknown as Array<{ service_id: string }> | null;
+      catalogPackages.push({
+        id: row.id,
+        name: row.name,
+        serviceIds: items?.map((item) => item.service_id) ?? [],
+      });
+    }
+  }
+
   return {
     customers: customersResult.data ?? [],
     petsByCustomer,
@@ -520,6 +627,8 @@ export async function getAppointmentFormOptions(companyId: string, companyTimezo
     employeesByService,
     sizePricesByService,
     companyTimezone,
+    customerPackages,
+    catalogPackages,
   };
 }
 

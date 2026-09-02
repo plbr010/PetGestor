@@ -35,6 +35,11 @@
 26. **Preço histórico** — alterar serviço após agendar; snapshot antigo inalterado
 27. **Concorrência** — duas abas criando mesmo horário; apenas uma deve persistir (EXCLUDE)
 
+28. **Pacote vendido** — após vender pacote na ficha do pet, o formulário de novo agendamento lista o pacote (tutor + pet + serviço compatível)
+29. **Pacote só catálogo** — criar modelo em Serviços → Pacotes sem vender: o agendamento explica que o pacote ainda não foi atribuído ao pet
+30. **Consumo único** — criar agendamento com pacote desconta 1 sessão; reagendar não desconta outra; cancelar devolve o saldo
+31. **Agendamento sem pacote** — fluxo avulso continua cobrando o preço do serviço
+
 ## Concorrência (detalhe)
 
 1. Abrir duas sessões autenticadas na mesma empresa

@@ -104,4 +104,42 @@ describe("parseAppointmentForm", () => {
     );
     expect(result.success).toBe(false);
   });
+
+  it("aceita pacote vendido opcional", () => {
+    const result = parseAppointmentForm(
+      buildForm({
+        customerPackageId: "550e8400-e29b-41d4-a716-446655440099",
+      }),
+      timezone,
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.customerPackageId).toBe("550e8400-e29b-41d4-a716-446655440099");
+    }
+  });
+
+  it("trata pacote vazio como agendamento sem pacote", () => {
+    const result = parseAppointmentForm(buildForm({ customerPackageId: "" }), timezone);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.customerPackageId).toBeNull();
+    }
+  });
+
+  it("rejeita pacote junto com recorrência", () => {
+    const result = parseAppointmentForm(
+      buildForm({
+        customerPackageId: "550e8400-e29b-41d4-a716-446655440099",
+        repeatEnabled: "on",
+        recurrenceFrequency: "weekly",
+        recurrenceEndMode: "count",
+        recurrenceMaxOccurrences: "4",
+      }),
+      timezone,
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toMatch(/recorrentes/i);
+    }
+  });
 });

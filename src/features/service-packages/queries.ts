@@ -377,5 +377,28 @@ export async function getPackageUsageForServiceOrder(
     .eq("status", "consumed")
     .maybeSingle();
 
-  return data;
+  if (data) {
+    return data;
+  }
+
+  const { data: order } = await supabase
+    .from("service_orders")
+    .select("appointment_id")
+    .eq("company_id", companyId)
+    .eq("id", serviceOrderId)
+    .maybeSingle();
+
+  if (!order?.appointment_id) {
+    return null;
+  }
+
+  const { data: byAppointment } = await supabase
+    .from("customer_service_package_usages")
+    .select("id, status, customer_package_id, used_at")
+    .eq("company_id", companyId)
+    .eq("appointment_id", order.appointment_id)
+    .eq("status", "consumed")
+    .maybeSingle();
+
+  return byAppointment ?? null;
 }

@@ -51,6 +51,7 @@ export const appointmentFormSchema = z
       .optional()
       .nullable(),
     seriesScope: seriesScopeSchema.optional(),
+    customerPackageId: z.uuid().optional().nullable(),
   })
   .superRefine((data, ctx) => {
     if (isPastLocalDate(data.date, data.companyTimezone)) {
@@ -121,6 +122,15 @@ export const appointmentFormSchema = z
         path: ["recurrenceEndMode"],
       });
     }
+
+    if (data.customerPackageId) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Pacotes não podem ser usados em agendamentos recorrentes. Crie cada sessão avulsa para consumir o saldo.",
+        path: ["customerPackageId"],
+      });
+    }
   });
 
 export type AppointmentFormInput = z.infer<typeof appointmentFormSchema>;
@@ -145,6 +155,7 @@ export function parseAppointmentForm(formData: FormData, companyTimezone: string
   const frequencyRaw = String(formData.get("recurrenceFrequency") ?? "");
   const endModeRaw = String(formData.get("recurrenceEndMode") ?? "");
   const seriesScopeRaw = String(formData.get("seriesScope") ?? "");
+  const customerPackageRaw = String(formData.get("customerPackageId") ?? "").trim();
 
   return appointmentFormSchema.safeParse({
     customerId: formData.get("customerId") || undefined,
@@ -177,6 +188,7 @@ export function parseAppointmentForm(formData: FormData, companyTimezone: string
       seriesScopeRaw === "this" || seriesScopeRaw === "this_and_following"
         ? seriesScopeRaw
         : undefined,
+    customerPackageId: isValidUuid(customerPackageRaw) ? customerPackageRaw : null,
   });
 }
 

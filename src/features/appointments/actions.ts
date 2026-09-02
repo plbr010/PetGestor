@@ -114,6 +114,7 @@ export async function createAppointmentAction(
       p_scheduled_start: scheduledStart,
       p_pet_size: parsed.data.petSize,
       p_notes: parsed.data.notes,
+      p_customer_package_id: parsed.data.customerPackageId ?? null,
     });
 
     if (error || !data) {
@@ -187,6 +188,7 @@ export async function createAppointmentAction(
       p_scheduled_start: occurrenceStart,
       p_pet_size: parsed.data.petSize,
       p_notes: parsed.data.notes,
+      p_customer_package_id: null,
     });
 
     if (error || !appointmentId) {
@@ -265,11 +267,12 @@ async function updateFollowingRecurrenceAppointments(params: {
   employeeId: string;
   petSize: string | null;
   notes: string | null;
+  customerPackageId: string | null;
   dateDeltaMs: number;
 }): Promise<{ updated: number; skipped: number }> {
   const { data: following, error } = await params.supabase
     .from("appointments")
-    .select("id, scheduled_start, status")
+    .select("id, scheduled_start, status, customer_package_id")
     .eq("company_id", params.companyId)
     .eq("recurrence_id", params.recurrenceId)
     .gt("scheduled_start", params.fromScheduledStart)
@@ -301,6 +304,7 @@ async function updateFollowingRecurrenceAppointments(params: {
       p_scheduled_start: nextStart,
       p_pet_size: params.petSize,
       p_notes: params.notes,
+      p_customer_package_id: row.customer_package_id ?? params.customerPackageId,
     });
 
     if (updateError) {
@@ -367,6 +371,7 @@ export async function updateAppointmentAction(
     p_scheduled_start: scheduledStart,
     p_pet_size: parsed.data.petSize,
     p_notes: parsed.data.notes,
+    p_customer_package_id: parsed.data.customerPackageId ?? null,
   });
 
   if (error || !data) {
@@ -398,6 +403,7 @@ export async function updateAppointmentAction(
       employeeId: parsed.data.employeeId,
       petSize: parsed.data.petSize,
       notes: parsed.data.notes,
+      customerPackageId: parsed.data.customerPackageId ?? null,
       dateDeltaMs,
     });
 
@@ -569,6 +575,7 @@ export async function createAppointmentInlineAction(
     p_scheduled_start: scheduledStart,
     p_pet_size: parsed.data.petSize,
     p_notes: parsed.data.notes,
+    p_customer_package_id: parsed.data.customerPackageId ?? null,
   });
 
   if (error || !data) {

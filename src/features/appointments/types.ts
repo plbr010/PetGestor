@@ -1,4 +1,4 @@
-import type { AppointmentStatus, PetSize } from "@/types/database.types";
+import type { AppointmentStatus, CustomerPackageStatus, PetSize } from "@/types/database.types";
 import type { PetChip } from "@/features/pets/types";
 
 export type AppointmentListItem = {
@@ -20,6 +20,8 @@ export type AppointmentListItem = {
   pet: PetChip;
   customer: { id: string; name: string; phone: string };
   employee: { id: string; name: string };
+  customer_package_id: string | null;
+  customer_package_name: string | null;
 };
 
 export type AppointmentDetail = AppointmentListItem & {
@@ -50,4 +52,29 @@ export type AppointmentFormOptions = {
     { size: PetSize; price_cents: number; duration_minutes: number }[]
   >;
   companyTimezone: string;
+  customerPackages: AppointmentCustomerPackageOption[];
+  catalogPackages: AppointmentCatalogPackageOption[];
+};
+
+export type AppointmentPackageItemOption = {
+  serviceId: string;
+  serviceName: string;
+  remaining: number;
+};
+
+export type AppointmentCustomerPackageOption = {
+  id: string;
+  customerId: string;
+  petId: string;
+  name: string;
+  startsAt: string;
+  expiresAt: string;
+  status: CustomerPackageStatus;
+  items: AppointmentPackageItemOption[];
+};
+
+export type AppointmentCatalogPackageOption = {
+  id: string;
+  name: string;
+  serviceIds: string[];
 };

@@ -101,6 +101,9 @@ export default async function AppointmentDetailPage({
               />
               <Row label="Serviço" value={appointment.service_name_snapshot} />
               <Row label="Preço" value={formatPriceSnapshot(appointment.price_cents_snapshot)} />
+              {appointment.customer_package_name ? (
+                <Row label="Pacote" value={appointment.customer_package_name} />
+              ) : null}
               <Row
                 label="Duração"
                 value={formatDurationLabel(appointment.duration_minutes_snapshot)}

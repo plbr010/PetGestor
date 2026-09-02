@@ -21,6 +21,14 @@ describe("mapAppointmentError", () => {
   it("mapeia jornada", () => {
     expect(mapAppointmentError("outside_working_hours")).toContain("jornada");
   });
+
+  it("mapeia pacote sem saldo", () => {
+    expect(mapAppointmentError("package_balance_unavailable")).toMatch(/saldo/i);
+  });
+
+  it("mapeia pacote ainda não válido", () => {
+    expect(mapAppointmentError("package_not_started")).toMatch(/válido/i);
+  });
 });
 
 describe("generateTimeSlots", () => {
