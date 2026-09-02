@@ -66,7 +66,7 @@ export type CustomerPackageUsageItem = {
   service_name: string;
   used_at: string;
   status: "consumed" | "reversed";
-  service_order_id: string;
+  service_order_id: string | null;
 };
 
 export type PackageCreditOption = {

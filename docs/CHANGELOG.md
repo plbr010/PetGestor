@@ -1,3 +1,15 @@
+## [0.42.0] — 2026-09-02
+
+### Corrigido — Agendamento com pacote vendido
+
+- Formulário de novo agendamento lista pacotes **vendidos** ao tutor/pet, ativos, válidos e com sessão do serviço escolhido
+- Criar/reagendar registra `customer_package_id` e consome uma sessão (`customer_service_package_usages`) de forma idempotente
+- Cancelar devolve o saldo; reagendar o mesmo atendimento não desconta outra sessão
+- Se o modelo de pacote existe mas ainda não foi vendido na ficha do pet, o formulário explica isso com CTA
+- Agendamento avulso sem pacote permanece inalterado
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260902160000_appointment_package_booking.sql`
+
 ## [0.41.0] — 2026-09-01
 
 ### Adicionado — Seed da conta demonstrativa completa

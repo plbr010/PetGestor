@@ -8,6 +8,7 @@ import {
   type AppointmentActionState,
 } from "@/features/appointments/actions";
 import type { AppointmentDetail, AppointmentFormOptions } from "@/features/appointments/types";
+import { AppointmentPackageFields } from "@/features/appointments/components/appointment-package-fields";
 import { formatDurationLabel, PET_SIZE_LABELS, PET_SIZES } from "@/features/services/utils";
 import { FormFeedback } from "@/components/shared/form-feedback";
 import { Button } from "@/components/ui/button";
@@ -75,11 +76,15 @@ export function AppointmentForm({
   const [recurrenceFrequency, setRecurrenceFrequency] = useState("weekly");
   const [recurrenceEndMode, setRecurrenceEndMode] = useState<"count" | "date">("count");
   const [seriesScope, setSeriesScope] = useState<"this" | "this_and_following">("this");
+  const [customerPackageId, setCustomerPackageId] = useState(
+    appointment?.customer_package_id ?? "",
+  );
   const isRecurringEdit = Boolean(appointment?.recurrence_id);
 
   const pets = options.petsByCustomer[customerId] ?? [];
   const selectedService = options.services.find((service) => service.id === serviceId);
   const employees = serviceId ? (options.employeesByService[serviceId] ?? []) : [];
+  const coveredByPackage = Boolean(customerPackageId);
 
   const preview = useMemo(() => {
     if (!selectedService) {
@@ -88,8 +93,9 @@ export function AppointmentForm({
 
     if (selectedService.pricing_mode === "fixed") {
       return {
-        price: selectedService.price_cents ?? 0,
+        price: coveredByPackage ? 0 : (selectedService.price_cents ?? 0),
         duration: selectedService.duration_minutes,
+        coveredByPackage,
       };
     }
 
@@ -103,10 +109,11 @@ export function AppointmentForm({
     }
 
     return {
-      price: sizePrice.price_cents,
+      price: coveredByPackage ? 0 : sizePrice.price_cents,
       duration: sizePrice.duration_minutes,
+      coveredByPackage,
     };
-  }, [options.sizePricesByService, petSize, selectedService, serviceId]);
+  }, [coveredByPackage, options.sizePricesByService, petSize, selectedService, serviceId]);
 
   const shouldFetchSlots = Boolean(employeeId && serviceId && date && preview);
 
@@ -174,6 +181,7 @@ export function AppointmentForm({
               onChange={(event) => {
                 setCustomerId(event.target.value);
                 setPetId("");
+                setCustomerPackageId("");
               }}
             >
               <option value="" disabled>
@@ -193,7 +201,10 @@ export function AppointmentForm({
               id="petId"
               name="petId"
               value={petId}
-              onChange={(event) => setPetId(event.target.value)}
+              onChange={(event) => {
+                setPetId(event.target.value);
+                setCustomerPackageId("");
+              }}
               required
             >
               <option value="" disabled>
@@ -225,6 +236,7 @@ export function AppointmentForm({
               setServiceId(event.target.value);
               setEmployeeId("");
               setPetSize("");
+              setCustomerPackageId("");
             }}
             required
           >
@@ -272,11 +284,30 @@ export function AppointmentForm({
               <span className="font-medium">{formatDurationLabel(preview.duration)}</span>
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
-              O valor final será calculado e registrado pelo servidor no momento do agendamento.
+              {preview.coveredByPackage
+                ? "Sessão de pacote: nenhuma cobrança avulsa será gerada para este agendamento."
+                : "O valor final será calculado e registrado pelo servidor no momento do agendamento."}
             </p>
           </div>
         ) : null}
       </section>
+
+      <AppointmentPackageFields
+        customerId={customerId}
+        petId={petId}
+        serviceId={serviceId}
+        companyTimezone={options.companyTimezone}
+        customerPackages={options.customerPackages ?? []}
+        catalogPackages={options.catalogPackages ?? []}
+        value={customerPackageId}
+        onChange={(next) => {
+          setCustomerPackageId(next);
+          if (next) {
+            setRepeatEnabled(false);
+          }
+        }}
+        currentPackageId={appointment?.customer_package_id}
+      />
 
       <section className="space-y-4">
         <div>
@@ -381,13 +412,21 @@ export function AppointmentForm({
               type="checkbox"
               name="repeatEnabled"
               checked={repeatEnabled}
-              onChange={(event) => setRepeatEnabled(event.target.checked)}
+              onChange={(event) => {
+                setRepeatEnabled(event.target.checked);
+                if (event.target.checked) {
+                  setCustomerPackageId("");
+                }
+              }}
+              disabled={Boolean(customerPackageId)}
               className="mt-1 size-4 rounded border"
             />
             <span>
               <span className="font-medium">Repetir agendamento</span>
               <span className="mt-1 block text-sm text-muted-foreground">
-                Gera ocorrências futuras com o mesmo pet, serviço e profissional.
+                {customerPackageId
+                  ? "Indisponível ao usar uma sessão de pacote. Crie cada agendamento avulso para consumir o saldo."
+                  : "Gera ocorrências futuras com o mesmo pet, serviço e profissional."}
               </span>
             </span>
           </label>

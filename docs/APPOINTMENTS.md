@@ -22,6 +22,20 @@ Rotas:
 
 **Nunca** salvar strings de horário local como se fossem UTC.
 
+## Pacotes no agendamento
+
+O formulário usa o **pacote vendido** (`customer_service_packages`), não o modelo de catálogo (`service_packages`).
+
+- Após selecionar tutor, pet e serviço, lista só pacotes ativos, já iniciados, não expirados, com saldo daquele serviço
+- `create_appointment(..., p_customer_package_id)` consome 1 sessão e zera `price_cents_snapshot`
+- Índice único em uso `consumed` por `appointment_id` impede consumo duplicado
+- Cancelar (`status = cancelled`) estorna a sessão; reagendar o mesmo agendamento reutiliza o uso existente
+- Check-in preenche `service_order_id` no uso já registrado
+- Recorrência + pacote não é permitido — cada sessão deve ser agendada avulsa
+- Se existe catálogo para o serviço mas o pet ainda não tem pacote vendido, a UI explica e aponta a ficha do pet
+
+**MIGRATION:** `supabase/migrations/20260902160000_appointment_package_booking.sql`
+
 ## Snapshots de serviço
 
 No momento da criação (e recálculo na edição quando serviço/porte mudam), o servidor grava:
