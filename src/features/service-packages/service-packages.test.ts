@@ -206,7 +206,7 @@ describe("getUnassignedPackageHint", () => {
       catalogPackages: [{ serviceIds: [SERVICE_BANHO] }],
     });
 
-    expect(hint).toMatch(/não foi vendido/i);
+    expect(hint).toMatch(/nenhum foi vendido/i);
     expect(hint).toMatch(/ficha do pet/i);
   });
 
