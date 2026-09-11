@@ -17,6 +17,12 @@ export type LedgerEntry = {
   paymentMethod: PaymentMethod | null;
   paidAt: string | null;
   packageId?: string | null;
+  idempotencyKey?: string | null;
+  entryType?: "income" | "expense";
+  description?: string;
+  category?: string | null;
+  dueDate?: string | null;
+  notes?: string | null;
 };
 
 export type LedgerPayment = ActiveFinancialPayment & {

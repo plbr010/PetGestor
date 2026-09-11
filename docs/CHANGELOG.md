@@ -1,3 +1,14 @@
+## [0.47.1] — 2026-09-11
+
+### Corrigido — criação manual paid atômica (hardening BLOCO 5)
+
+- `createManualEntry` não faz mais INSERT pending + `mark_financial_entry_paid` em duas transações
+- RPC `create_manual_financial_entry`: entry + payment canônico + status derivado na mesma transação, ou rollback
+- `idempotency_key` da tentativa de criação (única por empresa) — retry não duplica; payload incompatível → `idempotency_key_conflict`
+- Preserva BLOCO 1–5. Não inicia BLOCO 6 (PDV)
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911230000_create_manual_financial_entry_atomic.sql`
+
 ## [0.47.0] — 2026-09-11
 
 ### Corrigido — Financeiro: pagamentos, recebíveis, períodos e reabertura (BLOCO 5)

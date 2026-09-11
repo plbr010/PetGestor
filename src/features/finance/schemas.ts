@@ -43,7 +43,7 @@ function baseEntrySchema(entryType: FinancialEntryType) {
         .transform((value) => (value.length === 0 ? null : value))
         .nullable(),
       entryType: z.literal(entryType),
-      idempotencyKey: z.string().uuid().optional().nullable(),
+      idempotencyKey: z.string().uuid("Chave de criação inválida."),
     })
     .superRefine((data, ctx) => {
       const cents = parseAmountToCents(data.amount);
@@ -164,7 +164,7 @@ function parseFormEntry(formData: FormData, entryType: FinancialEntryType) {
         : null,
     notes: formData.get("notes"),
     entryType,
-    idempotencyKey: String(formData.get("idempotencyKey") ?? "").trim() || null,
+    idempotencyKey: String(formData.get("idempotencyKey") ?? "").trim(),
   };
 }
 
