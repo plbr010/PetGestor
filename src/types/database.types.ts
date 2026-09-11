@@ -2365,6 +2365,9 @@ export type Database = {
           total_cents: number;
           paid_cents: number;
           change_cents: number;
+          cash_received_cents: number;
+          cash_session_id: string | null;
+          checkout_fingerprint: string;
           financial_entry_id: string | null;
           sold_at: string;
           idempotency_key: string;
@@ -2390,6 +2393,9 @@ export type Database = {
           total_cents: number;
           paid_cents?: number;
           change_cents?: number;
+          cash_received_cents?: number;
+          cash_session_id?: string | null;
+          checkout_fingerprint?: string;
           financial_entry_id?: string | null;
           sold_at?: string;
           idempotency_key: string;
@@ -2415,6 +2421,9 @@ export type Database = {
           total_cents?: number;
           paid_cents?: number;
           change_cents?: number;
+          cash_received_cents?: number;
+          cash_session_id?: string | null;
+          checkout_fingerprint?: string;
           financial_entry_id?: string | null;
           sold_at?: string;
           idempotency_key?: string;

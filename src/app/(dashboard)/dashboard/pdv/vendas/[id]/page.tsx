@@ -168,6 +168,12 @@ export default async function SaleDetailPage({ params, searchParams }: SaleDetai
                     </div>
                   ))
                 )}
+                {sale.cashReceivedCents > 0 ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Dinheiro recebido</span>
+                    <span>{formatCentsToBRL(sale.cashReceivedCents)}</span>
+                  </div>
+                ) : null}
                 {sale.changeCents > 0 ? (
                   <div className="flex justify-between border-t pt-3 font-medium">
                     <span>Troco</span>
@@ -229,6 +235,21 @@ export default async function SaleDetailPage({ params, searchParams }: SaleDetai
             ) : null}
 
             {showCancel ? <CancelSaleForm saleId={sale.id} /> : null}
+            {!sale.cancelledAt &&
+            (sale.status === "completed" || sale.status === "partially_paid") &&
+            hasPermission(context.membership, "pos.cancel_sale") ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cancelamento</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Venda com pagamento registrado não pode ser cancelada sem política de
+                    estorno. Estoque e financeiro permanecem como estão.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
         </div>
 

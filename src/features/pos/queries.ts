@@ -335,7 +335,7 @@ export async function requireSaleById(companyId: string, saleId: string): Promis
   const { data: sale, error } = await supabase
     .from("sales")
     .select(
-      "id, sale_number, status, sold_at, customer_id, subtotal_cents, discount_cents, discount_type, discount_percent, total_cents, paid_cents, change_cents, created_by_name, discount_applied_by, cancelled_at, cancel_reason, financial_entry_id",
+      "id, sale_number, status, sold_at, customer_id, subtotal_cents, discount_cents, discount_type, discount_percent, total_cents, paid_cents, change_cents, cash_received_cents, created_by_name, discount_applied_by, cancelled_at, cancel_reason, financial_entry_id",
     )
     .eq("company_id", companyId)
     .eq("id", saleId)
@@ -369,6 +369,9 @@ export async function requireSaleById(companyId: string, saleId: string): Promis
     sale.customer_id ? [sale.customer_id] : [],
   );
 
+  const activePayments = (payments ?? []).filter((payment) => !payment.cancelled_at);
+  const receivedCents = activePayments.reduce((sum, payment) => sum + payment.amount_cents, 0);
+
   return {
     id: sale.id,
     saleNumber: sale.sale_number,
@@ -381,8 +384,9 @@ export async function requireSaleById(companyId: string, saleId: string): Promis
     discountType: sale.discount_type,
     discountPercent: sale.discount_percent != null ? Number(sale.discount_percent) : null,
     totalCents: sale.total_cents,
-    paidCents: sale.paid_cents,
+    paidCents: receivedCents,
     changeCents: sale.change_cents,
+    cashReceivedCents: sale.cash_received_cents ?? 0,
     createdByName: sale.created_by_name,
     discountAppliedBy: sale.discount_applied_by,
     cancelledAt: sale.cancelled_at,

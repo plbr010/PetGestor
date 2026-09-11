@@ -768,26 +768,8 @@ async function seedPos(
   const { data: saleId, error } = await client.rpc("complete_product_sale", {
     p_idempotency_key: saleKey,
     p_items: buildRpcItemsPayload([
-      {
-        productId: racaoId,
-        name: "Ração Premium 10kg",
-        unit: "unit",
-        unitPriceCents: 18900,
-        costPriceCents: 14500,
-        quantity: 1,
-        availableStock: 12,
-        trackStock: true,
-      },
-      {
-        productId: coleiraId,
-        name: "Coleira Ajustável M",
-        unit: "unit",
-        unitPriceCents: 2490,
-        costPriceCents: 1200,
-        quantity: 1,
-        availableStock: 3,
-        trackStock: true,
-      },
+      { productId: racaoId, quantity: 1 },
+      { productId: coleiraId, quantity: 1 },
     ]),
     p_payments: buildRpcPaymentsPayload([
       {
@@ -811,16 +793,7 @@ async function seedPos(
   const { data: partialSaleId, error: partialError } = await client.rpc("complete_product_sale", {
     p_idempotency_key: partialSaleKey,
     p_items: buildRpcItemsPayload([
-      {
-        productId: coleiraId,
-        name: "Coleira Ajustável M",
-        unit: "unit",
-        unitPriceCents: 2490,
-        costPriceCents: 1200,
-        quantity: 1,
-        availableStock: 2,
-        trackStock: true,
-      },
+      { productId: coleiraId, quantity: 1 },
     ]),
     p_payments: buildRpcPaymentsPayload([
       {

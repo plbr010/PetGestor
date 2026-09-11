@@ -1,3 +1,22 @@
+## [0.48.0] — 2026-09-11
+
+### Corrigido — PDV: preço server-side, checkout atômico, estoque e troco (BLOCO 6)
+
+- Preço e total da venda vêm do catálogo no servidor; `unit_price` / `line_total` do cliente são ignorados
+- Checkout atômico: sale + items + estoque + `financial_entry` + `financial_payments` na mesma transação
+- `idempotency_key` única por empresa com fingerprint do payload — retry não duplica venda, estoque, receita nem caixa
+- Estoque concorrente: `FOR UPDATE` + `UPDATE … WHERE current_stock = previous AND new >= 0`
+- Pagamentos mistos reconciliam com `financial_payments` (fonte canônica do BLOCO 5)
+- `cash_received_cents` é o dinheiro entregue; o payment cash é só o valor aplicado; o troco não é receita
+- Caixa aberto é exigido no servidor para recebimento em dinheiro
+- Cancelamento de venda paga bloqueado sem política de refund (`sale_paid_requires_refund`)
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911300000_pdv_server_side_price_checkout.sql`
+
+Diagnóstico de legado: `docs/sql/diagnose-bloco-6-pdv.sql`
+
+Não reaplica BLOCO 1–5. Não inicia BLOCO 7.
+
 ## [0.47.0] — 2026-09-11
 
 ### Corrigido — Financeiro: pagamentos, recebíveis, períodos e reabertura (BLOCO 5)

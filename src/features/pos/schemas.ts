@@ -22,7 +22,7 @@ export const salePaymentSchema = z.object({
 export const saleItemSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().positive().max(999_999.999),
-  unitPriceCents: z.number().int().min(0).max(99_999_999),
+  unitPriceCents: z.number().int().min(0).max(99_999_999).optional(),
 });
 
 export const completeSaleSchema = z
