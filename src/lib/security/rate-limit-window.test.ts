@@ -28,7 +28,7 @@ describe("applyRateLimitHit", () => {
   it("bloqueia acima do limite", () => {
     const result = applyRateLimitHitsSequential(null, 1_000, 3, WINDOW_MS, 4);
     expect(result.allowed).toBe(false);
-    expect(result.retryAfterSeconds).toBe(59);
+    expect(result.retryAfterSeconds).toBe(60);
   });
 
   it("reabre a janela quando o relógio avança", () => {

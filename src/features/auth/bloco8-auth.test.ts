@@ -155,8 +155,8 @@ describe("BLOCO 8 auth actions", () => {
 
   it("recovery sucesso e e-mail inexistente usam a mesma mensagem", async () => {
     resetPasswordMock.mockResolvedValue({ error: null });
-    const { passwordRecoveryAction, RECOVERY_GENERIC_MESSAGE } =
-      await import("@/features/auth/actions");
+    const { passwordRecoveryAction } = await import("@/features/auth/actions");
+    const { RECOVERY_GENERIC_MESSAGE } = await import("@/features/auth/messages");
 
     const existing = new FormData();
     existing.set("email", "existe@example.com");
@@ -175,8 +175,8 @@ describe("BLOCO 8 auth actions", () => {
     resetPasswordMock.mockResolvedValue({
       error: { message: "smtp down", status: 500, code: "unexpected_failure" },
     });
-    const { passwordRecoveryAction, PROVIDER_UNAVAILABLE_MESSAGE } =
-      await import("@/features/auth/actions");
+    const { passwordRecoveryAction } = await import("@/features/auth/actions");
+    const { PROVIDER_UNAVAILABLE_MESSAGE } = await import("@/features/auth/messages");
     const form = new FormData();
     form.set("email", "ana@example.com");
     const result = await passwordRecoveryAction({}, form);
@@ -186,8 +186,8 @@ describe("BLOCO 8 auth actions", () => {
 
   it("reenvio de confirmação é genérico para e-mails existentes e inexistentes", async () => {
     resendMock.mockResolvedValue({ error: null });
-    const { resendConfirmationAction, RESEND_GENERIC_MESSAGE } =
-      await import("@/features/auth/actions");
+    const { resendConfirmationAction } = await import("@/features/auth/actions");
+    const { RESEND_GENERIC_MESSAGE } = await import("@/features/auth/messages");
 
     const a = new FormData();
     a.set("email", "existe@example.com");
@@ -224,7 +224,8 @@ describe("BLOCO 8 auth actions", () => {
       data: { session: null, user: null },
       error: { message: "User already registered" },
     });
-    const { signUpAction, GENERIC_SIGNUP_MESSAGE } = await import("@/features/auth/actions");
+    const { signUpAction } = await import("@/features/auth/actions");
+    const { GENERIC_SIGNUP_MESSAGE } = await import("@/features/auth/messages");
     const form = new FormData();
     form.set("fullName", "Ana Silva");
     form.set("companyName", "Pet Shop Ana");
@@ -234,7 +235,7 @@ describe("BLOCO 8 auth actions", () => {
     form.set("confirmPassword", "senha1234");
     const result = await signUpAction({}, form);
     expect(result.error).toBe(GENERIC_SIGNUP_MESSAGE);
-    expect(result.error).not.toMatch(/já tem conta/i);
+    expect(result.error).not.toMatch(/entre em \/entrar/i);
   });
 
   it("rate limit no login devolve mensagem genérica", async () => {

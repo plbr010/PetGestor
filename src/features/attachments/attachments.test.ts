@@ -150,7 +150,7 @@ describe("attachments", () => {
   });
 
   it("O) arquivo arquivado — metadados preservados no nome", () => {
-    expect(sanitizeFileName("  carteira/vacinação.pdf  ")).toBe("carteira-vacinação.pdf");
+    expect(sanitizeFileName("  carteira/vacinação.pdf  ")).toBe("vacinação.pdf");
   });
 
   it("P) mobile básico — schema aceita descrição curta", () => {

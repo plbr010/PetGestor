@@ -85,5 +85,7 @@ export function pathsToRemoveAfterPhotoPersist(
   nextPaths: string[],
 ): string[] {
   const next = new Set(nextPaths.filter(Boolean));
-  return oldPaths.filter((path): path is string => Boolean(path) && !next.has(path));
+  return oldPaths.filter((path): path is string => {
+    return typeof path === "string" && path.length > 0 && !next.has(path);
+  });
 }

@@ -29,9 +29,6 @@ export type InviteLookupResult =
       email: string;
     };
 
-export const INVITE_LOOKUP_CONTINUE_MESSAGE =
-  "Se houver um convite para este e-mail, você poderá aceitá-lo depois de criar a conta ou entrar.";
-
 export async function lookupPendingInviteByEmailAction(
   emailInput: string,
 ): Promise<InviteLookupResult> {

@@ -23,6 +23,12 @@ import { enforceAuthRateLimit } from "@/lib/security/rate-limit";
 import { logAuthEvent } from "@/lib/security/safe-log";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { firstIssueMessage } from "@/lib/validation/first-issue-message";
+import {
+  GENERIC_SIGNUP_MESSAGE,
+  PROVIDER_UNAVAILABLE_MESSAGE,
+  RECOVERY_GENERIC_MESSAGE,
+  RESEND_GENERIC_MESSAGE,
+} from "@/features/auth/messages";
 
 export type AuthActionState = {
   error?: string;
@@ -37,18 +43,6 @@ const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Entre novamente para conti
 
 const MEMBERSHIP_REVOKED_MESSAGE =
   "Seu acesso à empresa foi removido. Entre em contato com o administrador.";
-
-export const GENERIC_SIGNUP_MESSAGE =
-  "Não foi possível concluir o cadastro. Se você já tem conta, entre ou use Recuperar senha.";
-
-export const RECOVERY_GENERIC_MESSAGE =
-  "Se houver uma conta associada a esse e-mail, enviaremos as instruções.";
-
-export const PROVIDER_UNAVAILABLE_MESSAGE =
-  "Serviço temporariamente indisponível. Tente novamente em alguns minutos.";
-
-export const RESEND_GENERIC_MESSAGE =
-  "Se houver uma conta aguardando confirmação nesse e-mail, enviaremos um novo link.";
 
 function genericAuthError(): AuthActionState {
   return { error: "E-mail ou senha incorretos." };
