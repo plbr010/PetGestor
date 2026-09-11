@@ -1,3 +1,15 @@
+## [0.48.2] — 2026-09-11
+
+### Corrigido — due_date civil da venda PDV (hardening final do BLOCO 6)
+
+- `private.complete_product_sale` grava `financial_entries.due_date` com `private.company_civil_today(v_company_id)`
+- `CURRENT_DATE` (sessão/servidor, tipicamente UTC) deixa de decidir o vencimento civil da receita do PDV
+- `sold_at`, `paid_at` e `created_at` continuam `timestamptz`
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911340000_pdv_due_date_company_civil_today.sql`
+
+Não reaplica BLOCOs 1–6. Não inicia BLOCO 7.
+
 ## [0.48.1] — 2026-09-11
 
 ### Corrigido — hardening incremental do BLOCO 6 (PDV)

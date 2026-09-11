@@ -56,6 +56,7 @@ Módulo de ponto de venda integrado ao estoque e ao financeiro.
 ## Financeiro
 
 - Receita em `financial_entries` com `source_type = sale` (um lançamento por venda)
+- `due_date` da receita do PDV é o dia civil atual da empresa (`private.company_civil_today`), não `CURRENT_DATE`
 - Pagamentos adicionais atualizam o mesmo lançamento — sem duplicar receita
 - Venda paga **não** é cancelada neste bloco (`sale_paid_requires_refund`)
 - Sem estorno em gateway/adquirente
@@ -92,6 +93,7 @@ Módulo de ponto de venda integrado ao estoque e ao financeiro.
 - `supabase/migrations/20260825160000_pdv_finalize.sql`
 - `supabase/migrations/20260911300000_pdv_server_side_price_checkout.sql` (**BLOCO 6 — aplicar no Supabase**)
 - `supabase/migrations/20260911320000_stock_expiration_company_civil_today.sql` (**hardening BLOCO 6 — validade civil**)
+- `supabase/migrations/20260911340000_pdv_due_date_company_civil_today.sql` (**hardening BLOCO 6 — due_date civil**)
 - Diagnóstico somente leitura: `docs/sql/diagnose-bloco-6-pdv.sql`
 
 ## Tabelas
