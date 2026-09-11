@@ -1,3 +1,24 @@
+## [0.47.0] — 2026-09-11
+
+### Corrigido — Financeiro: pagamentos, recebíveis, períodos e reabertura (BLOCO 5)
+
+- Fonte de verdade do recebido: `SUM(financial_payments)` ativos; saldo = `amount − recebido`
+- `partially_paid` entra nos recebíveis só pelo saldo líquido
+- Novos lançamentos manuais pagos geram parcela canônica; legado paid sem parcela não é auto-corrigido
+- Pagamentos mistos e filtro por método usam `financial_payments` (entry aparece se tiver ao menos um pagamento no método)
+- Totais do Financeiro, dashboard e overview usam a mesma matemática
+- Período financeiro: intervalo half-open `[from, nextDay)` no fuso da empresa
+- Reabertura só em lançamento **manual**, cancelando pagamentos de forma auditável; OS/pacote/PDV bloqueados
+- Cancelamento paid/partial bloqueado sem política de refund
+- Lock + teto contra overpayment; `idempotency_key` evita duplicar retry
+- Pacote `pending → paid` continua ativando o mesmo pacote (BLOCO 4)
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911220000_financial_payments_source_of_truth.sql`
+
+Diagnóstico de legado: `docs/sql/diagnose-bloco-5-finance.sql`
+
+Não reaplica BLOCO 1, 2, 3 ou 4. Não inicia BLOCO 6 (PDV).
+
 ## [0.46.0] — 2026-09-11
 
 ### Corrigido — Pacotes: pagamento, saldo, consumo, idempotência e expiração (BLOCO 4)

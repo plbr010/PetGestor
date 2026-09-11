@@ -71,6 +71,16 @@ describe("parseMarkPaidForm", () => {
   it("aceita pagamento com pix", () => {
     const formData = new FormData();
     formData.set("paymentMethod", "pix");
+    formData.set("idempotencyKey", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    const result = parseMarkPaidForm(formData);
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita pagamento parcial com valor", () => {
+    const formData = new FormData();
+    formData.set("paymentMethod", "pix");
+    formData.set("amount", "30,00");
+    formData.set("idempotencyKey", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     const result = parseMarkPaidForm(formData);
     expect(result.success).toBe(true);
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import {
   createManualExpenseAction,
@@ -34,12 +34,14 @@ export function ManualFinancialEntryForm({
 }: ManualFinancialEntryFormProps) {
   const action = entryType === "income" ? createManualIncomeAction : createManualExpenseAction;
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const categories =
     entryType === "income" ? INCOME_CATEGORY_SUGGESTIONS : EXPENSE_CATEGORY_SUGGESTIONS;
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
       {state.error ? <FormFeedback message={state.error} variant="error" /> : null}
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
       <div className="space-y-2">
         <Label htmlFor="description">Descrição *</Label>

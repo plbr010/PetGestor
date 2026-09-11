@@ -12,6 +12,15 @@ import {
 function entry(
   overrides: Partial<FinancialEntryListItem> & Pick<FinancialEntryListItem, "entry_type" | "status" | "amount_cents">,
 ): FinancialEntryListItem {
+  const received =
+    overrides.received_cents ??
+    (overrides.status === "paid" ? overrides.amount_cents : 0);
+  const remaining =
+    overrides.remaining_cents ??
+    (overrides.status === "cancelled" || overrides.status === "paid"
+      ? 0
+      : overrides.amount_cents - received);
+
   return {
     id: "1",
     source_type: "manual",
@@ -26,6 +35,9 @@ function entry(
     updated_at: "2026-08-01T12:00:00Z",
     cancelled_at: null,
     service_order: null,
+    remaining_cents: remaining,
+    received_cents: received,
+    payments: [],
     ...overrides,
   };
 }
@@ -69,6 +81,30 @@ describe("computeFinancialSummary", () => {
 
     expect(summary.incomePaidCents).toBe(1000);
     expect(summary.realizedResultCents).toBe(1000);
+  });
+
+  it("parcial soma somente o saldo líquido a receber", () => {
+    const summary = computeFinancialSummary([
+      entry({
+        entry_type: "income",
+        status: "partially_paid",
+        amount_cents: 10000,
+        received_cents: 3000,
+        remaining_cents: 7000,
+        payments: [
+          {
+            id: "p1",
+            amount_cents: 3000,
+            payment_method: "pix",
+            paid_at: "2026-08-01T12:00:00Z",
+            cancelled_at: null,
+          },
+        ],
+      }),
+    ]);
+
+    expect(summary.incomePaidCents).toBe(3000);
+    expect(summary.incomePendingCents).toBe(7000);
   });
 });
 

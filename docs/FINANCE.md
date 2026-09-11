@@ -1,4 +1,4 @@
-# PetGestor — Financeiro (Etapa 9)
+# PetGestor — Financeiro
 
 ## Escopo
 
@@ -6,66 +6,102 @@ Módulo de **controle financeiro operacional** do pet shop. Não substitui conta
 
 Valores monetários são armazenados em **centavos inteiros** (`INTEGER`), nunca em `float`.
 
+## Fonte de verdade (BLOCO 5)
+
+| Dado | Onde vive |
+|------|-----------|
+| Valor faturado | `financial_entries.amount_cents` |
+| Valor recebido | `SUM(financial_payments.amount_cents)` com `cancelled_at IS NULL` |
+| Saldo a receber | `amount_cents − recebido` |
+| Métodos reais | `financial_payments.payment_method` |
+| Status derivado | `pending` / `partially_paid` / `paid` / `cancelled` |
+
+`financial_entries.payment_method` e `paid_at` são **compatibilidade**:
+
+- `paid`: último pagamento ativo (método + instante)
+- `partially_paid`: ambos NULL
+- não usar `payment_method` da entry sozinho para listar todos os métodos de um lançamento
+
+**Legado:** `status = paid` sem nenhuma parcela ativa **não** gera linha histórica automaticamente. Totais usam `amount_cents` como recebido até haver reconciliação manual. Diagnóstico: `docs/sql/diagnose-bloco-5-finance.sql`.
+
+Novos lançamentos manuais pagos geram `financial_payment` canônico na mesma operação (RPC + trigger de INSERT).
+
+## Status
+
+| status | recebido | saldo | comportamento |
+|--------|----------|-------|----------------|
+| `pending` | 0 | amount | a receber integral |
+| `partially_paid` | 0 < r < amount | amount − r | a receber líquido |
+| `paid` | amount | 0 | realizado |
+| `cancelled` | — | 0 | fora dos totais |
+
+Pagamento comum acima do saldo é rejeitado (`payment_exceeds_balance`).
+
 ## Fluxo principal
 
 ```text
 Atendimento pronto (service_order → ready)
     ↓ (mesma transação RPC)
 financial_entry income / pending / service_order
-    ↓ (pagamento explícito)
-financial_entry → paid
+    ↓ (pagamento explícito, possivelmente parcial/misto)
+financial_payments + status derivado
 ```
 
 Finalizar entrega (`ready → completed`) **não** marca pagamento automaticamente.
 
-## Tabela `financial_entries`
+Venda de pacote: `pending → paid` ativa o **mesmo** pacote (BLOCO 4). Pagamento parcial de pacote não libera crédito até o total.
 
-| Campo | Descrição |
-|-------|-----------|
-| `entry_type` | `income` (Receita) ou `expense` (Despesa) |
-| `status` | `pending`, `paid`, `cancelled` |
-| `source_type` | `service_order` ou `manual` |
-| `service_order_id` | Obrigatório quando origem = atendimento |
-| `amount_cents` | Valor em centavos |
-| `payment_method` | Obrigatório quando `status = paid` |
-| `paid_at` | Timestamp do pagamento |
-| `cancelled_at` | Cancelamento lógico (sem DELETE) |
+## Origens que criam `financial_entries`
 
-## Valor de atendimentos
+| Origem | Quando | Pagamentos |
+|--------|--------|------------|
+| `service_order` | OS pronta | via Financeiro (parcial permitido) |
+| `service_package` | venda do pacote | via Financeiro; paid ativa o pacote |
+| `sale` | PDV | via PDV (`register_sale_payment`) — não pagar/reabrir por aqui |
+| `manual` | formulário | parcela canônica se criado como pago |
 
-Sempre de `appointments.price_cents_snapshot` — **nunca** do preço atual do serviço.
+## Reabertura
 
-## Regras de negócio
+| Origem | Permitida? |
+|--------|------------|
+| `manual` paid/partial | Sim — cancela pagamentos (`cancelled_at`), volta a `pending` |
+| `service_order` | Não |
+| `service_package` | Não |
+| `sale` | Não |
 
-### Geração automática
+Nunca DELETE físico de `financial_payments`.
 
-- Ao marcar atendimento como **pronto**, RPC `mark_service_order_ready` cria receita pendente.
-- UNIQUE parcial impede duplicação por retry/clique repetido.
-- Idempotente: se já existir, não cria outra.
+## Cancelamento
 
-### Pagamento
+| Origem / status | Permitido? |
+|-----------------|------------|
+| `manual` pending sem recebido | Sim |
+| `manual` partial/paid | Não — exigiria estorno (fora deste bloco) |
+| `service_order` / `sale` / `service_package` | Não por esta RPC |
 
-- `markFinancialEntryPaidAction` → RPC `mark_financial_entry_paid`.
-- Exige forma de pagamento; `paid_at` padrão = agora.
+## Período e timezone
 
-### Reabertura (correção operacional)
+Filtros de instante (`paid_at`, `created_at`) usam intervalo half-open no **fuso da empresa**:
 
-- `reopenFinancialEntryAction` → RPC `reopen_financial_entry`.
-- `paid → pending`; limpa `paid_at` e `payment_method`.
-- Não é estorno bancário — documentado para MVP.
+`[início civil 00:00, 00:00 do dia seguinte ao último dia)`
 
-### Cancelamento
+`due_date` é data civil. Não usar `new Date("YYYY-MM-DD")`.
 
-- Lançamentos **manuais**: canceláveis.
-- Lançamentos de **atendimento**: **não** canceláveis manualmente (RPC bloqueia).
-- Lançamentos de **pacote pending**: cancelados junto com o pacote (`cancel_customer_service_package`).
-- Lançamentos de **pacote paid**: o pacote **não** pode ser cancelado enquanto a receita permanecer paga — não há estorno automático neste bloco.
-- Usar `cancelled_at` + `status = cancelled` — sem DELETE físico.
+## Filtro por forma de pagamento
 
-### Edição
+A lista mostra a **entry inteira** se existir ao menos um pagamento ativo naquele método (ou, no legado sem parcelas, se `financial_entries.payment_method` coincidir). Sem duplicar linhas. Sem cruzar `company_id`.
 
-- Somente `source_type = manual`.
-- Valor bloqueado enquanto `paid` — reabrir primeiro.
+## Matemática compartilhada
+
+Helpers: `src/features/finance/ledger.ts` e RPCs `private.sum_active_financial_payments` / `private.financial_entry_remaining_cents` / `private.register_financial_payment`.
+
+Financeiro, dashboard, overview e recebíveis usam a mesma regra de recebido/saldo.
+
+## Concorrência e idempotência
+
+Antes de inserir pagamento: `SELECT … FOR UPDATE` na entry, recálculo do saldo, rejeição se `amount > remaining`.
+
+`idempotency_key` única por empresa (pagamentos ativos). Retry com a mesma chave não duplica.
 
 ## Formas de pagamento
 
@@ -78,20 +114,7 @@ Sempre de `appointments.price_cents_snapshot` — **nunca** do preço atual do s
 | `bank_transfer` | Transferência |
 | `other` | Outro |
 
-## Categorias (MVP)
-
-Texto livre opcional (`category`), com sugestões na UI:
-
-- Receitas: Serviços, Venda avulsa, Outros
-- Despesas: Produtos, Aluguel, Energia, Água, Marketing, Equipamentos, Manutenção, Outros
-
-## Resumos
-
-| Métrica | Cálculo |
-|---------|---------|
-| Resultado realizado | receitas pagas − despesas pagas |
-| Resultado projetado | receitas não canceladas − despesas não canceladas |
-| Pendentes | não entram no realizado |
+Validação alinhada em UI, Server Action, RPC e CHECK do banco.
 
 ## Rotas
 
@@ -102,18 +125,12 @@ Texto livre opcional (`category`), com sugestões na UI:
 | `/dashboard/financeiro/nova-despesa` | Despesa manual |
 | `/dashboard/financeiro/[id]` | Detalhe e ações |
 
-Query params: `from`, `to`, `preset`, `type`, `status`, `payment`, `q`, `page`.
+## Migrations
 
-## Feature
+- `supabase/migrations/20260806081500_finance.sql`
+- `supabase/migrations/20260818140000_point_of_sale.sql` (`financial_payments`)
+- `supabase/migrations/20260911220000_financial_payments_source_of_truth.sql` (**BLOCO 5 — aplicar no Supabase**)
 
-`src/features/finance/` — actions, queries, schemas, types, status, utils, components.
+## Não incluído neste bloco
 
-## Migration
-
-`supabase/migrations/20260806081500_finance.sql`
-
-**MIGRATION PENDENTE** até aplicação manual no Supabase.
-
-## Não incluído
-
-NF, boleto, Pix automático, conciliação bancária, DRE contábil, comissão, estoque, assinatura SaaS, trial.
+PDV (troco, venda de produto, estoque), relatórios gerais, relatório de pacotes, assinatura SaaS, Mercado Pago billing, política ampla de refund.

@@ -2,6 +2,7 @@ import "server-only";
 
 import { unstable_noStore as noStore } from "next/cache";
 
+import { sumReceivedForEntryType } from "@/features/finance/queries";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { localDateTimeToUtcIso } from "@/lib/timezone";
 
@@ -141,41 +142,10 @@ export async function getReportOverview(
 
     async function sumPaymentsForEntryType(
       entryType: "income" | "expense",
-      paidStartIso: string,
-      paidEndIso: string,
+      periodFrom: string,
+      periodTo: string,
     ): Promise<number> {
-      try {
-        const { data: entries, error: entriesError } = await supabase
-          .from("financial_entries")
-          .select("id")
-          .eq("company_id", companyId)
-          .eq("entry_type", entryType)
-          .is("deleted_at", null)
-          .neq("status", "cancelled")
-          .not("paid_at", "is", null)
-          .gte("paid_at", paidStartIso)
-          .lte("paid_at", paidEndIso);
-
-        if (entriesError) return 0;
-
-        const entryIds = (entries ?? []).map((e) => e.id);
-        if (entryIds.length === 0) return 0;
-
-        const { data: payments, error: paymentsError } = await supabase
-          .from("financial_payments")
-          .select("amount_cents")
-          .eq("company_id", companyId)
-          .is("cancelled_at", null)
-          .in("financial_entry_id", entryIds)
-          .gte("paid_at", paidStartIso)
-          .lte("paid_at", paidEndIso);
-
-        if (paymentsError) return 0;
-
-        return (payments ?? []).reduce((s, r) => s + (r.amount_cents ?? 0), 0);
-      } catch {
-        return 0;
-      }
+      return sumReceivedForEntryType(companyId, entryType, periodFrom, periodTo, safeTimeZone);
     }
 
     const [
@@ -230,10 +200,10 @@ export async function getReportOverview(
         .is("deleted_at", null)
         .gte("created_at", prevUtcFrom)
         .lte("created_at", prevUtcTo),
-      sumPaymentsForEntryType("income", utcFrom, utcTo),
-      sumPaymentsForEntryType("expense", utcFrom, utcTo),
-      sumPaymentsForEntryType("income", prevUtcFrom, prevUtcTo),
-      sumPaymentsForEntryType("expense", prevUtcFrom, prevUtcTo),
+      sumPaymentsForEntryType("income", period.from, period.to),
+      sumPaymentsForEntryType("expense", period.from, period.to),
+      sumPaymentsForEntryType("income", prev.from, prev.to),
+      sumPaymentsForEntryType("expense", prev.from, prev.to),
     ]);
 
     const countByStatus = (rows: { status: string }[] | null, statuses: string[]) =>

@@ -77,14 +77,14 @@ async function createManualEntry(
     .insert({
       company_id: context.membership.company.id,
       entry_type: entryType,
-      status: parsed.data.status,
+      status: "pending",
       source_type: "manual",
       description: parsed.data.description,
       category: parsed.data.category,
       amount_cents: amountCents,
       due_date: parsed.data.dueDate ?? null,
-      payment_method: parsed.data.status === "paid" ? parsed.data.paymentMethod : null,
-      paid_at: parsed.data.status === "paid" ? new Date().toISOString() : null,
+      payment_method: null,
+      paid_at: null,
       notes: parsed.data.notes,
       created_by: user.id,
     })
@@ -95,7 +95,26 @@ async function createManualEntry(
     return { error: "Não foi possível criar o lançamento." };
   }
 
-  if (parsed.data.status === "pending") {
+  if (parsed.data.status === "paid") {
+    const paymentKey =
+      parsed.data.idempotencyKey ??
+      (typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${data.id}-manual-paid`);
+
+    const paid = await supabase.rpc("mark_financial_entry_paid", {
+      p_entry_id: data.id,
+      p_payment_method: parsed.data.paymentMethod!,
+      p_paid_at: new Date().toISOString(),
+      p_company_id: context.membership.company.id,
+      p_amount_cents: amountCents,
+      p_idempotency_key: paymentKey,
+    });
+
+    if (paid.error || !paid.data) {
+      return { error: mapFinanceError(paid.error?.message) };
+    }
+  } else {
     await notifyPaymentPending(supabase, context.membership.company.id, data.id);
   }
 
@@ -164,12 +183,8 @@ export async function updateManualFinancialEntryAction(
     return { error: "Somente lançamentos manuais podem ser editados." };
   }
 
-  if (existing.status === "paid") {
+  if (existing.status !== "pending") {
     return { error: "Reabra o lançamento antes de editar o valor." };
-  }
-
-  if (existing.status === "cancelled") {
-    return { error: "Lançamento cancelado não pode ser editado." };
   }
 
   const { data, error } = await supabase
@@ -210,6 +225,11 @@ export async function markFinancialEntryPaidAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  const amountCents = parsed.data.amount ? parseAmountToCents(parsed.data.amount) : null;
+  if (parsed.data.amount && amountCents === null) {
+    return { error: "Informe um valor de pagamento válido." };
+  }
+
   const supabase = await createSupabaseServerClient();
   const paidAt = parsed.data.paidAt
     ? localDateTimeToUtcIsoFromInput(parsed.data.paidAt, context.membership.company.timezone)
@@ -220,6 +240,8 @@ export async function markFinancialEntryPaidAction(
     p_payment_method: parsed.data.paymentMethod,
     p_paid_at: paidAt ?? null,
     p_company_id: context.membership.company.id,
+    p_amount_cents: amountCents,
+    p_idempotency_key: parsed.data.idempotencyKey,
   });
 
   if (error || !data) {

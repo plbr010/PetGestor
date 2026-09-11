@@ -14,6 +14,8 @@ export type FinancialEntryListItem = {
   description: string;
   category: string | null;
   amount_cents: number;
+  received_cents: number;
+  remaining_cents: number;
   due_date: string | null;
   paid_at: string | null;
   payment_method: PaymentMethod | null;
@@ -21,6 +23,7 @@ export type FinancialEntryListItem = {
   created_at: string;
   updated_at: string;
   cancelled_at: string | null;
+  payments: FinancialEntryPayment[];
   service_order?: {
     id: string;
     appointment: {
@@ -28,6 +31,14 @@ export type FinancialEntryListItem = {
       customer: { name: string };
     };
   } | null;
+};
+
+export type FinancialEntryPayment = {
+  id: string;
+  amount_cents: number;
+  payment_method: PaymentMethod;
+  paid_at: string;
+  cancelled_at: string | null;
 };
 
 export type FinancialEntryDetail = FinancialEntryListItem;

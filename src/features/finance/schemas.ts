@@ -43,6 +43,7 @@ function baseEntrySchema(entryType: FinancialEntryType) {
         .transform((value) => (value.length === 0 ? null : value))
         .nullable(),
       entryType: z.literal(entryType),
+      idempotencyKey: z.string().uuid().optional().nullable(),
     })
     .superRefine((data, ctx) => {
       const cents = parseAmountToCents(data.amount);
@@ -82,14 +83,31 @@ function baseEntrySchema(entryType: FinancialEntryType) {
 export const manualIncomeSchema = baseEntrySchema("income");
 export const manualExpenseSchema = baseEntrySchema("expense");
 
-export const markPaidSchema = z.object({
-  paymentMethod: paymentMethodSchema,
-  paidAt: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Informe data e hora válidas.")
-    .optional()
-    .nullable(),
-});
+export const markPaidSchema = z
+  .object({
+    paymentMethod: paymentMethodSchema,
+    paidAt: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Informe data e hora válidas.")
+      .optional()
+      .nullable(),
+    amount: z.string().optional().nullable(),
+    idempotencyKey: z.string().uuid("Chave de pagamento inválida."),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.amount) {
+      return;
+    }
+
+    const cents = parseAmountToCents(data.amount);
+    if (cents === null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe um valor de pagamento válido.",
+        path: ["amount"],
+      });
+    }
+  });
 
 export const manualUpdateSchema = z
   .object({
@@ -146,6 +164,7 @@ function parseFormEntry(formData: FormData, entryType: FinancialEntryType) {
         : null,
     notes: formData.get("notes"),
     entryType,
+    idempotencyKey: String(formData.get("idempotencyKey") ?? "").trim() || null,
   };
 }
 
@@ -159,10 +178,13 @@ export function parseManualExpenseForm(formData: FormData) {
 
 export function parseMarkPaidForm(formData: FormData) {
   const paidAtRaw = String(formData.get("paidAt") ?? "").trim();
+  const amountRaw = String(formData.get("amount") ?? "").trim();
 
   return markPaidSchema.safeParse({
     paymentMethod: formData.get("paymentMethod"),
     paidAt: paidAtRaw.length > 0 ? paidAtRaw : null,
+    amount: amountRaw.length > 0 ? amountRaw : null,
+    idempotencyKey: String(formData.get("idempotencyKey") ?? "").trim(),
   });
 }
 
