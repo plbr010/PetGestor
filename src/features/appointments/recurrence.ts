@@ -3,6 +3,7 @@ import {
   formatUtcDateInTimezone,
   formatUtcInTimezone,
   localDateTimeToUtcIso,
+  utcToCompanyLocal,
 } from "@/lib/timezone";
 
 export const RECURRENCE_FREQUENCIES = [
@@ -101,6 +102,21 @@ export function expandRecurrenceStarts(input: ExpandRecurrenceInput): string[] {
   }
 
   return starts;
+}
+
+/**
+ * Reagenda uma ocorrência futura preservando a hora civil da empresa.
+ * Nunca soma N * 24h em milissegundos UTC (quebra DST).
+ */
+export function shiftOccurrenceCivilStart(input: {
+  occurrenceStartUtcIso: string;
+  timeZone: string;
+  dateDeltaDays: number;
+  localTime: string;
+}): string {
+  const { date } = utcToCompanyLocal(input.occurrenceStartUtcIso, input.timeZone);
+  const nextDate = addDaysToDateString(date, input.dateDeltaDays);
+  return localDateTimeToUtcIso(nextDate, input.localTime, input.timeZone);
 }
 
 export function formatRecurrenceSkipSummary(

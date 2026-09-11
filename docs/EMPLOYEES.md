@@ -34,7 +34,7 @@ Relacionamento N:N entre funcionário e serviços que executa. FK composta imped
 
 ### `public.employee_working_hours`
 
-Jornada semanal — **MVP: um intervalo por dia**.
+Jornada semanal — **um período de trabalho por dia**, com **um intervalo de almoço opcional**.
 
 | weekday | Dia |
 |---------|-----|
@@ -44,6 +44,9 @@ Jornada semanal — **MVP: um intervalo por dia**.
 | 6 | Sábado |
 
 Quando `enabled = true`: `start_time` e `end_time` obrigatórios, com `start_time < end_time`.
+
+Intervalo opcional: `break_start` e `break_end` ambos nulos **ou** ambos preenchidos, com
+`start_time < break_start < break_end < end_time`.
 
 **Futuro:** múltiplos turnos por dia; folgas excepcionais (férias, feriados) virão com a Agenda.
 

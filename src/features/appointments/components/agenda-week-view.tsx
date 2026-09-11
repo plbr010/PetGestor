@@ -9,7 +9,7 @@ import {
   formatPriceSnapshot,
   groupAppointmentsByLocalDate,
 } from "@/features/appointments/utils";
-import { formatUtcInTimezone } from "@/lib/timezone";
+import { civilDateWeekday, formatUtcInTimezone } from "@/lib/timezone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -22,7 +22,7 @@ type AgendaWeekViewProps = {
 const WEEKDAY_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 function formatWeekdayHeader(date: string): string {
-  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+  const weekday = civilDateWeekday(date);
   const day = date.split("-")[2];
   return `${WEEKDAY_SHORT[weekday]} ${day}`;
 }

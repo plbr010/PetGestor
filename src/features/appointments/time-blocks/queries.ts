@@ -2,13 +2,11 @@ import { unstable_noStore as noStore } from "next/cache";
 
 import type { ScheduleTimeBlock } from "@/features/appointments/time-blocks/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { addDaysToDateString, localDateTimeToUtcIso } from "@/lib/timezone";
+import { getCivilDayUtcBounds, isValidCivilDate } from "@/lib/timezone";
 import { isValidUuid } from "@/lib/security/uuid";
 
 function getDayBoundsUtc(date: string, timeZone: string) {
-  const start = localDateTimeToUtcIso(date, "00:00", timeZone);
-  const end = localDateTimeToUtcIso(addDaysToDateString(date, 1), "00:00", timeZone);
-  return { start, end };
+  return getCivilDayUtcBounds(date, timeZone);
 }
 
 export async function getTimeBlocksForDay(
@@ -17,7 +15,7 @@ export async function getTimeBlocksForDay(
   timeZone: string,
   employeeId?: string,
 ): Promise<ScheduleTimeBlock[]> {
-  if (!isValidUuid(companyId) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (!isValidUuid(companyId) || !isValidCivilDate(date)) {
     return [];
   }
 

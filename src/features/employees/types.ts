@@ -12,6 +12,8 @@ export type EmployeeWorkingHourRow = {
   enabled: boolean;
   start_time: string | null;
   end_time: string | null;
+  break_start: string | null;
+  break_end: string | null;
 };
 
 export type EmployeeListItem = {
@@ -38,4 +40,6 @@ export type WorkingHourInput = {
   enabled: boolean;
   startTime: string | null;
   endTime: string | null;
+  breakStart: string | null;
+  breakEnd: string | null;
 };

@@ -7,6 +7,7 @@ import {
   getAvailableSlotsAction,
   type AppointmentActionState,
 } from "@/features/appointments/actions";
+import { computeAppointmentPreview } from "@/features/appointments/preview";
 import type { AppointmentDetail, AppointmentFormOptions } from "@/features/appointments/types";
 import { AppointmentPackageFields } from "@/features/appointments/components/appointment-package-fields";
 import { formatDurationLabel, PET_SIZE_LABELS, PET_SIZES } from "@/features/services/utils";
@@ -54,6 +55,7 @@ export function AppointmentForm({
 }: AppointmentFormProps) {
   const [state, formAction, isPending] = useActionState(action ?? createAppointmentAction, initialState);
   const [isLoadingSlots, startSlotTransition] = useTransition();
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const defaultDate =
     appointment?.scheduled_start
@@ -71,10 +73,14 @@ export function AppointmentForm({
   const [petSize, setPetSize] = useState<PetSize | "">(appointment?.pet_size ?? "");
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState(defaultTime);
+  const [notes, setNotes] = useState(appointment?.notes ?? "");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [repeatEnabled, setRepeatEnabled] = useState(false);
   const [recurrenceFrequency, setRecurrenceFrequency] = useState("weekly");
+  const [recurrenceIntervalDays, setRecurrenceIntervalDays] = useState("7");
   const [recurrenceEndMode, setRecurrenceEndMode] = useState<"count" | "date">("count");
+  const [recurrenceMaxOccurrences, setRecurrenceMaxOccurrences] = useState("8");
+  const [recurrenceEndsAt, setRecurrenceEndsAt] = useState(defaultDate);
   const [seriesScope, setSeriesScope] = useState<"this" | "this_and_following">("this");
   const [customerPackageId, setCustomerPackageId] = useState(
     appointment?.customer_package_id ?? "",
@@ -84,36 +90,17 @@ export function AppointmentForm({
   const pets = options.petsByCustomer[customerId] ?? [];
   const selectedService = options.services.find((service) => service.id === serviceId);
   const employees = serviceId ? (options.employeesByService[serviceId] ?? []) : [];
-  const coveredByPackage = Boolean(customerPackageId);
 
-  const preview = useMemo(() => {
-    if (!selectedService) {
-      return null;
-    }
-
-    if (selectedService.pricing_mode === "fixed") {
-      return {
-        price: coveredByPackage ? 0 : (selectedService.price_cents ?? 0),
-        duration: selectedService.duration_minutes,
-        coveredByPackage,
-      };
-    }
-
-    if (!petSize) {
-      return null;
-    }
-
-    const sizePrice = options.sizePricesByService[serviceId]?.find((row) => row.size === petSize);
-    if (!sizePrice) {
-      return null;
-    }
-
-    return {
-      price: coveredByPackage ? 0 : sizePrice.price_cents,
-      duration: sizePrice.duration_minutes,
-      coveredByPackage,
-    };
-  }, [coveredByPackage, options.sizePricesByService, petSize, selectedService, serviceId]);
+  const preview = useMemo(
+    () =>
+      computeAppointmentPreview({
+        service: selectedService,
+        petSize,
+        sizePrices: options.sizePricesByService[serviceId],
+        customerPackageId,
+      }),
+    [customerPackageId, options.sizePricesByService, petSize, selectedService, serviceId],
+  );
 
   const shouldFetchSlots = Boolean(employeeId && serviceId && date && preview);
 
@@ -163,6 +150,24 @@ export function AppointmentForm({
 
   return (
     <form action={formAction} className="space-y-8" noValidate>
+      <input type="hidden" name="customerId" value={customerId} />
+      <input type="hidden" name="petId" value={petId} />
+      <input type="hidden" name="serviceId" value={serviceId} />
+      <input type="hidden" name="employeeId" value={employeeId} />
+      <input type="hidden" name="petSize" value={petSize} />
+      <input type="hidden" name="date" value={date} />
+      <input type="hidden" name="time" value={time} />
+      <input type="hidden" name="notes" value={notes} />
+      <input type="hidden" name="customerPackageId" value={customerPackageId} />
+      <input type="hidden" name="repeatEnabled" value={repeatEnabled ? "on" : ""} />
+      <input type="hidden" name="recurrenceFrequency" value={recurrenceFrequency} />
+      <input type="hidden" name="recurrenceIntervalDays" value={recurrenceIntervalDays} />
+      <input type="hidden" name="recurrenceEndMode" value={recurrenceEndMode} />
+      <input type="hidden" name="recurrenceMaxOccurrences" value={recurrenceMaxOccurrences} />
+      <input type="hidden" name="recurrenceEndsAt" value={recurrenceEndsAt} />
+      <input type="hidden" name="seriesScope" value={seriesScope} />
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+
       {state.error ? <FormFeedback message={state.error} variant="error" /> : null}
 
       <section className="space-y-4">
@@ -176,7 +181,6 @@ export function AppointmentForm({
             <Label htmlFor="customerId">Tutor *</Label>
             <Select
               id="customerId"
-              name="customerId"
               value={customerId}
               onChange={(event) => {
                 setCustomerId(event.target.value);
@@ -199,7 +203,6 @@ export function AppointmentForm({
             <Label htmlFor="petId">Pet *</Label>
             <Select
               id="petId"
-              name="petId"
               value={petId}
               onChange={(event) => {
                 setPetId(event.target.value);
@@ -230,7 +233,6 @@ export function AppointmentForm({
           <Label htmlFor="serviceId">Serviço *</Label>
           <Select
             id="serviceId"
-            name="serviceId"
             value={serviceId}
             onChange={(event) => {
               setServiceId(event.target.value);
@@ -256,7 +258,6 @@ export function AppointmentForm({
             <Label htmlFor="petSize">Porte *</Label>
             <Select
               id="petSize"
-              name="petSize"
               value={petSize}
               onChange={(event) => setPetSize(event.target.value as PetSize)}
               required
@@ -307,6 +308,7 @@ export function AppointmentForm({
           }
         }}
         currentPackageId={appointment?.customer_package_id}
+        omitFieldName
       />
 
       <section className="space-y-4">
@@ -321,7 +323,6 @@ export function AppointmentForm({
           <Label htmlFor="employeeId">Profissional *</Label>
           <Select
             id="employeeId"
-            name="employeeId"
             value={employeeId}
             onChange={(event) => setEmployeeId(event.target.value)}
             required
@@ -343,7 +344,7 @@ export function AppointmentForm({
         <div>
           <h2 className="text-lg font-semibold">Data e horário</h2>
           <p className="text-sm text-muted-foreground">
-            Horários sugeridos respeitam a jornada e conflitos existentes.
+            Horários sugeridos respeitam a jornada, o intervalo e conflitos existentes.
           </p>
         </div>
 
@@ -352,7 +353,6 @@ export function AppointmentForm({
             <Label htmlFor="date">Data *</Label>
             <Input
               id="date"
-              name="date"
               type="date"
               value={date}
               min={getTodayInTimezone(options.companyTimezone)}
@@ -366,7 +366,6 @@ export function AppointmentForm({
             {slotsToShow.length > 0 ? (
               <Select
                 id="time"
-                name="time"
                 value={time}
                 onChange={(event) => setTime(event.target.value)}
                 required
@@ -380,7 +379,6 @@ export function AppointmentForm({
             ) : (
               <Input
                 id="time"
-                name="time"
                 type="time"
                 value={time}
                 onChange={(event) => setTime(event.target.value)}
@@ -398,8 +396,8 @@ export function AppointmentForm({
         <Label htmlFor="notes">Observações</Label>
         <Textarea
           id="notes"
-          name="notes"
-          defaultValue={appointment?.notes ?? ""}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
           placeholder="Informações adicionais sobre o atendimento"
           rows={4}
         />
@@ -410,7 +408,6 @@ export function AppointmentForm({
           <label className="flex items-start gap-3">
             <input
               type="checkbox"
-              name="repeatEnabled"
               checked={repeatEnabled}
               onChange={(event) => {
                 setRepeatEnabled(event.target.checked);
@@ -437,7 +434,6 @@ export function AppointmentForm({
                 <Label htmlFor="recurrenceFrequency">Frequência</Label>
                 <Select
                   id="recurrenceFrequency"
-                  name="recurrenceFrequency"
                   value={recurrenceFrequency}
                   onChange={(event) => setRecurrenceFrequency(event.target.value)}
                 >
@@ -453,11 +449,11 @@ export function AppointmentForm({
                   <Label htmlFor="recurrenceIntervalDays">Repetir a cada (dias)</Label>
                   <Input
                     id="recurrenceIntervalDays"
-                    name="recurrenceIntervalDays"
                     type="number"
                     min={1}
                     max={365}
-                    defaultValue={7}
+                    value={recurrenceIntervalDays}
+                    onChange={(event) => setRecurrenceIntervalDays(event.target.value)}
                     required
                   />
                 </div>
@@ -467,7 +463,6 @@ export function AppointmentForm({
                 <Label htmlFor="recurrenceEndMode">Termina</Label>
                 <Select
                   id="recurrenceEndMode"
-                  name="recurrenceEndMode"
                   value={recurrenceEndMode}
                   onChange={(event) =>
                     setRecurrenceEndMode(event.target.value as "count" | "date")
@@ -483,11 +478,11 @@ export function AppointmentForm({
                   <Label htmlFor="recurrenceMaxOccurrences">Quantidade de ocorrências</Label>
                   <Input
                     id="recurrenceMaxOccurrences"
-                    name="recurrenceMaxOccurrences"
                     type="number"
                     min={2}
                     max={52}
-                    defaultValue={8}
+                    value={recurrenceMaxOccurrences}
+                    onChange={(event) => setRecurrenceMaxOccurrences(event.target.value)}
                     required
                   />
                   <p className="text-xs text-muted-foreground">Máximo de 52 ocorrências.</p>
@@ -497,9 +492,10 @@ export function AppointmentForm({
                   <Label htmlFor="recurrenceEndsAt">Data final</Label>
                   <Input
                     id="recurrenceEndsAt"
-                    name="recurrenceEndsAt"
                     type="date"
                     min={date}
+                    value={recurrenceEndsAt}
+                    onChange={(event) => setRecurrenceEndsAt(event.target.value)}
                     required
                   />
                 </div>
@@ -521,7 +517,6 @@ export function AppointmentForm({
             <Label htmlFor="seriesScope">Aplicar alterações</Label>
             <Select
               id="seriesScope"
-              name="seriesScope"
               value={seriesScope}
               onChange={(event) =>
                 setSeriesScope(event.target.value as "this" | "this_and_following")

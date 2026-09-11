@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildAgendaHref,
+  formatAppointmentDateLabel,
   generateTimeSlots,
   groupAppointmentsByLocalDate,
   mapAppointmentError,
@@ -18,8 +19,8 @@ describe("mapAppointmentError", () => {
     expect(mapAppointmentError("pet_schedule_conflict")).toContain("pet");
   });
 
-  it("mapeia jornada", () => {
-    expect(mapAppointmentError("outside_working_hours")).toContain("jornada");
+  it("mapeia intervalo de almoço", () => {
+    expect(mapAppointmentError("lunch_break_conflict")).toMatch(/intervalo/i);
   });
 
   it("mapeia pacote sem saldo", () => {
@@ -45,6 +46,12 @@ describe("parseAgendaDate", () => {
 
   it("aceita data válida", () => {
     expect(parseAgendaDate("2026-08-10", "America/Sao_Paulo")).toBe("2026-08-10");
+  });
+
+  it("rejeita data civil impossível e cai para hoje", () => {
+    const today = parseAgendaDate("2026-02-31", "America/Sao_Paulo");
+    expect(today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(today).not.toBe("2026-02-31");
   });
 });
 
@@ -77,5 +84,13 @@ describe("groupAppointmentsByLocalDate", () => {
     );
 
     expect(grouped.size).toBeGreaterThan(0);
+  });
+});
+
+describe("formatAppointmentDateLabel", () => {
+  it("10/10/2026 aparece como sábado, não como 09/10", () => {
+    const label = formatAppointmentDateLabel("2026-10-10", "America/Sao_Paulo");
+    expect(label.toLowerCase()).toContain("sábado");
+    expect(label).not.toMatch(/sexta/i);
   });
 });

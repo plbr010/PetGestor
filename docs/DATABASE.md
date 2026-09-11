@@ -191,6 +191,8 @@ companies → employees → employee_services → services
 
 Ver `docs/EMPLOYEES.md`. **Migration pendente de aplicação remota.**
 
+Intervalo de almoço opcional (`break_start` / `break_end`): migration `20260911153000_agenda_civil_date_working_hours_recurrence.sql`.
+
 ## Etapa 7 — Agenda (Appointments)
 
 Migration: `supabase/migrations/20260806073000_appointments.sql`
@@ -202,6 +204,7 @@ Migration: `supabase/migrations/20260806073000_appointments.sql`
 | `companies.timezone` | text NOT NULL | default `America/Sao_Paulo` |
 
 Horários persistidos como **TIMESTAMPTZ**; interface usa horário local da empresa via `src/lib/timezone.ts`.
+Data civil (`YYYY-MM-DD`) nunca é interpretada como instante UTC.
 
 ### Tabela `appointments`
 
@@ -267,9 +270,11 @@ Ver `docs/WHATSAPP_SETUP.md`.
 
 - Extensão `btree_gist`
 - EXCLUDE half-open `[)` para employee e pet (status ativos, `deleted_at IS NULL`)
-- RPC `create_appointment` / `update_appointment` validam jornada, conflitos e snapshots
+- RPC `create_appointment` / `update_appointment` validam jornada (incluindo intervalo), conflitos e snapshots
+- RPC `create_appointment_recurrence`: série atômica com `idempotency_key` única por empresa
+- RPC `transition_appointment_status`: `UPDATE … WHERE status` esperado (sem corrida SELECT+UPDATE)
 
-Ver `docs/APPOINTMENTS.md`. **Migration pendente de aplicação remota.**
+Ver `docs/APPOINTMENTS.md`. **Migration pendente de aplicação remota:** `20260911153000_agenda_civil_date_working_hours_recurrence.sql` (BLOCO 2; aplica-se depois do BLOCO 1, sem reaplicá-lo).
 
 ## Etapa 10B — Mercado Pago billing
 

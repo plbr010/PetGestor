@@ -4,10 +4,12 @@ import { PET_SIZE_LABELS } from "@/features/services/utils";
 import type { AppointmentStatus, PetSize } from "@/types/database.types";
 import {
   addDaysToDateString,
+  formatCivilDateLabel,
   formatUtcDateInTimezone,
   formatUtcInTimezone,
   getTodayInTimezone,
   getWeekDates,
+  isValidCivilDate,
 } from "@/lib/timezone";
 
 export function mapAppointmentError(message: string | undefined): string {
@@ -21,8 +23,20 @@ export function mapAppointmentError(message: string | undefined): string {
     return "Este pet já possui um agendamento nesse horário.";
   }
 
+  if (code.includes("lunch_break_conflict")) {
+    return "O horário sobrepõe o intervalo deste profissional.";
+  }
+
   if (code.includes("outside_working_hours")) {
     return "O horário está fora da jornada deste profissional.";
+  }
+
+  if (code.includes("appointment_status_conflict")) {
+    return "Este agendamento já foi atualizado por outra ação.";
+  }
+
+  if (code.includes("recurrence_no_occurrences")) {
+    return "Nenhum agendamento pôde ser criado. Verifique conflitos, jornada e disponibilidade.";
   }
 
   if (code.includes("time_block_conflict")) {
@@ -104,14 +118,12 @@ export function formatAppointmentDateLabel(date: string, timeZone: string): stri
     return "Amanhã";
   }
 
-  const [year, month, day] = date.split("-").map(Number);
-  return new Intl.DateTimeFormat("pt-BR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: year !== new Date().getFullYear() ? "numeric" : undefined,
-    timeZone,
-  }).format(new Date(Date.UTC(year, month - 1, day)));
+  const todayYear = today.slice(0, 4);
+  const dateYear = date.slice(0, 4);
+
+  return formatCivilDateLabel(date, {
+    includeYear: dateYear !== todayYear,
+  });
 }
 
 export function formatPriceSnapshot(cents: number): string {
@@ -134,7 +146,7 @@ export function parseAgendaDate(
   value: string | undefined | null,
   timeZone: string,
 ): string {
-  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  if (value && isValidCivilDate(value)) {
     return value;
   }
 

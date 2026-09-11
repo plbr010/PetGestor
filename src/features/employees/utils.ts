@@ -48,6 +48,8 @@ export function formatWorkingHourRange(
   enabled: boolean,
   startTime: string | null,
   endTime: string | null,
+  breakStart?: string | null,
+  breakEnd?: string | null,
 ): string {
   if (!enabled) {
     return "Folga";
@@ -57,7 +59,13 @@ export function formatWorkingHourRange(
     return "—";
   }
 
-  return `${formatTimeDisplay(startTime)}–${formatTimeDisplay(endTime)}`;
+  const range = `${formatTimeDisplay(startTime)}–${formatTimeDisplay(endTime)}`;
+
+  if (breakStart && breakEnd) {
+    return `${range} (intervalo ${formatTimeDisplay(breakStart)}–${formatTimeDisplay(breakEnd)})`;
+  }
+
+  return range;
 }
 
 export function formatServicesSummary(services: { serviceName: string }[], maxVisible = 2): string {
@@ -78,7 +86,14 @@ export function formatServicesSummary(services: { serviceName: string }[], maxVi
 export function getDefaultWorkingHours(): WorkingHourInput[] {
   return WEEKDAYS.map((day) => {
     if (day.weekday === 0) {
-      return { weekday: day.weekday, enabled: false, startTime: null, endTime: null };
+      return {
+        weekday: day.weekday,
+        enabled: false,
+        startTime: null,
+        endTime: null,
+        breakStart: null,
+        breakEnd: null,
+      };
     }
 
     if (day.weekday === 6) {
@@ -87,6 +102,8 @@ export function getDefaultWorkingHours(): WorkingHourInput[] {
         enabled: true,
         startTime: "08:00",
         endTime: "13:00",
+        breakStart: null,
+        breakEnd: null,
       };
     }
 
@@ -95,6 +112,8 @@ export function getDefaultWorkingHours(): WorkingHourInput[] {
       enabled: true,
       startTime: "08:00",
       endTime: "18:00",
+      breakStart: null,
+      breakEnd: null,
     };
   });
 }
@@ -119,7 +138,7 @@ export function parseTimeInput(value: FormDataEntryValue | null): string | null 
   return `${match[1]}:${match[2]}`;
 }
 
-export function parseWorkingHoursFromForm(formData: FormData): WorkingHourInput[] | null {
+export function parseWorkingHoursFromForm(formData: FormData): WorkingHourInput[] {
   const rows: WorkingHourInput[] = [];
 
   for (const day of WEEKDAYS) {
@@ -128,22 +147,16 @@ export function parseWorkingHoursFromForm(formData: FormData): WorkingHourInput[
       formData.get(`weekday_${day.weekday}_enabled`) === "true";
     const startTime = parseTimeInput(formData.get(`weekday_${day.weekday}_start`));
     const endTime = parseTimeInput(formData.get(`weekday_${day.weekday}_end`));
-
-    if (enabled) {
-      if (!startTime || !endTime) {
-        return null;
-      }
-
-      if (startTime >= endTime) {
-        return null;
-      }
-    }
+    const breakStart = parseTimeInput(formData.get(`weekday_${day.weekday}_break_start`));
+    const breakEnd = parseTimeInput(formData.get(`weekday_${day.weekday}_break_end`));
 
     rows.push({
       weekday: day.weekday,
       enabled,
       startTime: enabled ? startTime : null,
       endTime: enabled ? endTime : null,
+      breakStart: enabled ? breakStart : null,
+      breakEnd: enabled ? breakEnd : null,
     });
   }
 
@@ -156,6 +169,8 @@ export function workingHoursToRpcPayload(hours: WorkingHourInput[]) {
     enabled: hour.enabled,
     start_time: hour.enabled ? hour.startTime : null,
     end_time: hour.enabled ? hour.endTime : null,
+    break_start: hour.enabled ? hour.breakStart : null,
+    break_end: hour.enabled ? hour.breakEnd : null,
   }));
 }
 

@@ -1,4 +1,5 @@
 import {
+  formatCivilDateNumeric,
   formatUtcDateInTimezone,
   formatUtcInTimezone,
 } from "@/lib/timezone";
@@ -16,15 +17,7 @@ export type MessageTemplateContext = {
 };
 
 function formatLocalDatePtBr(isoUtc: string, timeZone: string): string {
-  const dateKey = formatUtcDateInTimezone(isoUtc, timeZone);
-  const date = new Date(`${dateKey}T12:00:00`);
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
+  return formatCivilDateNumeric(formatUtcDateInTimezone(isoUtc, timeZone));
 }
 
 function formatLocalTime(isoUtc: string, timeZone: string): string {

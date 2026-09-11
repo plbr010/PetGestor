@@ -14,7 +14,27 @@ describe("appointment recurrence security surface", () => {
     expect(source).not.toMatch(/formData\.get\(["']companyId["']\)/);
     expect(source).toContain('seriesScope === "this_and_following"');
     expect(source).toContain("expandRecurrenceStarts");
-    expect(source).toContain("formatRecurrenceSkipSummary");
+    expect(source).toContain("create_appointment_recurrence");
+    expect(source).toContain("transition_appointment_status");
+    expect(source).toContain("p_company_id");
+    expect(source).toContain("p_idempotency_key");
+  });
+
+  it("migration BLOCO 2 adiciona intervalo, idempotência e RPCs atômicas", () => {
+    const migration = readFileSync(
+      join(process.cwd(), "supabase/migrations/20260911153000_agenda_civil_date_working_hours_recurrence.sql"),
+      "utf8",
+    );
+
+    expect(migration).toContain("break_start");
+    expect(migration).toContain("break_end");
+    expect(migration).toContain("idempotency_key");
+    expect(migration).toContain("private.create_appointment_recurrence");
+    expect(migration).toContain("private.transition_appointment_status");
+    expect(migration).toContain("p_company_id");
+    expect(migration).toContain("private.require_app_permission");
+    expect(migration).toContain("private.activate_company_context");
+    expect(migration).not.toContain("20260911120000_authorization_rls_tenant_isolation");
   });
 
   it("migration cria tabela tenant-scoped com RLS", () => {
@@ -28,6 +48,18 @@ describe("appointment recurrence security surface", () => {
     expect(migration).toContain("ENABLE ROW LEVEL SECURITY");
     expect(migration).toContain("ADD COLUMN IF NOT EXISTS recurrence_id");
     expect(migration).toContain("max_occurrences <= 52");
+  });
+
+  it("formulário de criação usa hidden controlados e preview único", () => {
+    const form = readFileSync(
+      join(process.cwd(), "src/features/appointments/components/appointment-form.tsx"),
+      "utf8",
+    );
+    expect(form).toContain('name="customerPackageId"');
+    expect(form).toContain('name="petId"');
+    expect(form).toContain("omitFieldName");
+    expect(form).toContain("computeAppointmentPreview");
+    expect(form).toContain("idempotencyKey");
   });
 
   it("cancelamento e edição suportam escopo this / this_and_following", () => {

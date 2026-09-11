@@ -45,6 +45,8 @@ const workingHourSchema = z.object({
   enabled: z.boolean(),
   startTime: z.string().nullable(),
   endTime: z.string().nullable(),
+  breakStart: z.string().nullable(),
+  breakEnd: z.string().nullable(),
 });
 
 export const employeeFormSchema = z
@@ -84,6 +86,47 @@ export const employeeFormSchema = z
           message: "O horário inicial deve ser anterior ao horário final.",
           path: ["workingHours"],
         });
+        continue;
+      }
+
+      const hasBreakStart = Boolean(hour.breakStart);
+      const hasBreakEnd = Boolean(hour.breakEnd);
+
+      if (hasBreakStart !== hasBreakEnd) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Informe início e fim do intervalo para ${WEEKDAYS.find((d) => d.weekday === hour.weekday)?.label ?? "o dia"}.`,
+          path: ["workingHours"],
+        });
+        continue;
+      }
+
+      if (hour.breakStart && hour.breakEnd) {
+        if (hour.breakStart >= hour.breakEnd) {
+          ctx.addIssue({
+            code: "custom",
+            message: "O início do intervalo deve ser anterior ao fim.",
+            path: ["workingHours"],
+          });
+          continue;
+        }
+
+        if (hour.startTime >= hour.breakStart) {
+          ctx.addIssue({
+            code: "custom",
+            message: "O intervalo deve começar depois do início da jornada.",
+            path: ["workingHours"],
+          });
+          continue;
+        }
+
+        if (hour.breakEnd >= hour.endTime) {
+          ctx.addIssue({
+            code: "custom",
+            message: "O intervalo deve terminar antes do fim da jornada.",
+            path: ["workingHours"],
+          });
+        }
       }
     }
   });
@@ -97,20 +140,6 @@ export function parseEmployeeForm(formData: FormData) {
     .filter((id) => isValidUuid(id));
 
   const workingHours = parseWorkingHoursFromForm(formData);
-
-  if (!workingHours) {
-    return employeeFormSchema.safeParse({
-      name: formData.get("name"),
-      phone: formData.get("phone"),
-      email: formData.get("email"),
-      jobTitle: formData.get("jobTitle"),
-      notes: formData.get("notes"),
-      active: formData.get("active") === "on",
-      canBeScheduled: formData.get("canBeScheduled") === "on",
-      serviceIds,
-      workingHours: [],
-    });
-  }
 
   return employeeFormSchema.safeParse({
     name: formData.get("name"),

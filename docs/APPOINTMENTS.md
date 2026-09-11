@@ -17,9 +17,11 @@ Rotas:
 
 - Coluna `companies.timezone` (default `America/Sao_Paulo`)
 - Banco: `TIMESTAMPTZ` para `scheduled_start` / `scheduled_end`
-- App: conversão local ↔ UTC em `src/lib/timezone.ts`
+- App: conversão **única** civil+hora+timezone → UTC em `src/lib/timezone.ts`
+- Exibição: UTC armazenado + timezone da empresa → data/hora civis
 - Validação de jornada na RPC usa `timezone(company.timezone, scheduled_start)`
 
+**Nunca** usar `new Date("YYYY-MM-DD")` para representar uma data civil.
 **Nunca** salvar strings de horário local como se fossem UTC.
 
 ## Pacotes no agendamento
@@ -90,6 +92,9 @@ Validada na RPC com `employee_working_hours` e timezone da empresa:
 
 - Dia da semana local
 - Início e fim do agendamento dentro do intervalo do dia
+- Intervalo de almoço opcional (`break_start` / `break_end`): half-open `[break_start, break_end)` — o agendamento não pode sobrepor
+
+Jornadas existentes sem intervalo continuam válidas.
 
 ## Status e transições
 
@@ -115,8 +120,10 @@ Helper: `src/features/appointments/status.ts`
 |-----|-----|
 | `create_appointment` | Criação atômica com todas as validações |
 | `update_appointment` | Edição/reagendamento atômico |
+| `create_appointment_recurrence` | Série atômica + idempotente (`p_idempotency_key`) |
+| `transition_appointment_status` | Confirmar/cancelar/no-show atômico (`UPDATE … WHERE status`) |
 
-`SECURITY DEFINER`, `search_path` seguro, `EXECUTE` apenas `authenticated`, `auth.uid()` obrigatório.
+Wrappers públicos exigem `p_company_id`, membership ativa e permissão. `SECURITY DEFINER`, `search_path` seguro, `EXECUTE` apenas `authenticated`.
 
 ## RLS
 
@@ -129,12 +136,14 @@ Helper: `src/features/appointments/status.ts`
 
 Duas requisições simultâneas para o mesmo horário/profissional: a RPC pode passar em ambas, mas a **EXCLUDE constraint** aceita somente uma. Documentado em `docs/APPOINTMENTS_TEST_PLAN.md`.
 
+Transições de status (`confirmed` / `cancelled` / `no_show`) usam `UPDATE … WHERE status` esperado na RPC `transition_appointment_status`. Retry do mesmo status é idempotente; status incompatível retorna `appointment_status_conflict`. Efeitos derivados (notificações) só disparam quando `changed = true`.
+
 ## Migration
 
-**MIGRATION PENDENTE:** `supabase/migrations/20260806073000_appointments.sql`
+**MIGRATION PENDENTE:** `supabase/migrations/20260911153000_agenda_civil_date_working_hours_recurrence.sql` (BLOCO 2 — intervalo, recorrência atômica, status).
 
-Aplicar no Supabase SQL Editor após migrations das Etapas 4–6.
+Aplica-se **depois** de `20260911120000_authorization_rls_tenant_isolation.sql` (BLOCO 1). Não reaplica o BLOCO 1.
 
-## Não implementado
+## Não implementado neste bloco
 
-Ordem de serviço, pagamento, financeiro, estoque, comissão, WhatsApp, drag-and-drop, recorrência, fluxo completo de atendimento (`in_progress` / `completed`).
+Check-in / ordem de serviço (`waiting → in_progress → ready → completed`), drag-and-drop na agenda, múltiplos intervalos por dia.

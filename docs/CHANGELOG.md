@@ -1,3 +1,20 @@
+## [0.44.0] — 2026-09-11
+
+### Corrigido — Agenda: data civil, timezone, jornada, recorrência e status (BLOCO 2)
+
+- Data civil `YYYY-MM-DD` deixa de ser formatada como meia-noite UTC no fuso da empresa — `10/10/2026` não vira `09/10/2026`
+- Timezone da empresa (`companies.timezone`) é a fonte de verdade da agenda (criar, exibir, filtrar, recorrência)
+- Datas civis impossíveis (`2026-02-31`, `2026-04-31`, `2026-02-29` não bissexto) são rejeitadas no schema
+- Jornada passa a ter **um intervalo de almoço opcional** por funcionário/dia (`break_start` / `break_end`)
+- Agendamento não atravessa o intervalo nem sai da jornada; validação definitiva no banco
+- Formulário de agendamento usa campos hidden controlados — UI e FormData não divergem após erro
+- Recorrência criada em transação atômica com chave de idempotência; hora civil preservada no DST
+- Confirmar / cancelar / no-show passam a `UPDATE ... WHERE status` atômico (sem corrida entre abas)
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911153000_agenda_civil_date_working_hours_recurrence.sql`
+
+Não reaplica a migration do BLOCO 1 (`20260911120000_authorization_rls_tenant_isolation.sql`).
+
 ## [0.43.0] — 2026-09-11
 
 ### Corrigido — Autorização, RLS e isolamento multi-tenant (BLOCO 1)

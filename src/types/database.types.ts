@@ -618,6 +618,8 @@ export type Database = {
           enabled: boolean;
           start_time: string | null;
           end_time: string | null;
+          break_start: string | null;
+          break_end: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -629,6 +631,8 @@ export type Database = {
           enabled?: boolean;
           start_time?: string | null;
           end_time?: string | null;
+          break_start?: string | null;
+          break_end?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -640,6 +644,8 @@ export type Database = {
           enabled?: boolean;
           start_time?: string | null;
           end_time?: string | null;
+          break_start?: string | null;
+          break_end?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -784,6 +790,8 @@ export type Database = {
           created_by: string;
           created_at: string;
           updated_at: string;
+          idempotency_key: string | null;
+          skipped_count: number;
         };
         Insert: {
           id?: string;
@@ -797,6 +805,8 @@ export type Database = {
           created_by: string;
           created_at?: string;
           updated_at?: string;
+          idempotency_key?: string | null;
+          skipped_count?: number;
         };
         Update: {
           id?: string;
@@ -810,6 +820,8 @@ export type Database = {
           created_by?: string;
           created_at?: string;
           updated_at?: string;
+          idempotency_key?: string | null;
+          skipped_count?: number;
         };
         Relationships: [
           {
@@ -2703,6 +2715,33 @@ export type Database = {
           p_company_id: string;
         };
         Returns: string;
+      };
+      create_appointment_recurrence: {
+        Args: {
+          p_pet_id: string;
+          p_service_id: string;
+          p_employee_id: string;
+          p_scheduled_starts: string[];
+          p_pet_size?: string | null;
+          p_notes?: string | null;
+          p_frequency?: string;
+          p_interval_value?: number;
+          p_ends_at?: string | null;
+          p_max_occurrences?: number | null;
+          p_idempotency_key?: string;
+          p_company_id: string;
+        };
+        Returns: Json;
+      };
+      transition_appointment_status: {
+        Args: {
+          p_appointment_id: string;
+          p_next_status: string;
+          p_cancellation_reason?: string | null;
+          p_series_scope?: string;
+          p_company_id: string;
+        };
+        Returns: Json;
       };
       check_in_appointment: {
         Args: {
