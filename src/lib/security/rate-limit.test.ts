@@ -65,7 +65,7 @@ describe("rate limit", () => {
   });
 
   it("janela expirada permite novamente sem sleep real", () => {
-    let state = applyRateLimitHit(null, 0, 1, 60).next;
+    const state = applyRateLimitHit(null, 0, 1, 60).next;
     const blocked = applyRateLimitHit(state, 1_000, 1, 60);
     expect(blocked.decision.allowed).toBe(false);
 

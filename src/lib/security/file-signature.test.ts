@@ -25,8 +25,14 @@ const WEBP_HEADER = Uint8Array.from([
 
 const PDF_HEADER = Uint8Array.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]);
 
-function fileFrom(bytes: Uint8Array, name: string, type: string, size = bytes.byteLength) {
-  const blob = new Blob([bytes], { type });
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
+}
+
+function fileFrom(bytes: Uint8Array, name: string, type: string) {
+  const blob = new Blob([toArrayBuffer(bytes)], { type });
   return new File([blob], name, { type });
 }
 
@@ -51,7 +57,7 @@ describe("file signatures", () => {
 
 describe("inspectUploadFile", () => {
   it("rejeita arquivo acima do limite sem persistir", async () => {
-    const huge = fileFrom(JPEG_1X1, "a.jpg", "image/jpeg", 11 * 1024 * 1024);
+    const huge = fileFrom(JPEG_1X1, "a.jpg", "image/jpeg");
     Object.defineProperty(huge, "size", { value: 11 * 1024 * 1024 });
     const result = await inspectUploadFile(huge, { imagesOnly: true });
     expect(result.ok).toBe(false);

@@ -62,8 +62,14 @@ const COMPANY = "11111111-1111-4111-8111-111111111111";
 const PET = "bbbbbbbb-bbbb-4111-8111-111111111111";
 const OLD_PHOTO = `${COMPANY}/pets/${PET}/photo/old/main.jpg`;
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
+}
+
 function imageFile(bytes: Uint8Array, name: string, type: string) {
-  return new File([new Blob([bytes], { type })], name, { type });
+  return new File([new Blob([toArrayBuffer(bytes)], { type })], name, { type });
 }
 
 describe("uploadPetPhoto", () => {
@@ -140,9 +146,11 @@ describe("uploadPetPhoto", () => {
   });
 
   it("thumbnail inválida falha sem persistir", async () => {
-    const garbage = new File([new Blob([Uint8Array.from([0x00, 0x01])])], "thumb.webp", {
-      type: "image/webp",
-    });
+    const garbage = new File(
+      [new Blob([toArrayBuffer(Uint8Array.from([0x00, 0x01]))])],
+      "thumb.webp",
+      { type: "image/webp" },
+    );
     const result = await run(imageFile(JPEG, "foto.jpg", "image/jpeg"), garbage);
     expect(result.error).toBeTruthy();
     expect(uploadMock).not.toHaveBeenCalled();

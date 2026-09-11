@@ -34,8 +34,10 @@ async function consumePair(
   const emailHash = hashRateLimitSubject([emailAction, "email", normalizeRateLimitEmail(email)]);
   const ipHash = hashRateLimitSubject([ipAction, "ip", ip]);
 
-  const rpc = (fn: string, args: { p_action: string; p_subject_hash: string }) =>
-    supabase.rpc(fn as "consume_sensitive_action_rate_limit", args);
+  const rpc = async (fn: string, args: { p_action: string; p_subject_hash: string }) => {
+    const result = await supabase.rpc(fn as "consume_sensitive_action_rate_limit", args);
+    return { data: result.data, error: result.error };
+  };
 
   const [emailDecision, ipDecision] = await Promise.all([
     consumeSensitiveActionRateLimit({ action: emailAction, subjectHash: emailHash, rpc }),
@@ -75,8 +77,10 @@ export async function enforceInviteRateLimit(options: {
   email: string;
 }): Promise<{ error: string; retryAfterSeconds?: number } | null> {
   const supabase = await createSupabaseServerClient();
-  const rpc = (fn: string, args: { p_action: string; p_subject_hash: string }) =>
-    supabase.rpc(fn as "consume_sensitive_action_rate_limit", args);
+  const rpc = async (fn: string, args: { p_action: string; p_subject_hash: string }) => {
+    const result = await supabase.rpc(fn as "consume_sensitive_action_rate_limit", args);
+    return { data: result.data, error: result.error };
+  };
 
   const actorHash = hashRateLimitSubject([
     "invite_actor",
