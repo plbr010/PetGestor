@@ -1,3 +1,23 @@
+## [0.49.0] — 2026-09-11
+
+### Corrigido — Auth, onboarding, convites, uploads e rate limit (BLOCO 8)
+
+- `complete_onboarding` serializa por `pg_advisory_xact_lock(auth.uid())`: duplo clique, retry e concorrência devolvem a mesma `company_id`
+- Membership **ativa** é idempotente; membership **só revogada** não cria empresa nova nem ressuscita acesso
+- Tenant ativo não é inferido por `ORDER BY created_at LIMIT 1`
+- Callback Auth sem `code` vai para erro; `next` continua só com caminho interno
+- Recuperação de senha: anti-enumeração **e** erro real do provider (indisponibilidade)
+- Cadastro/reenvio/convite pré-auth não revelam se o e-mail existe
+- Rate limit persistente/atômico no Postgres para login, cadastro, recovery, reenvio e convites
+- Substituição de foto: path UUID novo → upload → persistir DB → só então apagar a antiga; magic bytes no servidor
+- Tutorial: fonte persistida prevalece sobre `localStorage`
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911400000_bloco8_auth_onboarding_hardening.sql`
+
+Diagnóstico de legado (somente leitura): `docs/sql/diagnose-bloco-8-auth-onboarding.sql`
+
+Não reaplica BLOCOs 1–7. Não inicia BLOCO 9 (assinatura/preço/Mercado Pago).
+
 ## [0.48.2] — 2026-09-11
 
 ### Corrigido — due_date civil da venda PDV (hardening final do BLOCO 6)

@@ -5,10 +5,8 @@ import { revalidatePath } from "next/cache";
 import { buildPetPhotoPaths, extensionForMimeType } from "@/features/attachments/paths";
 import { petPhotoUploadSchema } from "@/features/attachments/schemas";
 import { removeFromCompanyStorage, uploadToCompanyStorage } from "@/features/attachments/storage";
-import {
-  mapAttachmentValidationError,
-  validateAttachmentMeta,
-} from "@/features/attachments/validation";
+import { mapAttachmentValidationError } from "@/features/attachments/validation";
+import { inspectUploadFile } from "@/lib/security/file-signature";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -41,6 +39,24 @@ function readOptionalThumb(formData: FormData): File | null {
   return value;
 }
 
+async function cleanupNewFiles(paths: string[]): Promise<void> {
+  const result = await removeFromCompanyStorage(paths);
+  if (result.error && process.env.NODE_ENV === "development") {
+    console.info("[storage] orphan_cleanup_failed", { name: result.error.name ?? null });
+  }
+}
+
+/**
+ * Substituição fail-safe:
+ * 1. valida o arquivo novo
+ * 2. gera path único
+ * 3. faz upload do novo
+ * 4. persiste no banco
+ * 5. só então remove o arquivo antigo
+ *
+ * Se 2–4 falhar, a foto antiga permanece. Órfão novo é limpo em best-effort
+ * sem esconder o erro principal.
+ */
 export async function uploadPetPhoto(
   petId: string,
   formData: FormData,
@@ -58,13 +74,16 @@ export async function uploadPetPhoto(
     return { error: "Selecione uma foto para enviar." };
   }
 
-  const validation = validateAttachmentMeta(file.type, file.size);
-  if (!validation.ok || validation.mimeType === "application/pdf") {
-    return {
-      error: mapAttachmentValidationError(
-        validation.ok ? "invalid_mime_type" : validation.error,
-      ),
-    };
+  const inspection = await inspectUploadFile(file, { imagesOnly: true });
+  if (!inspection.ok) {
+    return { error: mapAttachmentValidationError(inspection.error) };
+  }
+
+  if (thumbFile) {
+    const thumbInspection = await inspectUploadFile(thumbFile, { imagesOnly: true });
+    if (!thumbInspection.ok) {
+      return { error: mapAttachmentValidationError("invalid_image_payload") };
+    }
   }
 
   const context = await requirePermission("pets.edit");
@@ -100,12 +119,14 @@ export async function uploadPetPhoto(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const ext = extensionForMimeType(validation.mimeType) ?? "webp";
+  const ext = extensionForMimeType(inspection.mimeType) ?? "webp";
   const paths = buildPetPhotoPaths(companyId, petId, ext);
-  const contentType = thumbFile ? "image/webp" : validation.mimeType;
+  const contentType = thumbFile ? "image/webp" : inspection.mimeType;
+  const newPaths = [paths.filePath, paths.thumbPath];
 
   const uploadResult = await uploadToCompanyStorage(paths.filePath, file, contentType);
   if (uploadResult.error) {
+    await cleanupNewFiles([paths.filePath]);
     return { error: mapAttachmentValidationError("storage_upload_failed") };
   }
 
@@ -114,20 +135,23 @@ export async function uploadPetPhoto(
   if (thumbFile) {
     const thumbUpload = await uploadToCompanyStorage(paths.thumbPath, thumbFile, "image/webp");
     if (thumbUpload.error) {
-      await removeFromCompanyStorage([paths.filePath]);
+      await cleanupNewFiles(newPaths);
       return { error: mapAttachmentValidationError("storage_upload_failed") };
     }
     thumbPath = paths.thumbPath;
   } else {
     const thumbUpload = await uploadToCompanyStorage(paths.thumbPath, file, contentType);
-    if (!thumbUpload.error) {
-      thumbPath = paths.thumbPath;
-    } else {
-      thumbPath = paths.filePath;
+    if (thumbUpload.error) {
+      await cleanupNewFiles(newPaths);
+      return { error: mapAttachmentValidationError("invalid_image_payload") };
     }
+    thumbPath = paths.thumbPath;
   }
 
-  const oldPaths = [pet.photo_storage_path, pet.photo_thumb_path].filter(Boolean) as string[];
+  const oldPaths = [pet.photo_storage_path, pet.photo_thumb_path].filter(
+    (path): path is string => Boolean(path) && path !== paths.filePath && path !== paths.thumbPath,
+  );
+
   const { error } = await supabase
     .from("pets")
     .update({
@@ -139,7 +163,7 @@ export async function uploadPetPhoto(
     .eq("id", petId);
 
   if (error) {
-    await removeFromCompanyStorage([paths.filePath, paths.thumbPath]);
+    await cleanupNewFiles(newPaths);
     if (error.code === "42703" || error.message?.includes("photo_storage_path")) {
       return { error: mapAttachmentValidationError("attachments_migration_required") };
     }
@@ -147,7 +171,10 @@ export async function uploadPetPhoto(
   }
 
   if (oldPaths.length > 0) {
-    await removeFromCompanyStorage(oldPaths);
+    const removed = await removeFromCompanyStorage(oldPaths);
+    if (removed.error && process.env.NODE_ENV === "development") {
+      console.info("[storage] old_photo_cleanup_failed", { name: removed.error.name ?? null });
+    }
   }
 
   revalidatePetPaths(petId);

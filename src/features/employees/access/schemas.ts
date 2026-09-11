@@ -11,16 +11,18 @@ import {
 
 export const employeeAccessFormSchema = z.object({
   email: z
-    .string()
+    .string({ error: "Informe um e-mail válido." })
     .trim()
+    .toLowerCase()
     .min(3, "Informe um e-mail válido.")
     .max(254, "E-mail muito longo.")
-    .email("Informe um e-mail válido."),
+    .pipe(z.email("Informe um e-mail válido.")),
   accessProfile: z.enum(
     ASSIGNABLE_ACCESS_PROFILES as unknown as [
       AccessProfile,
       ...AccessProfile[],
     ],
+    { error: "Selecione um perfil de acesso válido." },
   ),
   ownScheduleOnly: z.boolean(),
   permissions: z.array(z.string()).transform((values, ctx) => {
@@ -65,6 +67,7 @@ export function parseEmployeeAccessUpdateForm(formData: FormData) {
         AccessProfile,
         ...AccessProfile[],
       ],
+      { error: "Selecione um perfil de acesso válido." },
     ),
   });
 

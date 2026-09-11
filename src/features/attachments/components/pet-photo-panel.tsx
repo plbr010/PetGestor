@@ -9,6 +9,7 @@ import {
   type AttachmentActionState,
 } from "@/features/attachments/actions";
 import { prepareImageUpload } from "@/features/attachments/image-client";
+import { MAX_IMAGE_BYTES } from "@/features/attachments/constants";
 import type { PetPhotoView } from "@/features/attachments/types";
 import { FormFeedback } from "@/components/shared/form-feedback";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -55,6 +56,11 @@ export function PetPhotoPanel({
       return;
     }
 
+    if (file.size > MAX_IMAGE_BYTES) {
+      setLocalError("Arquivo muito grande. O limite é 10 MB.");
+      return;
+    }
+
     try {
       const prepared = await prepareImageUpload(file);
       formData.set("file", new File([prepared.optimized], "photo.webp", { type: "image/webp" }));
@@ -86,7 +92,7 @@ export function PetPhotoPanel({
         setLocalError(
           payload.error ??
             (response.status === 413
-              ? "Arquivo muito grande. Tente outra foto."
+              ? "Arquivo muito grande. O limite é 10 MB."
               : "Não foi possível enviar a foto. Tente novamente."),
         );
         return;
@@ -122,7 +128,7 @@ export function PetPhotoPanel({
         <div>
           <h3 className="font-medium">Foto do pet</h3>
           <p className="text-sm text-muted-foreground">
-            Aparece na ficha e em listagens quando disponível.
+            Aparece na ficha e em listagens quando disponível. JPG, PNG ou WebP até 10 MB.
           </p>
         </div>
 

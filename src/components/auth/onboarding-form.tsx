@@ -6,6 +6,7 @@ import {
   completeOnboardingAction,
   type AuthActionState,
 } from "@/features/auth/actions";
+import { useDismissibleAuthFeedback } from "@/components/auth/use-dismissible-auth-feedback";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ export function OnboardingForm({
     completeOnboardingAction,
     initialState,
   );
+  const feedback = useDismissibleAuthFeedback(state);
   const [phone, setPhone] = useState(defaultPhone ? formatPhoneInput(defaultPhone) : "");
 
   return (
@@ -48,7 +50,7 @@ export function OnboardingForm({
       </CardHeader>
       <CardContent>
         <form className="space-y-4" action={formAction} noValidate>
-          {state.error ? <ErrorMessage message={state.error} /> : null}
+          {feedback.error ? <ErrorMessage message={feedback.error} /> : null}
 
           <div className="space-y-2">
             <Label htmlFor="fullName">Seu nome</Label>
@@ -59,6 +61,8 @@ export function OnboardingForm({
               placeholder="Ex.: Ana Silva"
               autoComplete="name"
               required
+              maxLength={120}
+              onChange={feedback.clear}
             />
           </div>
 
@@ -71,6 +75,8 @@ export function OnboardingForm({
               placeholder="Ex.: Pet Shop Amigo Fiel"
               autoComplete="organization"
               required
+              maxLength={120}
+              onChange={feedback.clear}
             />
           </div>
 
@@ -84,7 +90,10 @@ export function OnboardingForm({
               autoComplete="tel"
               placeholder="(32) 99999-9999"
               value={phone}
-              onChange={(event) => setPhone(formatPhoneInput(event.target.value))}
+              onChange={(event) => {
+                feedback.clear();
+                setPhone(formatPhoneInput(event.target.value));
+              }}
               required
             />
           </div>

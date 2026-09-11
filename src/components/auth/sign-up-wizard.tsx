@@ -1,20 +1,14 @@
 "use client";
 
-import { useActionState, useState, useTransition, type FormEvent } from "react";
+import { useActionState, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowLeft, BriefcaseBusiness, UserRound } from "lucide-react";
 
 import { signUpAction, type AuthActionState } from "@/features/auth/actions";
 import { trackMetaSignupStarted } from "@/lib/analytics/meta-pixel";
-import {
-  lookupPendingInviteByEmailAction,
-  type InviteLookupResult,
-} from "@/features/employees/access/lookup-invite";
-import {
-  getAccessProfileHighlights,
-  getAccessProfileLabel,
-} from "@/features/employees/access/invite-profile-summary";
+import { lookupPendingInviteByEmailAction } from "@/features/employees/access/lookup-invite";
 import { ErrorMessage } from "@/components/shared/error-message";
+import { useDismissibleAuthFeedback } from "@/components/auth/use-dismissible-auth-feedback";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,13 +25,7 @@ import { cn } from "@/lib/utils";
 
 const initialState: AuthActionState = {};
 
-type WizardStep =
-  | "choice"
-  | "owner-form"
-  | "staff-email"
-  | "staff-found"
-  | "staff-missing"
-  | "staff-form";
+type WizardStep = "choice" | "owner-form" | "staff-email" | "staff-form";
 
 type SignUpWizardProps = {
   initialStep?: WizardStep;
@@ -50,49 +38,29 @@ export function SignUpWizard({
 }: SignUpWizardProps) {
   const [step, setStep] = useState<WizardStep>(initialStep);
   const [email, setEmail] = useState(initialEmail);
-  const [invite, setInvite] = useState<Extract<InviteLookupResult, { found: true }> | null>(
-    null,
-  );
   const [lookupError, setLookupError] = useState<string | null>(null);
-  const [lookupReason, setLookupReason] = useState<string | null>(null);
-  const [lookupPending, startLookup] = useTransition();
-  const [phone, setPhone] = useState("");
-  const [ownerState, ownerAction, ownerPending] = useActionState(signUpAction, initialState);
-  const [staffState, staffAction, staffPending] = useActionState(signUpAction, initialState);
+  const [lookupPending, setLookupPending] = useState(false);
 
   function goChoice() {
     setStep("choice");
     setLookupError(null);
-    setLookupReason(null);
   }
 
-  function handleLookup(event: FormEvent<HTMLFormElement>) {
+  async function handleStaffEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLookupError(null);
-    setLookupReason(null);
-
-    startLookup(async () => {
+    setLookupPending(true);
+    try {
       const result = await lookupPendingInviteByEmailAction(email);
-
-      if (result.found) {
-        setInvite(result);
-        setEmail(result.email);
-        setLookupReason(null);
-        setStep("staff-found");
+      if (!result.ok) {
+        setLookupError(result.error);
         return;
       }
-
-      setInvite(null);
       setEmail(result.email);
-      setLookupReason(result.reason);
-
-      if (result.reason === "invalid_email") {
-        setLookupError("Informe um e-mail válido.");
-        return;
-      }
-
-      setStep("staff-missing");
-    });
+      setStep("staff-form");
+    } finally {
+      setLookupPending(false);
+    }
   }
 
   if (step === "choice") {
@@ -171,31 +139,36 @@ export function SignUpWizard({
           </button>
           <CardTitle className="text-2xl">Entrar como funcionário</CardTitle>
           <CardDescription>
-            Para entrar em um pet shop, você precisa receber um convite do administrador.
+            Se o administrador enviou um convite para este e-mail, você poderá aceitá-lo depois de
+            criar a conta.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={handleLookup} noValidate>
+          <form className="space-y-4" onSubmit={handleStaffEmail} noValidate>
             {lookupError ? <ErrorMessage message={lookupError} /> : null}
 
             <div className="space-y-2">
-              <Label htmlFor="invite-email">E-mail do convite</Label>
+              <Label htmlFor="invite-email">E-mail</Label>
               <Input
                 id="invite-email"
                 type="email"
                 autoComplete="email"
                 required
+                maxLength={254}
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setLookupError(null);
+                  setEmail(event.target.value);
+                }}
                 placeholder="seu@email.com"
               />
               <p className="text-xs text-muted-foreground">
-                Use exatamente o e-mail que o administrador cadastrou no convite.
+                Use o mesmo e-mail informado pelo administrador. Não revelamos se já existe convite.
               </p>
             </div>
 
             <Button type="submit" className="h-10 w-full" disabled={lookupPending}>
-              {lookupPending ? "Verificando..." : "Continuar"}
+              {lookupPending ? "Continuando..." : "Continuar"}
             </Button>
           </form>
         </CardContent>
@@ -214,224 +187,129 @@ export function SignUpWizard({
     );
   }
 
-  if (step === "staff-missing") {
-    const rpcMissing =
-      lookupReason === "rpc_unavailable" || lookupReason === "rpc_error" || lookupReason === "exception";
-
-    return (
-      <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
-        <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl">
-            {rpcMissing ? "Convite indisponível no momento" : "Convite não encontrado"}
-          </CardTitle>
-          <CardDescription>
-            {rpcMissing ? (
-              <>
-                O banco ainda não tem a função de busca de convite. O administrador precisa aplicar o
-                SQL <strong>docs/sql/FIX-CONVITE-AGORA.sql</strong> no Supabase.
-              </>
-            ) : (
-              <>
-                Não encontramos um convite pendente para{" "}
-                <strong>{email || "este e-mail"}</strong>.
-              </>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {rpcMissing ? (
-            <p className="text-sm text-muted-foreground">
-              Sem esse SQL no Supabase, o cadastro de funcionário nunca encontra o convite — mesmo
-              depois de clicar em “Dar acesso”.
-            </p>
-          ) : (
-            <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-              <li>
-                Peça ao administrador para abrir o funcionário →{" "}
-                <strong>Dar acesso ao PetGestor</strong> com exatamente este e-mail.
-              </li>
-              <li>
-                Se você já recebeu um link por WhatsApp ou e-mail do PetGestor, use esse link (não
-                este cadastro).
-              </li>
-              <li>
-                Se a conta já existe, vá em{" "}
-                <Link
-                  href="/entrar"
-                  className="font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  Entrar
-                </Link>{" "}
-                ou{" "}
-                <Link
-                  href="/recuperar-senha"
-                  className="font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  Recuperar senha
-                </Link>
-                , depois abra <strong>/convite</strong>.
-              </li>
-            </ul>
-          )}
-          <Button type="button" variant="outline" className="w-full" onClick={() => setStep("staff-email")}>
-            Voltar
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (step === "staff-found" && invite) {
-    const highlights = getAccessProfileHighlights(invite.accessProfile);
-    const profileLabel = getAccessProfileLabel(invite.accessProfile);
-    const expiresLabel = invite.expiresAt
-      ? new Intl.DateTimeFormat("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }).format(new Date(invite.expiresAt))
-      : null;
-
-    return (
-      <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
-        <CardHeader className="space-y-2">
-          <button
-            type="button"
-            onClick={() => setStep("staff-email")}
-            className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Voltar
-          </button>
-          <CardTitle className="text-2xl">Convite encontrado!</CardTitle>
-          <CardDescription>
-            Você foi convidado para fazer parte de{" "}
-            <span className="font-medium text-foreground">
-              {invite.companyName || "um pet shop"}
-            </span>
-            .
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-xl border bg-muted/30 px-4 py-3 text-sm">
-            <p>
-              <span className="text-muted-foreground">Perfil: </span>
-              <strong>{profileLabel}</strong>
-            </p>
-            {highlights.length > 0 ? (
-              <p className="mt-2 text-muted-foreground">
-                Principais acessos: {highlights.join(", ")}.
-              </p>
-            ) : null}
-            {expiresLabel ? (
-              <p className="mt-2 text-xs text-muted-foreground">Válido até {expiresLabel}.</p>
-            ) : null}
-          </div>
-
-          <Button type="button" className="h-11 w-full" onClick={() => setStep("staff-form")}>
-            Aceitar convite e criar minha conta
-          </Button>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Já tenho uma conta?{" "}
-            <Link
-              href="/entrar"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Entrar e aceitar o convite
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   if (step === "staff-form") {
     return (
-      <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
-        <CardHeader className="space-y-2">
-          <button
-            type="button"
-            onClick={() => setStep(invite ? "staff-found" : "staff-email")}
-            className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Voltar
-          </button>
-          <CardTitle className="text-2xl">Criar sua conta</CardTitle>
-          <CardDescription>
-            Nenhuma empresa nova será criada. Você entrará no pet shop que te convidou.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" action={staffAction} noValidate>
-            <input type="hidden" name="mode" value="staff" />
-            {staffState.error ? <ErrorMessage message={staffState.error} /> : null}
-
-            <div className="space-y-2">
-              <Label htmlFor="staff-fullName">Seu nome</Label>
-              <Input
-                id="staff-fullName"
-                name="fullName"
-                placeholder="Ex.: Ana Silva"
-                autoComplete="name"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="staff-email">E-mail</Label>
-              <Input
-                id="staff-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="staff-password">Senha</Label>
-              <Input
-                id="staff-password"
-                name="password"
-                type="password"
-                placeholder="Mínimo 8 caracteres"
-                autoComplete="new-password"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="staff-confirmPassword">Confirmar senha</Label>
-              <Input
-                id="staff-confirmPassword"
-                name="confirmPassword"
-                type="password"
-                placeholder="Repita a senha"
-                autoComplete="new-password"
-                required
-              />
-            </div>
-
-            <Button type="submit" className="h-10 w-full" disabled={staffPending}>
-              {staffPending ? "Criando conta..." : "Criar conta e continuar"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <StaffSignUpForm email={email} onEmailChange={setEmail} onBack={() => setStep("staff-email")} />
     );
   }
 
-  // owner-form
+  return <OwnerSignUpForm onBack={goChoice} />;
+}
+
+function StaffSignUpForm({
+  email,
+  onEmailChange,
+  onBack,
+}: {
+  email: string;
+  onEmailChange: (value: string) => void;
+  onBack: () => void;
+}) {
+  const [state, formAction, isPending] = useActionState(signUpAction, initialState);
+  const feedback = useDismissibleAuthFeedback(state);
+
   return (
     <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
       <CardHeader className="space-y-2">
         <button
           type="button"
-          onClick={goChoice}
+          onClick={onBack}
+          className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Voltar
+        </button>
+        <CardTitle className="text-2xl">Criar sua conta</CardTitle>
+        <CardDescription>
+          Nenhuma empresa nova será criada. Se houver convite para este e-mail, ele aparece depois
+          do cadastro.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-4" action={formAction} noValidate>
+          <input type="hidden" name="mode" value="staff" />
+          {feedback.error ? <ErrorMessage message={feedback.error} /> : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="staff-fullName">Seu nome</Label>
+            <Input
+              id="staff-fullName"
+              name="fullName"
+              placeholder="Ex.: Ana Silva"
+              autoComplete="name"
+              required
+              maxLength={120}
+              onChange={feedback.clear}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="staff-email">E-mail</Label>
+            <Input
+              id="staff-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              maxLength={254}
+              value={email}
+              onChange={(event) => {
+                feedback.clear();
+                onEmailChange(event.target.value);
+              }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="staff-password">Senha</Label>
+            <Input
+              id="staff-password"
+              name="password"
+              type="password"
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              maxLength={128}
+              onChange={feedback.clear}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="staff-confirmPassword">Confirmar senha</Label>
+            <Input
+              id="staff-confirmPassword"
+              name="confirmPassword"
+              type="password"
+              placeholder="Repita a senha"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              maxLength={128}
+              onChange={feedback.clear}
+            />
+          </div>
+
+          <Button type="submit" className="h-10 w-full" disabled={isPending}>
+            {isPending ? "Criando conta..." : "Criar conta e continuar"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OwnerSignUpForm({ onBack }: { onBack: () => void }) {
+  const [state, formAction, isPending] = useActionState(signUpAction, initialState);
+  const feedback = useDismissibleAuthFeedback(state);
+  const [phone, setPhone] = useState("");
+
+  return (
+    <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
+      <CardHeader className="space-y-2">
+        <button
+          type="button"
+          onClick={onBack}
           className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -443,9 +321,9 @@ export function SignUpWizard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="space-y-4" action={ownerAction} noValidate>
+        <form className="space-y-4" action={formAction} noValidate>
           <input type="hidden" name="mode" value="owner" />
-          {ownerState.error ? <ErrorMessage message={ownerState.error} /> : null}
+          {feedback.error ? <ErrorMessage message={feedback.error} /> : null}
 
           <div className="space-y-2">
             <Label htmlFor="fullName">Seu nome</Label>
@@ -455,6 +333,8 @@ export function SignUpWizard({
               placeholder="Ex.: Ana Silva"
               autoComplete="name"
               required
+              maxLength={120}
+              onChange={feedback.clear}
             />
           </div>
 
@@ -466,6 +346,8 @@ export function SignUpWizard({
               placeholder="Ex.: Pet Shop Amigo Fiel"
               autoComplete="organization"
               required
+              maxLength={120}
+              onChange={feedback.clear}
             />
           </div>
 
@@ -479,7 +361,10 @@ export function SignUpWizard({
               autoComplete="tel"
               placeholder="(32) 99999-9999"
               value={phone}
-              onChange={(event) => setPhone(formatPhoneInput(event.target.value))}
+              onChange={(event) => {
+                feedback.clear();
+                setPhone(formatPhoneInput(event.target.value));
+              }}
               required
             />
           </div>
@@ -493,6 +378,8 @@ export function SignUpWizard({
               placeholder="seu@email.com"
               autoComplete="email"
               required
+              maxLength={254}
+              onChange={feedback.clear}
             />
           </div>
 
@@ -505,6 +392,9 @@ export function SignUpWizard({
               placeholder="Mínimo 8 caracteres"
               autoComplete="new-password"
               required
+              minLength={8}
+              maxLength={128}
+              onChange={feedback.clear}
             />
           </div>
 
@@ -517,11 +407,14 @@ export function SignUpWizard({
               placeholder="Repita a senha"
               autoComplete="new-password"
               required
+              minLength={8}
+              maxLength={128}
+              onChange={feedback.clear}
             />
           </div>
 
-          <Button type="submit" className="h-10 w-full" disabled={ownerPending}>
-            {ownerPending ? "Criando conta..." : "Criar conta"}
+          <Button type="submit" className="h-10 w-full" disabled={isPending}>
+            {isPending ? "Criando conta..." : "Criar conta"}
           </Button>
         </form>
       </CardContent>

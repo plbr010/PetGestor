@@ -33,7 +33,15 @@ export function mapAttachmentValidationError(code: string): string {
   }
 
   if (code === "invalid_file_size") {
-    return "Arquivo muito grande. Imagens até 8 MB e PDFs até 10 MB.";
+    return "Arquivo muito grande. O limite é 10 MB.";
+  }
+
+  if (code === "invalid_file_signature" || code === "invalid_file_extension") {
+    return "O arquivo enviado não corresponde a um tipo permitido.";
+  }
+
+  if (code === "invalid_image_payload") {
+    return "A imagem está corrompida ou não pôde ser processada.";
   }
 
   if (code === "pet_not_found" || code === "service_order_not_found") {

@@ -7,6 +7,7 @@ import {
   passwordRecoveryAction,
   type AuthActionState,
 } from "@/features/auth/actions";
+import { useDismissibleAuthFeedback } from "@/components/auth/use-dismissible-auth-feedback";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export function PasswordRecoveryForm() {
     passwordRecoveryAction,
     initialState,
   );
+  const feedback = useDismissibleAuthFeedback(state);
 
   return (
     <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
@@ -38,13 +40,13 @@ export function PasswordRecoveryForm() {
       </CardHeader>
       <CardContent>
         <form className="space-y-4" action={formAction} noValidate>
-          {state.error ? <ErrorMessage message={state.error} /> : null}
-          {state.success ? (
+          {feedback.error ? <ErrorMessage message={feedback.error} /> : null}
+          {feedback.success ? (
             <div
               className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-foreground"
               role="status"
             >
-              {state.success}
+              {feedback.success}
             </div>
           ) : null}
 
@@ -57,6 +59,8 @@ export function PasswordRecoveryForm() {
               placeholder="seu@email.com"
               autoComplete="email"
               required
+              maxLength={254}
+              onChange={feedback.clear}
             />
           </div>
 

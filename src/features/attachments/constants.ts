@@ -11,8 +11,9 @@ export type AllowedAttachmentMimeType = (typeof ALLOWED_ATTACHMENT_MIME_TYPES)[n
 
 export const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
-export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 export const PET_ATTACHMENT_CATEGORIES = [

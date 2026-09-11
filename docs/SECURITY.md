@@ -62,7 +62,8 @@ Guard de rota: o proxy copia `x-pathname` para os headers da **request** (`NextR
 
 Função controlada de onboarding:
 
-- `public.complete_onboarding(full_name, company_name)` — EXECUTE apenas para `authenticated`
+- `public.complete_onboarding(full_name, company_name, phone)` — EXECUTE apenas para `authenticated`
+- Lock transacional por `auth.uid()`; membership revogada não conclui onboarding nem cria outra empresa
 
 ### Dados de negócio (Etapa 4)
 
@@ -140,7 +141,10 @@ Operações mutáveis usam **Server Actions** ou Route Handlers POST/GET apropri
 
 ## Rate limiting
 
-Limites nativos do Supabase Auth em desenvolvimento. Infraestrutura adicional antes de produção.
+- Limites nativos do Supabase Auth
+- Rate limit dedicado (BLOCO 8): RPC `consume_sensitive_action_rate_limit` + tabela `private.sensitive_action_rate_limits`
+- Chaves hasheadas (ação + e-mail/IP/empresa). Sem senha, token ou e-mail em claro
+- Atômico sob concorrência (`ON CONFLICT` + advisory lock)
 
 ## Variáveis de ambiente
 
@@ -176,7 +180,6 @@ Ver `docs/SERVICE_ORDERS.md`.
 
 ## Próximas implementações
 
-- Rate limiting dedicado
 - SMTP próprio para e-mail transacional
 - Revisão de headers e CSP no deploy
 - Auditoria de ações sensíveis

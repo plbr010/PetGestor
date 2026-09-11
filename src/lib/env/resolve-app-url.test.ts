@@ -124,6 +124,27 @@ describe("getSiteUrl", () => {
     await expect(getSiteUrl()).resolves.toBe("https://pet-gestor-sepia.vercel.app");
   });
 
+  it("não aceita host localhost via header em production", async () => {
+    vi.stubEnv("APP_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
+    vi.stubEnv("VERCEL_URL", "");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+
+    vi.doMock("next/headers", () => ({
+      headers: async () => ({
+        get: (name: string) => {
+          if (name === "x-forwarded-host") return "localhost:3000";
+          if (name === "x-forwarded-proto") return "http";
+          return null;
+        },
+      }),
+    }));
+
+    const { getSiteUrl, AppUrlConfigError } = await import("@/lib/auth/get-site-url");
+    await expect(getSiteUrl()).rejects.toBeInstanceOf(AppUrlConfigError);
+  });
+
   it("não cai em localhost em production sem env/headers", async () => {
     vi.stubEnv("APP_URL", "");
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "");

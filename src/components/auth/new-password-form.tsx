@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import { updatePasswordAction, type AuthActionState } from "@/features/auth/actions";
+import { useDismissibleAuthFeedback } from "@/components/auth/use-dismissible-auth-feedback";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,11 +38,13 @@ function PasswordFields({
   redirectTo?: string;
   showBackLink: boolean;
 }) {
+  const feedback = useDismissibleAuthFeedback(state);
+
   return (
     <>
       <form className="space-y-4" action={formAction} noValidate>
         {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
-        {state.error ? <ErrorMessage message={state.error} /> : null}
+        {feedback.error ? <ErrorMessage message={feedback.error} /> : null}
 
         <div className="space-y-2">
           <Label htmlFor="password">Nova senha</Label>
@@ -52,6 +55,9 @@ function PasswordFields({
             placeholder="Mínimo 8 caracteres"
             autoComplete="new-password"
             required
+            minLength={8}
+            maxLength={128}
+            onChange={feedback.clear}
           />
         </div>
 
@@ -64,6 +70,9 @@ function PasswordFields({
             placeholder="Repita a nova senha"
             autoComplete="new-password"
             required
+            minLength={8}
+            maxLength={128}
+            onChange={feedback.clear}
           />
         </div>
 

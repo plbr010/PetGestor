@@ -12,7 +12,9 @@ describe("getSafeRedirectPath", () => {
   });
 
   it("bloqueia URL externa", () => {
+    expect(getSafeRedirectPath("javascript:alert(1)")).toBe("/dashboard");
     expect(getSafeRedirectPath("https://evil.com")).toBe("/dashboard");
+    expect(getSafeRedirectPath("//evil.com")).toBe("/dashboard");
   });
 
   it("bloqueia protocol-relative", () => {

@@ -52,12 +52,15 @@ A rota `/auth/confirm`:
 
 Usuários autenticados sem empresa são enviados para `/onboarding`.
 
-A Server Action chama a função PostgreSQL `complete_onboarding(full_name, company_name)` que:
+A Server Action chama a função PostgreSQL `complete_onboarding(full_name, company_name, phone)` que:
 
 - exige `auth.uid()`;
+- serializa a transação com `pg_advisory_xact_lock` por usuário;
 - cria/atualiza `profiles`;
-- cria `companies` + `company_members` (role `owner`) atomicamente;
-- não duplica empresa se já existir membership.
+- se já existe **membership ativa**, devolve essa `company_id` (idempotente);
+- se só existe membership **revogada**, falha com `onboarding_access_revoked` (não cria empresa, não reativa acesso);
+- senão cria `companies` + `company_members` (role `owner`) atomicamente;
+- o trial continua sendo criado pelo trigger existente em `companies` (sem hardcode de duração neste bloco).
 
 ## Sessão SSR e Proxy
 
@@ -73,7 +76,19 @@ Layouts protegidos usam `getClaims()` (nunca `getSession()` para autorização).
 2. Callback troca `code` por sessão quando necessário (PKCE).
 3. `/nova-senha` exige sessão válida e chama `updateUser`.
 
-Mensagem genérica sempre: “Se houver uma conta associada a esse e-mail…”
+Mensagem genérica sempre (conta existente ou não): “Se houver uma conta associada a esse e-mail…”
+
+Se o provider Auth estiver indisponível (5xx, 429, timeout): mensagem de indisponibilidade temporária, sem revelar se a conta existe.
+
+## Rate limiting
+
+Limites nativos do Supabase Auth **e** rate limit dedicado persistente:
+
+- Tabela `private.sensitive_action_rate_limits` (hash SHA-256 da ação + identificador, sem e-mail em claro)
+- RPC atômica `consume_sensitive_action_rate_limit` (`INSERT … ON CONFLICT` + `pg_advisory_xact_lock`)
+- Ações: login, cadastro, recuperação, reenvio de confirmação, convites
+- Chave: ação + e-mail normalizado (hash) + IP quando disponível
+- Ao exceder: “Muitas tentativas. Aguarde alguns minutos e tente novamente.”
 
 ## Logout
 
@@ -94,11 +109,7 @@ Server Action `signOutAction`:
 
 ## Open redirect
 
-Helper `getSafeRedirectPath` aceita apenas caminhos internos iniciados por `/`.
-
-## Rate limiting
-
-Limites nativos do Supabase Auth em desenvolvimento. Rate limiting adicional será adicionado antes de produção.
+Helper `getSafeRedirectPath` aceita apenas caminhos internos iniciados por `/`. Callback sem `code` ou com erro do provider cai em `/auth/erro`.
 
 ## Convite de funcionário (e-mail)
 
@@ -110,6 +121,8 @@ Ao conceder acesso em **Funcionários → Acesso ao sistema**, se ainda **não**
 4. O funcionário abre o link → confirma / define senha → cai em `/convite` e aceita o vínculo.
 
 **Importante:** usuários Auth criados pelo convite (ainda sem `email_confirmed_at`) **não** são auto-vinculados. Só contas já confirmadas entram no caminho `linked`.
+
+O cadastro “Sou funcionário” **não** consulta convite por e-mail antes da autenticação (anti-enumeração). A existência do convite só é confirmada em `/convite` com sessão.
 
 Se a conta Auth já estiver confirmada, o RPC vincula na hora. Alternativa: `/cadastro` → “Sou funcionário”.
 

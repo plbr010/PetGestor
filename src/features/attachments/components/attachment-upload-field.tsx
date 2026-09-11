@@ -4,6 +4,7 @@ import { useActionState, useId, useState } from "react";
 import { Camera, FileUp, Loader2 } from "lucide-react";
 
 import type { AttachmentActionState } from "@/features/attachments/actions";
+import { MAX_UPLOAD_BYTES } from "@/features/attachments/constants";
 import {
   prepareImageUpload,
   shouldOptimizeImage,
@@ -43,11 +44,13 @@ export function AttachmentUploadField({
   const [state, formAction, isPending] = useActionState(action, initialState);
   const [localError, setLocalError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [hideServerFeedback, setHideServerFeedback] = useState(false);
   const formId = useId();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLocalError(null);
+    setHideServerFeedback(false);
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -56,6 +59,11 @@ export function AttachmentUploadField({
 
     if (!file) {
       setLocalError("Selecione um arquivo.");
+      return;
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setLocalError("Arquivo muito grande. O limite é 10 MB.");
       return;
     }
 
@@ -82,8 +90,12 @@ export function AttachmentUploadField({
         <input key={key} type="hidden" name={key} value={value} />
       ))}
 
-      {state.error ? <FormFeedback message={state.error} variant="error" /> : null}
-      {state.success ? <FormFeedback message={state.success} variant="success" /> : null}
+      {state.error && !hideServerFeedback ? (
+        <FormFeedback message={state.error} variant="error" />
+      ) : null}
+      {state.success && !hideServerFeedback ? (
+        <FormFeedback message={state.success} variant="success" />
+      ) : null}
       {localError ? <FormFeedback message={localError} variant="error" /> : null}
 
       <div className="space-y-2">
@@ -95,7 +107,11 @@ export function AttachmentUploadField({
             type="file"
             accept={accept}
             className="min-h-11"
-            onChange={(event) => setFileName(event.target.files?.[0]?.name ?? null)}
+            onChange={(event) => {
+              setFileName(event.target.files?.[0]?.name ?? null);
+              setLocalError(null);
+              setHideServerFeedback(true);
+            }}
           />
           <div className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm text-muted-foreground">
             {accept.includes("image") ? <Camera className="size-4" /> : <FileUp className="size-4" />}

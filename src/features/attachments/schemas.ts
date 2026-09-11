@@ -6,21 +6,36 @@ import {
   SERVICE_ORDER_ATTACHMENT_CATEGORIES,
 } from "@/features/attachments/constants";
 
+const uuidField = z.string({ error: "Dados inválidos." }).uuid("Dados inválidos.");
+
+const descriptionField = z
+  .string({ error: "Descrição inválida." })
+  .trim()
+  .max(500, "A descrição deve ter no máximo 500 caracteres.")
+  .nullable()
+  .optional();
+
 export const petAttachmentUploadSchema = z.object({
-  petId: z.string().uuid(),
-  category: z.enum(PET_ATTACHMENT_CATEGORIES),
-  description: z.string().trim().max(500).nullable().optional(),
+  petId: uuidField,
+  category: z.enum(PET_ATTACHMENT_CATEGORIES, {
+    error: "Selecione uma categoria válida.",
+  }),
+  description: descriptionField,
 });
 
 export const serviceOrderAttachmentUploadSchema = z.object({
-  serviceOrderId: z.string().uuid(),
-  category: z.enum(SERVICE_ORDER_ATTACHMENT_CATEGORIES),
-  phase: z.enum(ATTACHMENT_PHASES).nullable(),
-  description: z.string().trim().max(500).nullable().optional(),
+  serviceOrderId: uuidField,
+  category: z.enum(SERVICE_ORDER_ATTACHMENT_CATEGORIES, {
+    error: "Selecione uma categoria válida.",
+  }),
+  phase: z
+    .enum(ATTACHMENT_PHASES, { error: "Informe se a foto é de antes ou depois." })
+    .nullable(),
+  description: descriptionField,
 });
 
 export const petPhotoUploadSchema = z.object({
-  petId: z.string().uuid(),
+  petId: uuidField,
 });
 
 function optionalDescription(value: FormDataEntryValue | null) {

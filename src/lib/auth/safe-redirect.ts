@@ -1,8 +1,21 @@
 const DEFAULT_REDIRECT = "/dashboard";
 
+function containsUnsafeRedirectToken(value: string): boolean {
+  const lower = value.toLowerCase();
+  return (
+    lower.includes("://") ||
+    lower.includes("\\") ||
+    lower.includes("%2f%2f") ||
+    lower.includes("%5c") ||
+    lower.includes("javascript:") ||
+    lower.includes("data:") ||
+    /\s/.test(value)
+  );
+}
+
 /**
  * Aceita apenas caminhos internos absolutos (ex.: `/dashboard`).
- * Bloqueia URLs externas e protocol-relative (`//`).
+ * Bloqueia URLs externas, protocol-relative (`//`) e esquemas perigosos.
  */
 export function getSafeRedirectPath(
   value: string | null | undefined,
@@ -12,17 +25,22 @@ export function getSafeRedirectPath(
     return fallback;
   }
 
-  const trimmed = value.trim();
-
-  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
+  let trimmed = value.trim();
+  if (!trimmed) {
     return fallback;
   }
 
-  if (trimmed.includes("://")) {
+  try {
+    trimmed = decodeURIComponent(trimmed);
+  } catch {
     return fallback;
   }
 
-  if (trimmed.includes("\\")) {
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.startsWith("/\\")) {
+    return fallback;
+  }
+
+  if (containsUnsafeRedirectToken(trimmed)) {
     return fallback;
   }
 

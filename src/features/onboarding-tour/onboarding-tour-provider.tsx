@@ -28,8 +28,8 @@ import {
   readLocalOnboardingFlags,
   writeLocalOnboardingFlags,
 } from "@/features/onboarding-tour/local-progress";
+import { mergeLocalIntoSnapshot } from "@/features/onboarding-tour/merge-local-snapshot";
 import {
-  buildOnboardingSnapshot,
   getGuidedStep,
   getGuidedStepIndex,
   isLastGuidedStep,
@@ -39,7 +39,6 @@ import {
 } from "@/features/onboarding-tour/steps";
 import type {
   OnboardingChecklistStepId,
-  OnboardingProgressRow,
   OnboardingSnapshot,
 } from "@/features/onboarding-tour/types";
 
@@ -113,50 +112,12 @@ const STEP_SUCCESS: Partial<
   },
 };
 
-function mergeLocalIntoSnapshot(
+function snapshotWithLocal(
   base: OnboardingSnapshot,
   companyId: string,
   userId: string,
 ): OnboardingSnapshot {
-  const local = readLocalOnboardingFlags(companyId, userId);
-  if (Object.keys(local).length === 0) {
-    return base;
-  }
-
-  const now = new Date().toISOString();
-  const progress: OnboardingProgressRow = {
-    id: base.progress?.id ?? "local",
-    companyId,
-    userId,
-    onboardingStartedAt: base.progress?.onboardingStartedAt ?? now,
-    welcomeSeenAt: base.progress?.welcomeSeenAt ?? (local.welcomeSeen ? now : null),
-    guidedStartedAt: base.progress?.guidedStartedAt ?? null,
-    guidedSkippedAt:
-      local.guidedSkipped === false
-        ? null
-        : (base.progress?.guidedSkippedAt ?? (local.guidedSkipped ? now : null)),
-    guidedActive: local.guidedActive ?? base.progress?.guidedActive ?? false,
-    lastGuidedStep: local.lastGuidedStep ?? base.progress?.lastGuidedStep ?? null,
-    workflowStepViewedAt:
-      base.progress?.workflowStepViewedAt ?? (local.workflowViewed ? now : null),
-    financeStepViewedAt:
-      base.progress?.financeStepViewedAt ?? (local.financeViewed ? now : null),
-    onboardingCompletedAt:
-      base.progress?.onboardingCompletedAt ?? (local.completed ? now : null),
-    checklistDismissedAt:
-      local.checklistDismissed === false
-        ? null
-        : (base.progress?.checklistDismissedAt ??
-          (local.checklistDismissed ? now : null)),
-    createdAt: base.progress?.createdAt ?? now,
-    updatedAt: now,
-  };
-
-  return buildOnboardingSnapshot({
-    counts: base.counts,
-    progress,
-    legacyTutorialCompletedAt: base.legacyTutorialCompletedAt,
-  });
+  return mergeLocalIntoSnapshot(base, companyId, userId, readLocalOnboardingFlags(companyId, userId));
 }
 
 type OnboardingTourProviderProps = {
@@ -180,7 +141,7 @@ export function OnboardingTourProvider({
   }, []);
 
   const snapshot = useMemo(
-    () => mergeLocalIntoSnapshot(initialSnapshot, companyId, userId),
+    () => snapshotWithLocal(initialSnapshot, companyId, userId),
     // localRevision força re-leitura do localStorage após writes locais
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
     [companyId, initialSnapshot, localRevision, userId],

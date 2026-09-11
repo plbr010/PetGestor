@@ -1,21 +1,34 @@
 import { redirect } from "next/navigation";
 
-import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
+import { resolveAuthCallbackRedirect } from "@/lib/auth/auth-redirects";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = getSafeRedirectPath(requestUrl.searchParams.get("next"));
+  const providerError = requestUrl.searchParams.get("error");
+  const next = requestUrl.searchParams.get("next");
 
-  if (code) {
-    const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-    if (error) {
-      redirect("/auth/erro?motivo=callback-falhou");
-    }
+  if (providerError || !code) {
+    redirect(
+      resolveAuthCallbackRedirect({
+        code,
+        next,
+        providerError,
+        exchangeError: false,
+      }).redirectTo,
+    );
   }
 
-  redirect(next);
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  redirect(
+    resolveAuthCallbackRedirect({
+      code,
+      next,
+      providerError: null,
+      exchangeError: Boolean(error),
+    }).redirectTo,
+  );
 }

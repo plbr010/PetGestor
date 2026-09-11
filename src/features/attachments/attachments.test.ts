@@ -45,9 +45,12 @@ function attachment(partial: Partial<AttachmentView>): AttachmentView {
 }
 
 describe("attachments", () => {
-  it("A) foto principal — path tenant-aware", () => {
-    const paths = buildPetPhotoPaths(COMPANY_A, PET_ID, "webp");
-    expect(paths.filePath).toBe(`${COMPANY_A}/pets/${PET_ID}/photo/main.webp`);
+  it("A) foto principal — path tenant-aware e imprevisível", () => {
+    const fileId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const paths = buildPetPhotoPaths(COMPANY_A, PET_ID, "webp", fileId);
+    expect(paths.filePath).toBe(
+      `${COMPANY_A}/pets/${PET_ID}/photo/${fileId}/main.webp`,
+    );
     expect(isPathInCompany(COMPANY_A, paths.filePath)).toBe(true);
     expect(isPathInCompany(COMPANY_B, paths.filePath)).toBe(false);
   });
@@ -72,7 +75,7 @@ describe("attachments", () => {
   });
 
   it("G) bloqueia arquivo grande", () => {
-    const result = validateAttachmentMeta("image/jpeg", 9 * 1024 * 1024);
+    const result = validateAttachmentMeta("image/jpeg", 11 * 1024 * 1024);
     expect(result.ok).toBe(false);
   });
 

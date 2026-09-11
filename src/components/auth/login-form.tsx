@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import { signInAction, type AuthActionState } from "@/features/auth/actions";
+import { useDismissibleAuthFeedback } from "@/components/auth/use-dismissible-auth-feedback";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ const initialState: AuthActionState = {};
 
 export function LoginForm() {
   const [state, formAction, isPending] = useActionState(signInAction, initialState);
+  const feedback = useDismissibleAuthFeedback(state);
 
   return (
     <Card className="border bg-card/95 shadow-lg backdrop-blur-sm">
@@ -32,7 +34,7 @@ export function LoginForm() {
       </CardHeader>
       <CardContent>
         <form className="space-y-4" action={formAction} noValidate>
-          {state.error ? <ErrorMessage message={state.error} /> : null}
+          {feedback.error ? <ErrorMessage message={feedback.error} /> : null}
 
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
@@ -43,6 +45,8 @@ export function LoginForm() {
               placeholder="seu@email.com"
               autoComplete="email"
               required
+              maxLength={254}
+              onChange={feedback.clear}
             />
           </div>
 
@@ -63,6 +67,8 @@ export function LoginForm() {
               placeholder="••••••••"
               autoComplete="current-password"
               required
+              maxLength={128}
+              onChange={feedback.clear}
             />
           </div>
 

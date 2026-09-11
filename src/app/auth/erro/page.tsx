@@ -25,6 +25,8 @@ const messages: Record<string, string> = {
     "Não foi possível confirmar seu e-mail. O link pode ter expirado ou já foi utilizado.",
   "callback-falhou":
     "Não foi possível concluir a autenticação. Tente novamente a partir do e-mail recebido.",
+  "callback-invalido":
+    "O link de autenticação está incompleto ou expirou. Solicite um novo e-mail para continuar.",
 };
 
 export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps) {

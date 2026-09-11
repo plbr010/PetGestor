@@ -2720,6 +2720,13 @@ export type Database = {
         Args: { p_email: string };
         Returns: Json;
       };
+      consume_sensitive_action_rate_limit: {
+        Args: {
+          p_action: string;
+          p_subject_hash: string;
+        };
+        Returns: Json;
+      };
       update_appointment: {
         Args: {
           p_appointment_id: string;

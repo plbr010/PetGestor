@@ -170,12 +170,14 @@ export async function resolveAuthLandingPath(): Promise<string> {
     return "/dashboard";
   }
 
-  const { data: anyMembership } = await supabase
+  const { data: revokedMembership } = await supabase
     .from("company_members")
     .select("company_id")
     .eq("user_id", data.claims.sub)
+    .not("access_revoked_at", "is", null)
+    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  return anyMembership ? "/dashboard" : "/onboarding";
+  return revokedMembership ? "/dashboard/acesso-revogado" : "/onboarding";
 }

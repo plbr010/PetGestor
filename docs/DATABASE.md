@@ -51,7 +51,8 @@ Criação via `complete_onboarding` — não via INSERT direto do cliente.
 
 | Função | Schema | Uso |
 |--------|--------|-----|
-| `complete_onboarding(full_name, company_name)` | public | Onboarding atômico |
+| `complete_onboarding(full_name, company_name, phone)` | public | Onboarding atômico + lock por usuário |
+| `consume_sensitive_action_rate_limit(action, subject_hash)` | public | Rate limit atômico (hash, sem e-mail) |
 | `is_company_member(company_id)` | private | Helper RLS |
 | `has_company_role(company_id, roles[])` | private | Helper RLS |
 | `set_updated_at()` | public | Trigger |

@@ -40,7 +40,6 @@ async function applyProgressPatch(
   });
 
   if (error) {
-    // Fallback se migration nova ainda não aplicada no remoto.
     if (patch.completed || patch.checklist_dismissed) {
       const legacy = await supabase.rpc("complete_onboarding_tutorial");
       if (legacy.error) {
@@ -51,12 +50,10 @@ async function applyProgressPatch(
     }
 
     if (process.env.NODE_ENV === "development") {
-      console.info("[onboarding_progress] upsert skipped:", error.message);
+      console.info("[onboarding_progress] upsert failed", { code: error.code ?? null });
     }
 
-    // Welcome / skip / step: UI local continua; checklist usa dados reais.
-    revalidateDashboard();
-    return { success: true, progress: null };
+    return { error: "Não foi possível salvar o progresso do tutorial." };
   }
 
   revalidateDashboard();

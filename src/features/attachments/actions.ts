@@ -14,10 +14,8 @@ import {
   parseServiceOrderAttachmentUploadForm,
 } from "@/features/attachments/schemas";
 import { removeFromCompanyStorage, uploadToCompanyStorage } from "@/features/attachments/storage";
-import {
-  mapAttachmentValidationError,
-  validateAttachmentMeta,
-} from "@/features/attachments/validation";
+import { mapAttachmentValidationError } from "@/features/attachments/validation";
+import { inspectUploadFile } from "@/lib/security/file-signature";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { rethrowNavigationErrors } from "@/lib/server-action-errors";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
@@ -161,9 +159,16 @@ export async function uploadPetAttachmentAction(
     return { error: "Selecione um arquivo para enviar." };
   }
 
-  const validation = validateAttachmentMeta(file.type, file.size);
+  const validation = await inspectUploadFile(file);
   if (!validation.ok) {
     return { error: mapAttachmentValidationError(validation.error) };
+  }
+
+  if (thumbFile) {
+    const thumbInspection = await inspectUploadFile(thumbFile, { imagesOnly: true });
+    if (!thumbInspection.ok) {
+      return { error: mapAttachmentValidationError("invalid_image_payload") };
+    }
   }
 
   const companyId = context.membership.company.id;
@@ -274,9 +279,16 @@ export async function uploadServiceOrderAttachmentAction(
     return { error: "Selecione um arquivo para enviar." };
   }
 
-  const validation = validateAttachmentMeta(file.type, file.size);
+  const validation = await inspectUploadFile(file);
   if (!validation.ok) {
     return { error: mapAttachmentValidationError(validation.error) };
+  }
+
+  if (thumbFile) {
+    const thumbInspection = await inspectUploadFile(thumbFile, { imagesOnly: true });
+    if (!thumbInspection.ok) {
+      return { error: mapAttachmentValidationError("invalid_image_payload") };
+    }
   }
 
   const companyId = context.membership.company.id;

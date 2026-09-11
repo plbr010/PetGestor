@@ -9,11 +9,18 @@ export function extensionForMimeType(mimeType: string): string | null {
   return MIME_TO_EXT[mimeType] ?? null;
 }
 
-export function buildPetPhotoPaths(companyId: string, petId: string, ext: string) {
-  const base = `${companyId}/pets/${petId}/photo`;
+export function buildPetPhotoPaths(
+  companyId: string,
+  petId: string,
+  ext: string,
+  fileId = crypto.randomUUID(),
+) {
+  const safeExt = ext.replace(/[^a-z0-9]/gi, "").toLowerCase() || "webp";
+  const base = `${companyId}/pets/${petId}/photo/${fileId}`;
   return {
-    filePath: `${base}/main.${ext}`,
+    filePath: `${base}/main.${safeExt}`,
     thumbPath: `${base}/thumb.webp`,
+    fileId,
   };
 }
 

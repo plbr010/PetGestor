@@ -16,13 +16,16 @@ import {
   resolveAuthLandingPath,
 } from "@/features/employees/access/accept-invite";
 import { getSiteUrl } from "@/lib/auth/get-site-url";
+import { isAuthProviderUnavailable, logAuthDiagnostic } from "@/lib/auth/provider-error";
 import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
 import { buildDashboardTrialStartedHref } from "@/lib/analytics/meta-pixel";
+import { enforceAuthRateLimit } from "@/lib/security/enforce-rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type AuthActionState = {
   error?: string;
   success?: string;
+  retryAfterSeconds?: number;
 };
 
 const ONBOARDING_ERROR_MESSAGE =
@@ -30,22 +33,29 @@ const ONBOARDING_ERROR_MESSAGE =
 
 const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Entre novamente para continuar.";
 
+const REVOKED_ACCESS_MESSAGE =
+  "Seu acesso a esta empresa foi revogado. Entre em contato com o administrador.";
+
+const GENERIC_SIGNUP_MESSAGE =
+  "Não foi possível concluir o cadastro. Se você já tem conta, entre ou recupere a senha.";
+
+const PROVIDER_UNAVAILABLE_MESSAGE =
+  "Serviço temporariamente indisponível. Tente novamente em instantes.";
+
+const GENERIC_RECOVERY_MESSAGE =
+  "Se houver uma conta associada a esse e-mail, enviaremos as instruções.";
+
+const GENERIC_RESEND_MESSAGE =
+  "Se o e-mail estiver cadastrado e ainda pendente de confirmação, enviaremos um novo link.";
+
 function genericAuthError(): AuthActionState {
   return { error: "E-mail ou senha incorretos." };
 }
 
-function mapSignUpError(message: string): AuthActionState {
-  const normalized = message.toLowerCase();
-
-  if (normalized.includes("already registered") || normalized.includes("already exists")) {
-    return {
-      error:
-        "Este e-mail já tem conta no PetGestor. Entre em /entrar (ou use Recuperar senha) e depois abra /convite para aceitar o acesso.",
-    };
-  }
-
+function rateLimitedState(retryAfterSeconds?: number): AuthActionState {
   return {
-    error: "Não foi possível concluir o cadastro. Tente novamente em instantes.",
+    error: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+    retryAfterSeconds,
   };
 }
 
@@ -57,7 +67,10 @@ function logOnboardingStep(
     return;
   }
 
-  console.info(`[onboarding:${step}]`, details);
+  console.info(`[onboarding:${step}]`, {
+    ok: details.ok,
+    code: details.code ?? null,
+  });
 }
 
 export async function signUpAction(
@@ -83,8 +96,22 @@ export async function signUpAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  const limited = await enforceAuthRateLimit("signup", parsed.data.email);
+  if (limited) {
+    return rateLimitedState(limited.retryAfterSeconds);
+  }
+
   const supabase = await createSupabaseServerClient();
-  const siteUrl = await getSiteUrl();
+
+  let siteUrl: string;
+  try {
+    siteUrl = await getSiteUrl();
+  } catch (error) {
+    logAuthDiagnostic("signup_site_url", {
+      name: error instanceof Error ? error.name : undefined,
+    });
+    return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+  }
 
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
@@ -101,13 +128,11 @@ export async function signUpAction(
   });
 
   if (error) {
-    console.error("[Auth][SignUp] failed", {
-      message: error.message,
-      status: error.status ?? null,
-      code: "code" in error ? error.code : null,
-      name: error.name ?? null,
-    });
-    return mapSignUpError(error.message);
+    logAuthDiagnostic("signup", error);
+    if (isAuthProviderUnavailable(error)) {
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
+    return { error: GENERIC_SIGNUP_MESSAGE };
   }
 
   if (data.session) {
@@ -125,6 +150,10 @@ export async function signUpAction(
     );
 
     if (!onboardingResult.ok) {
+      if (onboardingResult.reason === "revoked") {
+        revalidatePath("/", "layout");
+        redirect("/dashboard/acesso-revogado");
+      }
       return { error: onboardingResult.error };
     }
 
@@ -150,8 +179,22 @@ async function signUpStaffAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  const limited = await enforceAuthRateLimit("signup", parsed.data.email);
+  if (limited) {
+    return rateLimitedState(limited.retryAfterSeconds);
+  }
+
   const supabase = await createSupabaseServerClient();
-  const siteUrl = await getSiteUrl();
+
+  let siteUrl: string;
+  try {
+    siteUrl = await getSiteUrl();
+  } catch (error) {
+    logAuthDiagnostic("signup_staff_site_url", {
+      name: error instanceof Error ? error.name : undefined,
+    });
+    return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+  }
 
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
@@ -166,19 +209,14 @@ async function signUpStaffAction(
   });
 
   if (error) {
-    return mapSignUpError(error.message);
+    logAuthDiagnostic("signup_staff", error);
+    if (isAuthProviderUnavailable(error)) {
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
+    return { error: GENERIC_SIGNUP_MESSAGE };
   }
 
   if (data.session) {
-    const pending = await peekPendingInvite();
-
-    if (!pending.found) {
-      return {
-        error:
-          "Não encontramos um convite pendente para este e-mail. Confira com o administrador ou peça um novo convite.",
-      };
-    }
-
     revalidatePath("/", "layout");
     redirect("/convite");
   }
@@ -199,6 +237,11 @@ export async function signInAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  const limited = await enforceAuthRateLimit("login", parsed.data.email);
+  if (limited) {
+    return rateLimitedState(limited.retryAfterSeconds);
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -207,6 +250,10 @@ export async function signInAction(
   });
 
   if (error) {
+    if (isAuthProviderUnavailable(error)) {
+      logAuthDiagnostic("login", error);
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
     return genericAuthError();
   }
 
@@ -233,17 +280,82 @@ export async function passwordRecoveryAction(
     return { error: parsed.error.issues[0]?.message ?? "Informe um e-mail válido." };
   }
 
-  const supabase = await createSupabaseServerClient();
-  const siteUrl = await getSiteUrl();
+  const limited = await enforceAuthRateLimit("recovery", parsed.data.email);
+  if (limited) {
+    return rateLimitedState(limited.retryAfterSeconds);
+  }
 
-  await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+  const supabase = await createSupabaseServerClient();
+
+  let siteUrl: string;
+  try {
+    siteUrl = await getSiteUrl();
+  } catch (error) {
+    logAuthDiagnostic("recovery_site_url", {
+      name: error instanceof Error ? error.name : undefined,
+    });
+    return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
     redirectTo: `${siteUrl}/auth/callback?next=/nova-senha`,
   });
 
-  return {
-    success:
-      "Se houver uma conta associada a esse e-mail, enviaremos as instruções.",
-  };
+  if (error) {
+    logAuthDiagnostic("recovery", error);
+    if (isAuthProviderUnavailable(error)) {
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
+  }
+
+  return { success: GENERIC_RECOVERY_MESSAGE };
+}
+
+export async function resendConfirmationAction(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const parsed = passwordRecoverySchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Informe um e-mail válido." };
+  }
+
+  const limited = await enforceAuthRateLimit("resend", parsed.data.email);
+  if (limited) {
+    return rateLimitedState(limited.retryAfterSeconds);
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  let siteUrl: string;
+  try {
+    siteUrl = await getSiteUrl();
+  } catch (error) {
+    logAuthDiagnostic("resend_site_url", {
+      name: error instanceof Error ? error.name : undefined,
+    });
+    return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+  }
+
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: parsed.data.email,
+    options: {
+      emailRedirectTo: `${siteUrl}/auth/confirm?next=/dashboard`,
+    },
+  });
+
+  if (error) {
+    logAuthDiagnostic("resend", error);
+    if (isAuthProviderUnavailable(error)) {
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
+  }
+
+  return { success: GENERIC_RESEND_MESSAGE };
 }
 
 export async function updatePasswordAction(
@@ -260,18 +372,27 @@ export async function updatePasswordAction(
   }
 
   const supabase = await createSupabaseServerClient();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+
+  if (claimsError || !claimsData?.claims?.sub) {
+    return { error: SESSION_EXPIRED_MESSAGE };
+  }
+
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
   });
 
   if (error) {
+    logAuthDiagnostic("update_password", error);
     return {
       error: "Não foi possível atualizar a senha. Tente solicitar um novo link.",
     };
   }
 
   revalidatePath("/", "layout");
-  redirect(getSafeRedirectPath(formData.get("redirectTo")?.toString(), "/entrar?senha-atualizada=1"));
+  redirect(
+    getSafeRedirectPath(formData.get("redirectTo")?.toString(), "/entrar?senha-atualizada=1"),
+  );
 }
 
 export async function completeOnboardingAction(
@@ -295,6 +416,10 @@ export async function completeOnboardingAction(
   );
 
   if (!onboardingResult.ok) {
+    if (onboardingResult.reason === "revoked") {
+      revalidatePath("/", "layout");
+      redirect("/dashboard/acesso-revogado");
+    }
     return { error: onboardingResult.error };
   }
 
@@ -306,7 +431,7 @@ export async function completeOnboardingAction(
 
 export type OnboardingResult =
   | { ok: true; companyId: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; reason?: "revoked" | "session" | "generic" };
 
 export async function runCompleteOnboarding(
   fullName: string,
@@ -321,11 +446,10 @@ export async function runCompleteOnboarding(
   logOnboardingStep("auth", {
     ok: authenticated,
     code: claimsError?.code,
-    message: claimsError?.message,
   });
 
   if (!authenticated || !claimsData?.claims?.sub) {
-    return { ok: false, error: SESSION_EXPIRED_MESSAGE };
+    return { ok: false, error: SESSION_EXPIRED_MESSAGE, reason: "session" };
   }
 
   const { data: companyId, error } = await supabase.rpc("complete_onboarding", {
@@ -337,28 +461,31 @@ export async function runCompleteOnboarding(
   logOnboardingStep("rpc", {
     ok: !error && typeof companyId === "string" && companyId.length > 0,
     code: error?.code,
-    message: error?.message,
   });
 
   if (error) {
-    return { ok: false, error: ONBOARDING_ERROR_MESSAGE };
+    const message = error.message?.toLowerCase() ?? "";
+    if (message.includes("onboarding_access_revoked")) {
+      return { ok: false, error: REVOKED_ACCESS_MESSAGE, reason: "revoked" };
+    }
+    return { ok: false, error: ONBOARDING_ERROR_MESSAGE, reason: "generic" };
   }
 
   if (typeof companyId !== "string" || companyId.length === 0) {
-    return { ok: false, error: ONBOARDING_ERROR_MESSAGE };
+    return { ok: false, error: ONBOARDING_ERROR_MESSAGE, reason: "generic" };
   }
 
   const { data: membership, error: membershipError } = await supabase
     .from("company_members")
     .select("company_id")
     .eq("user_id", claimsData.claims.sub)
-    .limit(1)
+    .eq("company_id", companyId)
+    .is("access_revoked_at", null)
     .maybeSingle();
 
   logOnboardingStep("membership_verify", {
     ok: Boolean(membership) && !membershipError,
     code: membershipError?.code,
-    message: membershipError?.message,
   });
 
   if (membershipError || !membership) {
@@ -366,6 +493,7 @@ export async function runCompleteOnboarding(
       ok: false,
       error:
         "Conta criada, mas não foi possível confirmar o acesso à empresa. Tente novamente ou contate o suporte.",
+      reason: "generic",
     };
   }
 

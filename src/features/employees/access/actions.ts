@@ -16,6 +16,7 @@ import {
   permissionsToJson,
 } from "@/lib/auth/permissions";
 import { requirePermission, assertPermissionForAction } from "@/lib/auth/require-permission";
+import { enforceInviteRateLimit } from "@/lib/security/enforce-rate-limit";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -54,6 +55,16 @@ export async function grantEmployeeAccessAction(
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const limited = await enforceInviteRateLimit({
+    companyId: context.membership.company.id,
+    actorUserId: context.user.id,
+    email: parsed.data.email,
+  });
+
+  if (limited) {
+    return { error: limited.error };
   }
 
   const permissions = buildPermissionsPayload(
