@@ -10,7 +10,7 @@ import { isValidUuid } from "@/lib/security/uuid";
 import type { AppointmentStatus, ServiceOrderStatus } from "@/types/database.types";
 
 const SERVICE_ORDER_SELECT = `
-  id, appointment_id, status, check_in_at, started_at, ready_at, completed_at,
+  id, appointment_id, status, check_in_at, started_at, ready_at, completed_at, cancelled_at,
   intake_notes, internal_notes, completion_notes, created_at, updated_at,
   appointments!inner(
     id, scheduled_start, scheduled_end, status,
@@ -29,6 +29,7 @@ type ServiceOrderRow = {
   started_at: string | null;
   ready_at: string | null;
   completed_at: string | null;
+  cancelled_at: string | null;
   intake_notes: string | null;
   internal_notes: string | null;
   completion_notes: string | null;
@@ -68,6 +69,7 @@ function mapServiceOrderRow(row: ServiceOrderRow): ServiceOrderListItem {
     started_at: row.started_at,
     ready_at: row.ready_at,
     completed_at: row.completed_at,
+    cancelled_at: row.cancelled_at,
     intake_notes: row.intake_notes,
     internal_notes: row.internal_notes,
     completion_notes: row.completion_notes,

@@ -18,6 +18,15 @@ describe("mapServiceOrderError", () => {
   it("mapeia cancelamento inválido", () => {
     expect(mapServiceOrderError("service_order_not_cancellable")).toContain("aguardando");
   });
+
+  it("mapeia OS cancelada no check-in", () => {
+    expect(mapServiceOrderError("service_order_cancelled")).toContain("cancelado");
+  });
+
+  it("não expõe unique_violation bruto", () => {
+    expect(mapServiceOrderError("unique_violation")).not.toMatch(/unique_violation/i);
+    expect(mapServiceOrderError("23505")).not.toContain("23505");
+  });
 });
 
 describe("formatElapsedSince", () => {

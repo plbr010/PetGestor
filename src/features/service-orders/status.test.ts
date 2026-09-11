@@ -28,6 +28,13 @@ describe("service order status transitions", () => {
   it("bloqueia in_progress → cancelled", () => {
     expect(canTransitionServiceOrderStatus("in_progress", "cancelled")).toBe(false);
   });
+
+  it("bloqueia waiting → completed, cancelled → ready e completed → in_progress", () => {
+    expect(canTransitionServiceOrderStatus("waiting", "completed")).toBe(false);
+    expect(canTransitionServiceOrderStatus("cancelled", "ready")).toBe(false);
+    expect(canTransitionServiceOrderStatus("completed", "in_progress")).toBe(false);
+    expect(canTransitionServiceOrderStatus("ready", "cancelled")).toBe(false);
+  });
 });
 
 describe("isAppointmentCheckInEligible", () => {

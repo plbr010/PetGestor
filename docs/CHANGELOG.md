@@ -1,3 +1,19 @@
+## [0.45.0] — 2026-09-11
+
+### Corrigido — Check-in, OS, máquina de estados e concorrência (BLOCO 3)
+
+- Check-in idempotente de verdade: lock do appointment + `INSERT ON CONFLICT (appointment_id)`; duas abas devolvem a mesma OS
+- `unique_violation` não chega à UI
+- OS cancelada não é devolvida como ativa; novo check-in falha com erro acionável (sem reabertura automática)
+- Cancelar OS `waiting` sincroniza o appointment para `cancelled` na mesma transação
+- Transições atômicas `UPDATE … WHERE status` (waiting → in_progress → ready → completed); retry idempotente
+- Efeitos (consumos, estoque, receita, notificações, timestamps) só na transição realmente aplicada
+- `cancelled_at` em timestamptz UTC; retry não sobrescreve timestamps
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911180000_service_order_state_machine_concurrency.sql`
+
+Não reaplica BLOCO 1 nem BLOCO 2.
+
 ## [0.44.0] — 2026-09-11
 
 ### Corrigido — Agenda: data civil, timezone, jornada, recorrência e status (BLOCO 2)

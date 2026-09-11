@@ -8,6 +8,12 @@ import {
   parseCompleteServiceOrderForm,
   parseServiceOrderNotesForm,
 } from "@/features/service-orders/schemas";
+import {
+  extractServiceOrderId,
+  interpretServiceOrderMutation,
+  parseServiceOrderMutationRpc,
+  shouldEmitServiceOrderSideEffects,
+} from "@/features/service-orders/mutation-result";
 import { mapServiceOrderError } from "@/features/service-orders/utils";
 import { parseQuantityInput } from "@/features/inventory/stock-engine";
 import { enqueuePetReadyNotification } from "@/features/notifications/queue-service";
@@ -57,14 +63,15 @@ export async function checkInAppointmentInlineAction(
     p_company_id: context.membership.company.id,
   });
 
-  if (error || !data) {
+  const serviceOrderId = extractServiceOrderId(data);
+  if (error || !serviceOrderId) {
     return { error: mapServiceOrderError(error?.message) };
   }
 
-  revalidateServiceOrderPaths(String(data), appointmentId);
+  revalidateServiceOrderPaths(serviceOrderId, appointmentId);
   return {
     success: "Check-in realizado.",
-    serviceOrderId: String(data),
+    serviceOrderId,
   };
 }
 
@@ -92,12 +99,13 @@ export async function checkInAppointmentAction(
     p_company_id: context.membership.company.id,
   });
 
-  if (error || !data) {
+  const serviceOrderId = extractServiceOrderId(data);
+  if (error || !serviceOrderId) {
     return { error: mapServiceOrderError(error?.message) };
   }
 
-  revalidateServiceOrderPaths(String(data), appointmentId);
-  redirect(`/dashboard/atendimentos/${data}`);
+  revalidateServiceOrderPaths(serviceOrderId, appointmentId);
+  redirect(`/dashboard/atendimentos/${serviceOrderId}`);
 }
 
 export async function startServiceOrderAction(
@@ -115,7 +123,8 @@ export async function startServiceOrderAction(
     p_company_id: context.membership.company.id,
   });
 
-  if (error || !data) {
+  const id = extractServiceOrderId(data);
+  if (error || !id) {
     return { error: mapServiceOrderError(error?.message) };
   }
 
@@ -138,33 +147,37 @@ export async function markServiceOrderReadyAction(
     p_company_id: context.membership.company.id,
   });
 
-  if (error || !data) {
+  const rpc = parseServiceOrderMutationRpc(data);
+  if (error || !rpc) {
     return { error: mapServiceOrderError(error?.message) };
   }
 
-  const { data: consumedProducts } = await supabase
-    .from("service_order_consumptions")
-    .select("product_id")
-    .eq("company_id", context.membership.company.id)
-    .eq("service_order_id", serviceOrderId)
-    .not("consumed_at", "is", null);
+  const outcome = interpretServiceOrderMutation({ rpc });
+  if (shouldEmitServiceOrderSideEffects(outcome)) {
+    const { data: consumedProducts } = await supabase
+      .from("service_order_consumptions")
+      .select("product_id")
+      .eq("company_id", context.membership.company.id)
+      .eq("service_order_id", serviceOrderId)
+      .not("consumed_at", "is", null);
 
-  const productIds = [...new Set((consumedProducts ?? []).map((row) => row.product_id))];
-  for (const productId of productIds) {
-    await notifyProductStockStatus(supabase, context.membership.company.id, productId);
+    const productIds = [...new Set((consumedProducts ?? []).map((row) => row.product_id))];
+    for (const productId of productIds) {
+      await notifyProductStockStatus(supabase, context.membership.company.id, productId);
+    }
+
+    await enqueuePetReadyNotification(
+      supabase,
+      context.membership.company.id,
+      serviceOrderId,
+      context.membership.company.timezone,
+    );
+    await notifyServiceOrderReady(
+      supabase,
+      context.membership.company.id,
+      serviceOrderId,
+    );
   }
-
-  await enqueuePetReadyNotification(
-    supabase,
-    context.membership.company.id,
-    serviceOrderId,
-    context.membership.company.timezone,
-  );
-  await notifyServiceOrderReady(
-    supabase,
-    context.membership.company.id,
-    serviceOrderId,
-  );
 
   revalidateServiceOrderPaths(serviceOrderId);
   revalidatePath("/dashboard/configuracoes");
@@ -255,7 +268,7 @@ export async function completeServiceOrderAction(
     p_company_id: context.membership.company.id,
   });
 
-  if (error || !data) {
+  if (error || !extractServiceOrderId(data)) {
     return { error: mapServiceOrderError(error?.message) };
   }
 
@@ -278,7 +291,7 @@ export async function cancelServiceOrderAction(
     p_company_id: context.membership.company.id,
   });
 
-  if (error || !data) {
+  if (error || !extractServiceOrderId(data)) {
     return { error: mapServiceOrderError(error?.message) };
   }
 
@@ -336,10 +349,11 @@ export async function checkInAppointmentSimpleAction(
     p_company_id: context.membership.company.id,
   });
 
-  if (error || !data) {
+  const serviceOrderId = extractServiceOrderId(data);
+  if (error || !serviceOrderId) {
     return { error: mapServiceOrderError(error?.message) };
   }
 
-  revalidateServiceOrderPaths(String(data), appointmentId);
-  redirect(`/dashboard/atendimentos/${data}`);
+  revalidateServiceOrderPaths(serviceOrderId, appointmentId);
+  redirect(`/dashboard/atendimentos/${serviceOrderId}`);
 }
