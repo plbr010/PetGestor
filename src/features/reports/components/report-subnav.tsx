@@ -9,9 +9,11 @@ const LINKS = [
   { href: "/dashboard/relatorios", label: "Visão geral" },
   { href: "/dashboard/relatorios/atendimentos", label: "Atendimentos" },
   { href: "/dashboard/relatorios/clientes", label: "Clientes" },
+  { href: "/dashboard/relatorios/pets", label: "Pets" },
   { href: "/dashboard/relatorios/equipe", label: "Equipe" },
   { href: "/dashboard/relatorios/pdv", label: "PDV" },
   { href: "/dashboard/relatorios/estoque", label: "Estoque" },
+  { href: "/dashboard/relatorios/pacotes", label: "Pacotes" },
 ];
 
 export function ReportSubnav() {

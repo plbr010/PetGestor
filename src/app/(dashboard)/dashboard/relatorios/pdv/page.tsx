@@ -8,6 +8,8 @@ import { ReportKpiCard } from "@/features/reports/components/report-kpi-card";
 import { ReportPeriodNav } from "@/features/reports/components/report-period-nav";
 import { ReportSubnav } from "@/features/reports/components/report-subnav";
 import { ReportRankingTable } from "@/features/reports/components/report-ranking-table";
+import { ReportExportRow } from "@/features/reports/components/report-export-row";
+import { pdvToCsv, reportCsvFilename } from "@/features/reports/csv-builders";
 
 type PageProps = {
   searchParams: Promise<{ preset?: string; from?: string; to?: string }>;
@@ -32,6 +34,10 @@ export default async function PdvReportPage({ searchParams }: PageProps) {
           to={period.to}
           preset={period.preset}
         />
+        <ReportExportRow
+          csv={pdvToCsv(report)}
+          filename={reportCsvFilename("pdv", period.from, period.to)}
+        />
         <ReportSubnav />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -52,6 +58,7 @@ export default async function PdvReportPage({ searchParams }: PageProps) {
             <ReportRankingTable
               items={report.topProducts.map((p, i) => ({
                 rank: i + 1,
+                id: p.productId,
                 label: p.name,
                 value: formatAmountCents(p.revenueCents),
                 subtitle: `${p.unitsSold} un. · Lucro: ${formatAmountCents(p.profitCents)}`,

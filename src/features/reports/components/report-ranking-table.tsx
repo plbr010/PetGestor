@@ -3,6 +3,7 @@ type RankingItem = {
   label: string;
   value: string;
   subtitle?: string;
+  id?: string;
 };
 
 type ReportRankingTableProps = {
@@ -22,7 +23,7 @@ export function ReportRankingTable({
     <div className="space-y-2">
       {items.map((item) => (
         <div
-          key={`${item.rank}-${item.label}`}
+          key={item.id ?? `${item.rank}-${item.label}`}
           className="flex items-center gap-3 rounded-lg border px-3 py-2"
         >
           <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
