@@ -47,9 +47,18 @@ Tabelas com RLS habilitado:
 
 Helpers em schema `private` (não exposto pela Data API):
 
-- `private.is_company_member(company_id)` — `search_path = public, private, auth`
-- `private.has_company_role(company_id, roles[])` — idem
+- `private.is_company_member(company_id)` — membership **ativa** (`user_id = auth.uid()` AND `access_revoked_at IS NULL`)
+- `private.has_company_role(company_id, roles[])` — idem, com role
+- `private.member_has_active_access(company_id)` / `private.has_app_permission(company_id, permission)`
+- `private.get_auth_company_id()` — lê o GUC `petgestor.company_id` (nunca infere tenant por `ORDER BY created_at`)
+- `private.activate_company_context(company_id)` — valida membership ativa e define o GUC da transação
 - `private.prevent_company_change()` — trigger; `search_path = public, private`
+
+Token/sessão antiga de funcionário **revogado** perde SELECT/INSERT/UPDATE/RPC/Storage: a membership deixa de ser considerada ativa no PostgreSQL.
+
+Tenant ativo nas mutações: `company_id` do contexto Next.js (`membership.company.id`) enviado como `p_company_id` nas RPCs. IDs de outra empresa falham com objeto indisponível, sem vazar existência.
+
+Guard de rota: o proxy copia `x-pathname` para os headers da **request** (`NextResponse.next({ request: { headers } })`) para `assertCurrentRoutePermission` no layout do dashboard. Pathname ausente falha fechado (`dashboard.view`).
 
 Função controlada de onboarding:
 

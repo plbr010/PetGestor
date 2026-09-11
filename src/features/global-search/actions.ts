@@ -4,7 +4,7 @@ import { runGlobalSearch } from "@/features/global-search/search";
 import type { GlobalSearchResult } from "@/features/global-search/types";
 import { GLOBAL_SEARCH_MIN_CHARS } from "@/features/global-search/types";
 import { prepareSearchQuery } from "@/features/global-search/normalize";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type GlobalSearchActionResult =
@@ -19,7 +19,7 @@ export async function globalSearchAction(query: string): Promise<GlobalSearchAct
   }
 
   try {
-    const context = await requireCompanyContext();
+    const context = await requirePermission("dashboard.view");
     const supabase = await createSupabaseServerClient();
 
     const data = await runGlobalSearch({

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { parseWaitlistForm } from "@/features/appointments/waitlist/schemas";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -24,7 +24,7 @@ export async function addWaitlistEntryAction(
   _prevState: WaitlistActionState,
   formData: FormData,
 ): Promise<WaitlistActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.create");
   const parsed = parseWaitlistForm(formData);
 
   if (!parsed.success) {
@@ -79,7 +79,7 @@ export async function markWaitlistContactedAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -109,7 +109,7 @@ export async function cancelWaitlistEntryAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.cancel");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -137,7 +137,7 @@ export async function convertWaitlistEntryAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data: appointment } = await supabase

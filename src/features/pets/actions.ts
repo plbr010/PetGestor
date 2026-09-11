@@ -9,7 +9,7 @@ import {
   parsePetImportantInfo,
   petFormToDbPayload,
 } from "@/features/pets/schemas";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -35,7 +35,7 @@ export async function createPetAction(
   _prevState: PetActionState,
   formData: FormData,
 ): Promise<PetActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("pets.create");
   const parsed = parsePetForm(formData);
 
   if (!parsed.success) {
@@ -83,7 +83,7 @@ export async function updatePetAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("pets.edit");
   const parsed = parsePetForm(formData);
 
   if (!parsed.success) {
@@ -132,7 +132,7 @@ export async function updatePetImportantInfoAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("pets.edit");
   const parsed = parsePetImportantInfo(formData);
 
   if (!parsed.success) {
@@ -168,7 +168,7 @@ export async function archivePetAction(petId: string): Promise<PetActionState> {
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("pets.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -197,7 +197,7 @@ export async function restorePetAction(petId: string): Promise<PetActionState> {
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("pets.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase

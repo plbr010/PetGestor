@@ -25,7 +25,8 @@ import {
   syncAppointmentNotifications,
 } from "@/features/notifications/queue-service";
 import { notifyAppointmentAssigned } from "@/features/app-notifications/emitters";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
+import type { Permission } from "@/lib/auth/permissions";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -89,7 +90,7 @@ export async function createAppointmentAction(
   _prevState: AppointmentActionState,
   formData: FormData,
 ): Promise<AppointmentActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.create");
   const companyId = context.membership.company.id;
   const timeZone = context.membership.company.timezone;
   const parsed = parseAppointmentForm(formData, timeZone);
@@ -115,6 +116,7 @@ export async function createAppointmentAction(
       p_pet_size: parsed.data.petSize,
       p_notes: parsed.data.notes,
       p_customer_package_id: parsed.data.customerPackageId ?? null,
+      p_company_id: context.membership.company.id,
     });
 
     if (error || !data) {
@@ -189,6 +191,7 @@ export async function createAppointmentAction(
       p_pet_size: parsed.data.petSize,
       p_notes: parsed.data.notes,
       p_customer_package_id: null,
+      p_company_id: context.membership.company.id,
     });
 
     if (error || !appointmentId) {
@@ -305,6 +308,7 @@ async function updateFollowingRecurrenceAppointments(params: {
       p_pet_size: params.petSize,
       p_notes: params.notes,
       p_customer_package_id: row.customer_package_id ?? params.customerPackageId,
+      p_company_id: params.companyId,
     });
 
     if (updateError) {
@@ -334,7 +338,7 @@ export async function updateAppointmentAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.edit");
   const companyId = context.membership.company.id;
   const timeZone = context.membership.company.timezone;
   const parsed = parseAppointmentForm(formData, timeZone);
@@ -372,6 +376,7 @@ export async function updateAppointmentAction(
     p_pet_size: parsed.data.petSize,
     p_notes: parsed.data.notes,
     p_customer_package_id: parsed.data.customerPackageId ?? null,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -435,7 +440,9 @@ async function transitionAppointmentStatus(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const permission: Permission =
+    nextStatus === "cancelled" ? "appointments.cancel" : "appointments.edit";
+  const context = await requirePermission(permission);
   const companyId = context.membership.company.id;
   const supabase = await createSupabaseServerClient();
 
@@ -547,7 +554,7 @@ export async function createAppointmentInlineAction(
   _prevState: AppointmentActionState,
   formData: FormData,
 ): Promise<AppointmentActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.create");
   const companyId = context.membership.company.id;
   const timeZone = context.membership.company.timezone;
   const parsed = parseAppointmentForm(formData, timeZone);
@@ -576,6 +583,7 @@ export async function createAppointmentInlineAction(
     p_pet_size: parsed.data.petSize,
     p_notes: parsed.data.notes,
     p_customer_package_id: parsed.data.customerPackageId ?? null,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -617,7 +625,7 @@ export async function cancelAppointmentAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.cancel");
   const companyId = context.membership.company.id;
   const timeZone = context.membership.company.timezone;
   const supabase = await createSupabaseServerClient();
@@ -660,7 +668,7 @@ export async function getAvailableSlotsAction(input: {
   petSize?: PetSize | null;
   excludeAppointmentId?: string;
 }): Promise<{ slots: string[]; error?: string }> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.view");
   const timeZone = context.membership.company.timezone;
 
   if (

@@ -18,7 +18,7 @@ import {
   mapAttachmentValidationError,
   validateAttachmentMeta,
 } from "@/features/attachments/validation";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { rethrowNavigationErrors } from "@/lib/server-action-errors";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
@@ -103,7 +103,7 @@ export async function removePetPhotoAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("pets.edit");
   const companyId = context.membership.company.id;
   const supabase = await createSupabaseServerClient();
 
@@ -147,7 +147,7 @@ export async function uploadPetAttachmentAction(
   formData: FormData,
 ): Promise<AttachmentActionState> {
   void prevState;
-  const context = await requireCompanyContext();
+  const context = await requirePermission("pets.edit");
   const parsed = parsePetAttachmentUploadForm(formData);
 
   if (!parsed.success) {
@@ -229,7 +229,7 @@ export async function archivePetAttachmentAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("pets.edit");
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("pet_attachments")
@@ -260,7 +260,7 @@ export async function uploadServiceOrderAttachmentAction(
   formData: FormData,
 ): Promise<AttachmentActionState> {
   void prevState;
-  const context = await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const parsed = parseServiceOrderAttachmentUploadForm(formData);
 
   if (!parsed.success) {
@@ -344,7 +344,7 @@ export async function archiveServiceOrderAttachmentAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("service_order_attachments")

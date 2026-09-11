@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireCompany } from "@/features/companies/queries";
 import { requireUser } from "@/lib/auth/require-user";
+import { assertActiveAccess } from "@/lib/auth/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { mapOnboardingProgressRow } from "@/features/onboarding-tour/queries";
 import type { OnboardingProgressRow } from "@/features/onboarding-tour/types";
@@ -74,13 +75,19 @@ function revalidateDashboard() {
   revalidatePath("/dashboard/configuracoes");
 }
 
+async function requireActiveOnboardingCompany() {
+  const user = await requireUser();
+  const context = await requireCompany(user.id);
+  assertActiveAccess(context);
+  return context;
+}
+
 /**
  * Marca o tutorial como concluído/pulado (compatível com tour legado).
  * Não aceita user_id do cliente — usa auth.uid() via RPC.
  */
 export async function completeOnboardingTutorialAction(): Promise<OnboardingTourActionState> {
-  const user = await requireUser();
-  const context = await requireCompany(user.id);
+  const context = await requireActiveOnboardingCompany();
   return applyProgressPatch(context.membership.company.id, {
     welcome_seen: true,
     guided_active: false,
@@ -92,8 +99,7 @@ export async function completeOnboardingTutorialAction(): Promise<OnboardingTour
 export async function dismissOnboardingWelcomeAction(
   mode: "start" | "explore",
 ): Promise<OnboardingTourActionState> {
-  const user = await requireUser();
-  const context = await requireCompany(user.id);
+  const context = await requireActiveOnboardingCompany();
 
   if (mode === "start") {
     return applyProgressPatch(context.membership.company.id, {
@@ -113,8 +119,7 @@ export async function dismissOnboardingWelcomeAction(
 }
 
 export async function skipGuidedOnboardingAction(): Promise<OnboardingTourActionState> {
-  const user = await requireUser();
-  const context = await requireCompany(user.id);
+  const context = await requireActiveOnboardingCompany();
   return applyProgressPatch(context.membership.company.id, {
     welcome_seen: true,
     guided_skipped: true,
@@ -125,8 +130,7 @@ export async function skipGuidedOnboardingAction(): Promise<OnboardingTourAction
 export async function setGuidedStepAction(
   stepId: string,
 ): Promise<OnboardingTourActionState> {
-  const user = await requireUser();
-  const context = await requireCompany(user.id);
+  const context = await requireActiveOnboardingCompany();
   return applyProgressPatch(context.membership.company.id, {
     last_guided_step: stepId,
     guided_active: true,
@@ -134,24 +138,21 @@ export async function setGuidedStepAction(
 }
 
 export async function markWorkflowStepViewedAction(): Promise<OnboardingTourActionState> {
-  const user = await requireUser();
-  const context = await requireCompany(user.id);
+  const context = await requireActiveOnboardingCompany();
   return applyProgressPatch(context.membership.company.id, {
     workflow_viewed: true,
   });
 }
 
 export async function markFinanceStepViewedAction(): Promise<OnboardingTourActionState> {
-  const user = await requireUser();
-  const context = await requireCompany(user.id);
+  const context = await requireActiveOnboardingCompany();
   return applyProgressPatch(context.membership.company.id, {
     finance_viewed: true,
   });
 }
 
 export async function completeActivationOnboardingAction(): Promise<OnboardingTourActionState> {
-  const user = await requireUser();
-  const context = await requireCompany(user.id);
+  const context = await requireActiveOnboardingCompany();
   return applyProgressPatch(context.membership.company.id, {
     welcome_seen: true,
     guided_active: false,
@@ -162,8 +163,7 @@ export async function completeActivationOnboardingAction(): Promise<OnboardingTo
 }
 
 export async function dismissOnboardingChecklistAction(): Promise<OnboardingTourActionState> {
-  const user = await requireUser();
-  const context = await requireCompany(user.id);
+  const context = await requireActiveOnboardingCompany();
   return applyProgressPatch(context.membership.company.id, {
     checklist_dismissed: true,
     completed: true,
@@ -171,8 +171,7 @@ export async function dismissOnboardingChecklistAction(): Promise<OnboardingTour
 }
 
 export async function restartGuidedOnboardingAction(): Promise<OnboardingTourActionState> {
-  const user = await requireUser();
-  const context = await requireCompany(user.id);
+  const context = await requireActiveOnboardingCompany();
   return applyProgressPatch(context.membership.company.id, {
     restart_guided: true,
     guided_active: true,

@@ -15,6 +15,10 @@ export async function redirectIfAuthenticated(options?: {
 
   const membership = await getCurrentCompanyMembership(user.id);
 
+  if (membership?.accessRevokedAt) {
+    redirect("/dashboard/acesso-revogado");
+  }
+
   if (membership) {
     const pending = await peekPendingInvite();
     if (pending.found) {
@@ -49,6 +53,9 @@ export async function requireAuthenticatedWithoutCompany() {
   const membership = await getCurrentCompanyMembership(user.id);
 
   if (membership) {
+    if (membership.accessRevokedAt) {
+      redirect("/dashboard/acesso-revogado");
+    }
     redirect("/dashboard");
   }
 

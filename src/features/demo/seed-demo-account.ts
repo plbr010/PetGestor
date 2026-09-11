@@ -235,7 +235,7 @@ async function seedPets(
   return ids;
 }
 
-async function seedServices(client: DbClient): Promise<IdMap> {
+async function seedServices(client: DbClient, companyId: string): Promise<IdMap> {
   const ids: IdMap = {};
 
   for (const service of DEMO_SERVICES) {
@@ -253,6 +253,7 @@ async function seedServices(client: DbClient): Promise<IdMap> {
         service.pricingMode === "by_size"
           ? sizePricesToRpcPayload([...service.sizePrices])
           : null,
+      p_company_id: companyId,
     });
 
     if (error || !data) {
@@ -265,7 +266,11 @@ async function seedServices(client: DbClient): Promise<IdMap> {
   return ids;
 }
 
-async function seedEmployees(client: DbClient, serviceIds: IdMap): Promise<IdMap> {
+async function seedEmployees(
+  client: DbClient,
+  companyId: string,
+  serviceIds: IdMap,
+): Promise<IdMap> {
   const ids: IdMap = {};
   const workingHours = workingHoursToRpcPayload(getDefaultWorkingHours());
 
@@ -282,6 +287,7 @@ async function seedEmployees(client: DbClient, serviceIds: IdMap): Promise<IdMap
       p_can_be_scheduled: "canBeScheduled" in employee ? employee.canBeScheduled : true,
       p_service_ids: serviceIdsList,
       p_working_hours: workingHours,
+      p_company_id: companyId,
     });
 
     if (error || !data) {
@@ -383,6 +389,7 @@ async function seedInventory(
       p_notes: "Estoque inicial da conta demo",
       p_supplier_id: supplierId,
       p_batch_code: `LOTE-DEMO-${product.sku}`,
+      p_company_id: String(companyId),
     });
 
     if (stockError) {
@@ -395,6 +402,7 @@ async function seedInventory(
 
 async function seedServiceRecipes(
   client: DbClient,
+  companyId: string,
   serviceIds: IdMap,
   productIds: IdMap,
 ) {
@@ -412,6 +420,7 @@ async function seedServiceRecipes(
       { product_id: shampooId, quantity: 0.05 },
       { product_id: condicionadorId, quantity: 0.03 },
     ],
+    p_company_id: String(companyId),
   });
 
   if (error) {
@@ -421,6 +430,7 @@ async function seedServiceRecipes(
 
 async function seedServicePackage(
   client: DbClient,
+  companyId: string,
   serviceIds: IdMap,
   customerIds: IdMap,
   petIds: IdMap,
@@ -437,6 +447,7 @@ async function seedServicePackage(
     p_validity_days: DEMO_SERVICE_PACKAGE.validityDays,
     p_active: true,
     p_items: items,
+    p_company_id: String(companyId),
   });
 
   if (error || !packageId) {
@@ -457,6 +468,7 @@ async function seedServicePackage(
     p_starts_at: new Date().toISOString(),
     p_financial_status: "paid",
     p_payment_method: "credit_card",
+    p_company_id: String(companyId),
   });
 
   if (sellError) {
@@ -487,6 +499,7 @@ async function seedAppointments(
       p_scheduled_start: scheduledStart,
       p_pet_size: petSizeByKey[slot.petKey] ?? null,
       p_notes: "Agendamento demonstrativo",
+      p_company_id: String(companyId),
     });
 
     if (error || !data) {
@@ -533,6 +546,7 @@ async function seedAppointments(
           p_scheduled_start: starts[index]!,
           p_pet_size: "large",
           p_notes: "Recorrência demo — banho semanal",
+          p_company_id: String(companyId),
         });
 
         if (!aptError && aptId) {
@@ -592,7 +606,11 @@ async function seedWaitlistAndTimeBlocks(
   });
 }
 
-async function seedServiceOrders(client: DbClient, appointmentIds: string[]) {
+async function seedServiceOrders(
+  client: DbClient,
+  companyId: string,
+  appointmentIds: string[],
+) {
   if (appointmentIds.length === 0) {
     return;
   }
@@ -603,6 +621,7 @@ async function seedServiceOrders(client: DbClient, appointmentIds: string[]) {
     const { data: order1, error } = await client.rpc("check_in_appointment", {
       p_appointment_id: first,
       p_intake_notes: "Check-in demo — aguardando banho.",
+      p_company_id: String(companyId),
     });
     if (error) throw new Error(`Check-in 1: ${error.message}`);
     void order1;
@@ -612,12 +631,14 @@ async function seedServiceOrders(client: DbClient, appointmentIds: string[]) {
     const { data: order2, error: checkInError } = await client.rpc("check_in_appointment", {
       p_appointment_id: second,
       p_intake_notes: "Consulta em andamento.",
+      p_company_id: String(companyId),
     });
     if (checkInError) throw new Error(`Check-in 2: ${checkInError.message}`);
 
     if (order2) {
       const { error: startError } = await client.rpc("start_service_order", {
         p_service_order_id: String(order2),
+        p_company_id: String(companyId),
       });
       if (startError) throw new Error(`Início atendimento 2: ${startError.message}`);
     }
@@ -627,13 +648,18 @@ async function seedServiceOrders(client: DbClient, appointmentIds: string[]) {
     const { data: order3, error: checkInError } = await client.rpc("check_in_appointment", {
       p_appointment_id: third,
       p_intake_notes: "Hidratação quase finalizada.",
+      p_company_id: String(companyId),
     });
     if (checkInError) throw new Error(`Check-in 3: ${checkInError.message}`);
 
     if (order3) {
-      await client.rpc("start_service_order", { p_service_order_id: String(order3) });
+      await client.rpc("start_service_order", {
+        p_service_order_id: String(order3),
+        p_company_id: companyId,
+      });
       const { error: readyError } = await client.rpc("mark_service_order_ready", {
         p_service_order_id: String(order3),
+        p_company_id: String(companyId),
       });
       if (readyError) throw new Error(`Pronto atendimento 3: ${readyError.message}`);
     }
@@ -644,13 +670,20 @@ async function seedServiceOrders(client: DbClient, appointmentIds: string[]) {
   if (fourth) {
     const { data: order4, error: checkInError } = await client.rpc("check_in_appointment", {
       p_appointment_id: fourth,
+      p_company_id: String(companyId),
     });
     if (!checkInError && order4) {
-      await client.rpc("start_service_order", { p_service_order_id: String(order4) });
-      await client.rpc("mark_service_order_ready", { p_service_order_id: String(order4) });
+      await client.rpc("start_service_order", {
+        p_service_order_id: String(order4),
+        p_company_id: companyId,
+      });
+      await client.rpc("mark_service_order_ready", {
+        p_service_order_id: String(order4),
+        p_company_id: companyId,
+      });
       const { error: completeError } = await client.rpc("complete_service_order", {
         p_service_order_id: String(order4),
-        p_payment_method: "pix",
+        p_company_id: companyId,
       });
       if (completeError) {
         throw new Error(`Conclusão atendimento 4: ${completeError.message}`);
@@ -707,6 +740,7 @@ async function seedFinance(
 
 async function seedPos(
   client: DbClient,
+  companyId: string,
   customerIds: IdMap,
   productIds: IdMap,
 ) {
@@ -720,6 +754,7 @@ async function seedPos(
   await client.rpc("open_cash_session", {
     p_opening_balance_cents: 15000,
     p_notes: "Abertura de caixa demo",
+    p_company_id: String(companyId),
   });
 
   const saleKey = crypto.randomUUID();
@@ -757,6 +792,7 @@ async function seedPos(
       },
     ]),
     p_customer_id: customerIds.ana ?? null,
+    p_company_id: String(companyId),
   });
 
   if (error) {
@@ -789,6 +825,7 @@ async function seedPos(
       },
     ]),
     p_customer_id: null,
+    p_company_id: String(companyId),
   });
 
   if (partialError) {
@@ -801,6 +838,7 @@ async function seedPos(
       p_amount_cents: 1490,
       p_payment_method: "pix",
       p_idempotency_key: crypto.randomUUID(),
+      p_company_id: String(companyId),
     });
   }
 
@@ -878,15 +916,15 @@ async function seedOperationalData(
   const petIds = await seedPets(client, companyId, userId, customerIds);
 
   logStep(log, "Cadastrando serviços e equipe…");
-  const serviceIds = await seedServices(client);
-  const employeeIds = await seedEmployees(client, serviceIds);
+  const serviceIds = await seedServices(client, companyId);
+  const employeeIds = await seedEmployees(client, companyId, serviceIds);
 
   logStep(log, "Cadastrando estoque e receitas de insumos…");
   const { productIds } = await seedInventory(client, companyId, userId);
-  await seedServiceRecipes(client, serviceIds, productIds);
+  await seedServiceRecipes(client, companyId, serviceIds, productIds);
 
   logStep(log, "Cadastrando pacotes de serviços…");
-  await seedServicePackage(client, serviceIds, customerIds, petIds);
+  await seedServicePackage(client, companyId, serviceIds, customerIds, petIds);
 
   logStep(log, "Criando agenda, lista de espera e bloqueios…");
   const appointmentIds = await seedAppointments(
@@ -908,11 +946,11 @@ async function seedOperationalData(
   );
 
   logStep(log, "Simulando atendimentos em diferentes estágios…");
-  await seedServiceOrders(client, appointmentIds);
+  await seedServiceOrders(client, companyId, appointmentIds);
 
   logStep(log, "Lançando financeiro e PDV…");
   await seedFinance(client, companyId, userId);
-  await seedPos(client, customerIds, productIds);
+  await seedPos(client, companyId, customerIds, productIds);
 
   logStep(log, "Configurando notificações e onboarding…");
   await seedSettings(client, companyId, userId);

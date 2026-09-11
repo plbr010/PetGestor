@@ -9,7 +9,7 @@ import {
   mapAttachmentValidationError,
   validateAttachmentMeta,
 } from "@/features/attachments/validation";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -67,7 +67,7 @@ export async function uploadPetPhoto(
     };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("pets.edit");
   const companyId = context.membership.company.id;
   const supabase = await createSupabaseServerClient();
 

@@ -3,10 +3,12 @@ import { isPlatformAdmin } from "@/lib/auth/require-platform-admin";
 import { requireCompany } from "@/features/companies/queries";
 import { requireOperationalEntitlement } from "@/features/subscription/require-entitlement";
 import type { DashboardContext } from "@/features/auth/types";
+import { assertActiveAccess } from "@/lib/auth/require-permission";
 
 export async function requireCompanyContext(): Promise<DashboardContext> {
   const user = await requireUser();
   const context = await requireCompany(user.id);
+  assertActiveAccess(context);
 
   if (!(await isPlatformAdmin(user))) {
     await requireOperationalEntitlement(
@@ -21,5 +23,7 @@ export async function requireCompanyContext(): Promise<DashboardContext> {
 /** Contexto autenticado com empresa, sem exigir entitlement (billing/assinatura). */
 export async function requireCompanyBillingContext(): Promise<DashboardContext> {
   const user = await requireUser();
-  return requireCompany(user.id);
+  const context = await requireCompany(user.id);
+  assertActiveAccess(context);
+  return context;
 }

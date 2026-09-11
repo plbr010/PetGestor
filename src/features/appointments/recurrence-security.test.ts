@@ -9,7 +9,7 @@ describe("appointment recurrence security surface", () => {
       "utf8",
     );
 
-    expect(source).toContain("requireCompanyContext");
+    expect(source).toContain("requirePermission");
     expect(source).toContain("context.membership.company.id");
     expect(source).not.toMatch(/formData\.get\(["']companyId["']\)/);
     expect(source).toContain('seriesScope === "this_and_following"');
