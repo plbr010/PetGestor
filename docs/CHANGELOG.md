@@ -10,6 +10,7 @@
 - Guard de rota: `x-pathname` é copiado para os **headers da request** para `assertCurrentRoutePermission` validar URL direta
 - Storage `company-files`: pasta da empresa + membership ativa + permissão por tipo de path
 - Migration incremental: `supabase/migrations/20260911120000_authorization_rls_tenant_isolation.sql`
+- SQL Editor: `GRANT`/`REVOKE` sem `DEFAULT`; conferência final ignora funções agregadas (`array_agg`)
 
 ## [0.42.0] — 2026-09-02
 

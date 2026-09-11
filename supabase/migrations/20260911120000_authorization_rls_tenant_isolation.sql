@@ -3763,15 +3763,32 @@ $$;
 
 DO $$
 DECLARE
+  r record;
+  def text;
   leftover text;
 BEGIN
-  SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.proname)
-  INTO leftover
-  FROM pg_proc p
-  JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname IN ('public', 'private')
-    AND p.proname NOT IN ('complete_onboarding', 'complete_onboarding_tutorial')
-    AND pg_get_functiondef(p.oid) ~* 'ORDER BY[[:space:]]+(cm\.)?created_at[[:space:]]+ASC[[:space:]]+LIMIT[[:space:]]+1';
+  leftover := NULL;
+
+  FOR r IN
+    SELECT p.oid, p.oid::regprocedure AS sig
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname IN ('public', 'private')
+      AND p.prokind = 'f'
+      AND p.proname NOT IN ('complete_onboarding', 'complete_onboarding_tutorial')
+    ORDER BY p.proname
+  LOOP
+    BEGIN
+      def := pg_get_functiondef(r.oid);
+    EXCEPTION
+      WHEN wrong_object_type THEN
+        CONTINUE;
+    END;
+
+    IF def ~* 'ORDER BY[[:space:]]+(cm\.)?created_at[[:space:]]+ASC[[:space:]]+LIMIT[[:space:]]+1' THEN
+      leftover := concat_ws(', ', leftover, r.sig::text);
+    END IF;
+  END LOOP;
 
   IF leftover IS NOT NULL THEN
     RAISE EXCEPTION 'functions still infer tenant by created_at LIMIT 1: %', leftover;
