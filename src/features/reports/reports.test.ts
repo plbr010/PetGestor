@@ -315,14 +315,23 @@ describe("computeOccupancy", () => {
   it("calculates basic occupancy", () => {
     const appointments = [apt({ employee_id: "e1" })];
     const workingHours = [
-      { employee_id: "e1", weekday: 5, enabled: true, start_time: "08:00", end_time: "18:00" },
+      {
+        employee_id: "e1",
+        weekday: 5,
+        enabled: true,
+        start_time: "08:00",
+        end_time: "18:00",
+        break_start: null,
+        break_end: null,
+      },
     ];
-    const result = computeOccupancy(appointments, workingHours, 5, TZ);
+    const result = computeOccupancy(appointments, workingHours, { from: "2026-08-14", to: "2026-08-18" }, TZ);
     expect(result.totalSlotsAvailable).toBeGreaterThan(0);
+    expect(result.capacityMinutes).toBeGreaterThan(0);
   });
 
   it("handles no working hours", () => {
-    const result = computeOccupancy([], [], 30, TZ);
+    const result = computeOccupancy([], [], { from: "2026-08-01", to: "2026-08-31" }, TZ);
     expect(result.overallPercent).toBe(0);
     expect(result.totalSlotsAvailable).toBe(0);
   });
@@ -394,8 +403,8 @@ describe("computePdvReport", () => {
       { id: "s2", total_cents: 5000, status: "completed" },
     ];
     const items = [
-      { product_name_snapshot: "Ração", unit_price_cents: 5000, quantity: 2, total_cents: 10000, cost_price_cents_snapshot: 3000 },
-      { product_name_snapshot: "Shampoo", unit_price_cents: 5000, quantity: 1, total_cents: 5000, cost_price_cents_snapshot: 2000 },
+      { sale_id: "s1", product_id: "p1", product_name_snapshot: "Ração", unit_price_cents: 5000, quantity: 2, total_cents: 10000, cost_price_cents_snapshot: 3000 },
+      { sale_id: "s2", product_id: "p2", product_name_snapshot: "Shampoo", unit_price_cents: 5000, quantity: 1, total_cents: 5000, cost_price_cents_snapshot: 2000 },
     ];
     const result = computePdvReport(sales, items);
     expect(result.salesCount).toBe(2);
@@ -447,19 +456,21 @@ describe("computeStockReport", () => {
 describe("computePackagesReport", () => {
   it("counts package metrics", () => {
     const packages = [
-      { status: "active", price_cents_snapshot: 15000, items: [{ quantity_total: 5, quantity_used: 2 }] },
-      { status: "fully_used", price_cents_snapshot: 10000, items: [{ quantity_total: 3, quantity_used: 3 }] },
-      { status: "cancelled", price_cents_snapshot: 8000, items: [{ quantity_total: 2, quantity_used: 0 }] },
+      { status: "active", financialStatus: "paid" as const, expires_at: "2026-12-31", price_cents_snapshot: 15000, items: [{ quantity_total: 5, quantity_used: 2 }] },
+      { status: "fully_used", financialStatus: "paid" as const, expires_at: "2026-12-31", price_cents_snapshot: 10000, items: [{ quantity_total: 3, quantity_used: 3 }] },
+      { status: "cancelled", financialStatus: "pending" as const, expires_at: "2026-12-31", price_cents_snapshot: 8000, items: [{ quantity_total: 2, quantity_used: 0 }] },
     ];
-    const result = computePackagesReport(packages);
-    expect(result.soldCount).toBe(3);
+    const result = computePackagesReport(packages, "2026-08-15", TZ);
+    expect(result.soldCount).toBe(2);
     expect(result.activeCount).toBe(1);
     expect(result.fullyUsedCount).toBe(1);
+    expect(result.cancelledCount).toBe(1);
     expect(result.totalCreditsRemaining).toBe(3);
+    expect(result.receivedCents).toBe(25000);
   });
 
   it("handles empty", () => {
-    const result = computePackagesReport([]);
+    const result = computePackagesReport([], "2026-08-15", TZ);
     expect(result.soldCount).toBe(0);
     expect(result.revenueCents).toBe(0);
   });
@@ -519,7 +530,7 @@ describe("CSV export", () => {
 
   it("handles empty rows", () => {
     const csv = toCsv(["A", "B"], []);
-    expect(csv).toBe("A,B");
+    expect(csv.replace(/^\uFEFF/, "")).toBe("A,B");
   });
 });
 
@@ -571,12 +582,12 @@ describe("empty state for all reports", () => {
     expect(computeRetentionReport([]).returnRate).toBe(0);
     expect(computePetReport([], []).attendedCount).toBe(0);
     expect(computeEmployeePerformance([], [], 30)).toEqual([]);
-    expect(computeOccupancy([], [], 30, TZ).overallPercent).toBe(0);
+    expect(computeOccupancy([], [], { from: "2026-08-01", to: "2026-08-31" }, TZ).overallPercent).toBe(0);
     expect(computeCancellations([], TZ).total).toBe(0);
     expect(computeWeekdayDistribution([], TZ).reduce((s, d) => s + d.count, 0)).toBe(0);
     expect(computeHourDistribution([], TZ).reduce((s, d) => s + d.count, 0)).toBe(0);
     expect(computePdvReport([], []).salesCount).toBe(0);
     expect(computeStockReport([], [], []).estimatedValueCents).toBe(0);
-    expect(computePackagesReport([]).soldCount).toBe(0);
+    expect(computePackagesReport([], "2026-08-15", TZ).soldCount).toBe(0);
   });
 });

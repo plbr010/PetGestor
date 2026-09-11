@@ -8,6 +8,8 @@ import { ReportKpiCard } from "@/features/reports/components/report-kpi-card";
 import { ReportPeriodNav } from "@/features/reports/components/report-period-nav";
 import { ReportSubnav } from "@/features/reports/components/report-subnav";
 import { ReportRankingTable } from "@/features/reports/components/report-ranking-table";
+import { ReportExportRow } from "@/features/reports/components/report-export-row";
+import { customersToCsv, reportCsvFilename } from "@/features/reports/csv-builders";
 
 type PageProps = {
   searchParams: Promise<{ preset?: string; from?: string; to?: string }>;
@@ -34,6 +36,10 @@ export default async function CustomersReportPage({ searchParams }: PageProps) {
           from={period.from}
           to={period.to}
           preset={period.preset}
+        />
+        <ReportExportRow
+          csv={customersToCsv(report, retention)}
+          filename={reportCsvFilename("clientes", period.from, period.to)}
         />
         <ReportSubnav />
 

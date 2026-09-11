@@ -22,7 +22,7 @@ export function CsvExportButton({ csv, filename }: CsvExportButtonProps) {
   }, [csv, filename]);
 
   return (
-    <Button variant="outline" size="sm" onClick={handleClick}>
+    <Button variant="outline" size="sm" className="min-h-9" onClick={handleClick}>
       <Download className="size-4" aria-hidden="true" />
       Exportar CSV
     </Button>

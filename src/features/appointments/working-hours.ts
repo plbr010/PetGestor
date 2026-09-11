@@ -15,7 +15,7 @@ export type WorkingHoursFitResult =
   | { ok: true }
   | { ok: false; reason: "no_shift" | "outside_hours" | "lunch_break" };
 
-function parseTimeToMinutes(value: string | null): number | null {
+export function parseTimeToMinutes(value: string | null): number | null {
   if (!value) {
     return null;
   }
@@ -26,6 +26,37 @@ function parseTimeToMinutes(value: string | null): number | null {
   }
 
   return Number(match[1]) * 60 + Number(match[2]);
+}
+
+/**
+ * Minutos de capacidade da jornada, já descontado o intervalo válido.
+ * Intervalo half-open [breakStart, breakEnd) intersectado com [start, end).
+ */
+export function shiftCapacityMinutes(window: WorkingHourWindow): number {
+  if (!window.enabled) {
+    return 0;
+  }
+
+  const start = parseTimeToMinutes(window.startTime);
+  const end = parseTimeToMinutes(window.endTime);
+
+  if (start === null || end === null || end <= start) {
+    return 0;
+  }
+
+  let minutes = end - start;
+  const breakStart = parseTimeToMinutes(window.breakStart);
+  const breakEnd = parseTimeToMinutes(window.breakEnd);
+
+  if (breakStart !== null && breakEnd !== null && breakEnd > breakStart) {
+    const overlapStart = Math.max(start, breakStart);
+    const overlapEnd = Math.min(end, breakEnd);
+    if (overlapEnd > overlapStart) {
+      minutes -= overlapEnd - overlapStart;
+    }
+  }
+
+  return Math.max(0, minutes);
 }
 
 /** Sobreposição half-open: [a, b) ∩ [c, d) ≠ ∅ */

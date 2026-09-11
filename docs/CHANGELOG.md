@@ -1,3 +1,22 @@
+## [0.49.0] — 2026-09-11
+
+### Corrigido — Relatórios, KPIs, ocupação, estoque analítico, pacotes e CSV (BLOCO 7)
+
+- Período analítico half-open `[start, endExclusive)` via `getCivilDateRangeUtcBounds` — inclui 23:59:59.999 e exclui 00:00 do dia seguinte
+- PDV operacional: somente `completed` / `partially_paid`; `sale_items` filtrados pela sale pai; ranking por `product_id`
+- Movimentos de estoque classificados no enum real (`entry`, `return`, `sale`, `internal_use`, `exit`, `loss`, `adjustment`); tipo desconhecido visível
+- Reconciliação auditável por produto contra `current_stock` (divergência de legado sem autofix)
+- Pacotes: pending não é recebido; cancelled não é ativo/vendido; expiração por data civil da empresa (`expires_at < hoje`)
+- Ocupação em minutos reais: weekdays civis, jornada menos intervalo, duração do snapshot, no-show separado do realizado
+- Soft-delete operacional em appointments/customers/pets/employees
+- Perdas, vencidos, vence hoje e a vencer (30 dias) na UI de estoque
+- CSV acessível nos relatórios, com BOM, headers pt-BR e proteção contra formula injection
+- `reports.view` e tenant preservados; financeiro do overview continua em `financial_payments` (BLOCO 5)
+
+Diagnóstico de legado: `docs/sql/diagnose-bloco-7-reports.sql`
+
+Não reaplica BLOCOs 1–6. Não inicia BLOCO 8.
+
 ## [0.48.2] — 2026-09-11
 
 ### Corrigido — due_date civil da venda PDV (hardening final do BLOCO 6)

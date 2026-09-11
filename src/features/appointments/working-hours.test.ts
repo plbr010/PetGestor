@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   appointmentFitsWorkingHours,
   appointmentOverlapsBreak,
+  shiftCapacityMinutes,
   slotSurvivesWorkingHours,
   type WorkingHourWindow,
 } from "@/features/appointments/working-hours";
@@ -113,5 +114,43 @@ describe("funcionário com jornada diferente", () => {
         breakEnd: null,
       }),
     ).toBe(true);
+  });
+});
+
+describe("shiftCapacityMinutes — intervalo da jornada", () => {
+  it("sem intervalo usa a jornada inteira", () => {
+    expect(
+      shiftCapacityMinutes({
+        enabled: true,
+        startTime: "08:00",
+        endTime: "18:00",
+        breakStart: null,
+        breakEnd: null,
+      }),
+    ).toBe(600);
+  });
+
+  it("intervalo de 1h reduz a capacidade", () => {
+    expect(
+      shiftCapacityMinutes({
+        enabled: true,
+        startTime: "08:00",
+        endTime: "18:00",
+        breakStart: "12:00",
+        breakEnd: "13:00",
+      }),
+    ).toBe(540);
+  });
+
+  it("intervalo parcial só desconta a interseção com a jornada", () => {
+    expect(
+      shiftCapacityMinutes({
+        enabled: true,
+        startTime: "08:00",
+        endTime: "12:30",
+        breakStart: "12:00",
+        breakEnd: "13:00",
+      }),
+    ).toBe(240);
   });
 });

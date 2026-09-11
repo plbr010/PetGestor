@@ -18,6 +18,8 @@ import { changePercent } from "@/features/reports/utils";
 import { ReportKpiCard } from "@/features/reports/components/report-kpi-card";
 import { ReportPeriodNav } from "@/features/reports/components/report-period-nav";
 import { ReportSubnav } from "@/features/reports/components/report-subnav";
+import { ReportExportRow } from "@/features/reports/components/report-export-row";
+import { overviewToCsv, reportCsvFilename } from "@/features/reports/csv-builders";
 
 type PageProps = {
   searchParams: Promise<{
@@ -47,6 +49,10 @@ export default async function ReportsOverviewPage({ searchParams }: PageProps) {
           from={period.from}
           to={period.to}
           preset={period.preset}
+        />
+        <ReportExportRow
+          csv={overviewToCsv(overview, { includeFinance: canViewFinance })}
+          filename={reportCsvFilename("visao-geral", period.from, period.to)}
         />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

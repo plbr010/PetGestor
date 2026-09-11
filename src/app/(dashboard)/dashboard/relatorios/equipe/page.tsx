@@ -4,8 +4,11 @@ import { requirePermission } from "@/lib/auth/require-permission";
 import { formatAmountCents } from "@/features/finance/utils";
 import { resolveReportPeriod } from "@/features/reports/period";
 import { getEmployeePerformance, getOccupancyReport } from "@/features/reports/queries";
+import { ReportKpiCard } from "@/features/reports/components/report-kpi-card";
 import { ReportPeriodNav } from "@/features/reports/components/report-period-nav";
 import { ReportSubnav } from "@/features/reports/components/report-subnav";
+import { ReportExportRow } from "@/features/reports/components/report-export-row";
+import { reportCsvFilename, teamToCsv } from "@/features/reports/csv-builders";
 
 type PageProps = {
   searchParams: Promise<{ preset?: string; from?: string; to?: string }>;
@@ -33,18 +36,38 @@ export default async function EmployeeReportPage({ searchParams }: PageProps) {
           to={period.to}
           preset={period.preset}
         />
+        <ReportExportRow
+          csv={teamToCsv(employees, occupancy)}
+          filename={reportCsvFilename("equipe", period.from, period.to)}
+        />
         <ReportSubnav />
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ReportKpiCard label="Capacidade" value={`${occupancy.capacityMinutes} min`} />
+          <ReportKpiCard
+            label="Reservado"
+            value={`${occupancy.overallPercent.toFixed(1).replace(".", ",")}%`}
+          />
+          <ReportKpiCard
+            label="Realizado"
+            value={`${occupancy.overallServedPercent.toFixed(1).replace(".", ",")}%`}
+          />
+          <ReportKpiCard label="No-show" value={`${occupancy.noShowMinutes} min`} />
+        </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Taxa de ocupação</CardTitle>
+            <CardTitle className="text-base">Ocupação da agenda</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold">
-              {occupancy.overallPercent.toFixed(1).replace(".", ",")}%
+          <CardContent className="space-y-1 text-sm text-muted-foreground">
+            <p>
+              Capacidade em minutos reais do período civil (jornada menos intervalo). Reservado
+              inclui confirmed/scheduled/in_progress/completed/no-show. Realizado é só completed.
+              Cancelado não ocupa capacidade.
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {occupancy.totalSlotsUsed} de {occupancy.totalSlotsAvailable} horários utilizados
+            <p>
+              {occupancy.reservedMinutes} min reservados · {occupancy.servedMinutes} min
+              realizados · {occupancy.cancelledMinutes} min cancelados
             </p>
           </CardContent>
         </Card>
@@ -76,7 +99,9 @@ export default async function EmployeeReportPage({ searchParams }: PageProps) {
                         <td className="py-2 pr-4 font-medium">{emp.employeeName}</td>
                         <td className="py-2 pr-4 text-right">{emp.appointmentsCount}</td>
                         <td className="py-2 pr-4 text-right">{formatAmountCents(emp.revenueCents)}</td>
-                        <td className="py-2 pr-4 text-right">{emp.avgPerDay.toFixed(1).replace(".", ",")}</td>
+                        <td className="py-2 pr-4 text-right">
+                          {emp.avgPerDay.toFixed(1).replace(".", ",")}
+                        </td>
                         <td className="py-2 text-right">{emp.cancellations}</td>
                       </tr>
                     ))}

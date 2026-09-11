@@ -1,6 +1,7 @@
 import { resolveFinanceAnalyticsPeriod } from "@/features/finance/analytics/period";
 import {
   addDaysToDateString,
+  getCivilDateRangeUtcBounds,
   getTodayInTimezone,
   resolveCompanyTimeZone,
 } from "@/lib/timezone";
@@ -32,6 +33,45 @@ export function getPreviousPeriod(from: string, to: string): { from: string; to:
     from: addDaysToDateString(from, -days),
     to: addDaysToDateString(from, -1),
   };
+}
+
+/**
+ * Período analítico canônico: half-open [from 00:00, dayAfter(to) 00:00)
+ * no fuso da empresa. Reutiliza getCivilDateRangeUtcBounds — não duplicar a regra.
+ */
+export function getReportPeriodBounds(
+  from: string,
+  to: string,
+  timeZone: string,
+): { start: string; endExclusive: string } {
+  return getCivilDateRangeUtcBounds(from, to, resolveCompanyTimeZone(timeZone));
+}
+
+export function eachCivilDateInclusive(from: string, to: string): string[] {
+  if (from > to) {
+    return [];
+  }
+
+  const dates: string[] = [];
+  let current = from;
+  while (current <= to) {
+    dates.push(current);
+    current = addDaysToDateString(current, 1);
+  }
+  return dates;
+}
+
+/** Weekday 0=domingo … 6=sábado da data civil (calendário, independente de fuso). */
+export function weekdayOfCivilDate(date: string): number {
+  return new Date(`${date}T12:00:00.000Z`).getUTCDay();
+}
+
+export function countWeekdaysInCivilRange(from: string, to: string): number[] {
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const date of eachCivilDateInclusive(from, to)) {
+    counts[weekdayOfCivilDate(date)] += 1;
+  }
+  return counts;
 }
 
 export function periodLabel(preset: ReportPreset): string {
