@@ -87,7 +87,7 @@ Filtros de instante (`paid_at`, `created_at`) usam intervalo half-open no **fuso
 
 `[início civil 00:00, 00:00 do dia seguinte ao último dia)`
 
-`due_date` é data civil. Não usar `new Date("YYYY-MM-DD")`.
+`due_date` é data civil. Não usar `new Date("YYYY-MM-DD")`. Receita do PDV (`source_type = sale`) usa `private.company_civil_today` no checkout.
 
 ## Filtro por forma de pagamento
 
