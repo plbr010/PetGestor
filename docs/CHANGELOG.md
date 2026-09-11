@@ -11,6 +11,7 @@
 - Storage `company-files`: pasta da empresa + membership ativa + permissão por tipo de path
 - Migration incremental: `supabase/migrations/20260911120000_authorization_rls_tenant_isolation.sql`
 - SQL Editor: `GRANT`/`REVOKE` sem `DEFAULT`; conferência final ignora funções agregadas (`array_agg`)
+- RPCs que ainda inferiam tenant por `created_at` são reescritas no banco; `seed_demo_account` remoto é desligado
 
 ## [0.42.0] — 2026-09-02
 

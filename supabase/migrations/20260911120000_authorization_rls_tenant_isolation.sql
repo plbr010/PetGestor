@@ -3725,39 +3725,81 @@ REVOKE ALL ON FUNCTION private.activate_company_context(uuid) FROM PUBLIC, anon,
 REVOKE ALL ON FUNCTION private.require_app_permission(uuid, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION private.profile_default_permissions(text) FROM PUBLIC, anon, authenticated;
 
+-- seed_demo_account existia só no banco remoto (não está no app). Fail-closed.
 DO $$
 DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT p.oid::regprocedure AS sig
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE p.proname = 'seed_demo_account'
+      AND n.nspname IN ('public', 'private')
+      AND p.prokind = 'f'
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated', r.sig);
+  END LOOP;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.seed_demo_account(p_force boolean DEFAULT false)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, private, auth
+SET row_security = off
+AS $$
+BEGIN
+  RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.seed_demo_account(boolean) FROM PUBLIC, anon, authenticated;
+
+DO $$
+DECLARE
+  r record;
   def text;
   newdef text;
-  fn oid;
 BEGIN
-  SELECT p.oid
-  INTO fn
-  FROM pg_proc p
-  JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'private'
-    AND p.proname = 'register_stock_movement';
+  FOR r IN
+    SELECT p.oid, p.oid::regprocedure AS sig, p.proname
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname IN ('public', 'private')
+      AND p.prokind = 'f'
+      AND p.proname NOT IN (
+        'complete_onboarding',
+        'complete_onboarding_tutorial',
+        'get_auth_company_id',
+        'seed_demo_account'
+      )
+  LOOP
+    BEGIN
+      def := pg_get_functiondef(r.oid);
+    EXCEPTION
+      WHEN wrong_object_type THEN
+        CONTINUE;
+    END;
 
-  IF fn IS NULL THEN
-    RAISE EXCEPTION 'private.register_stock_movement not found after schema move';
-  END IF;
+    IF def !~* 'ORDER BY[[:space:]]+(cm\.)?created_at[[:space:]]+ASC[[:space:]]+LIMIT[[:space:]]+1' THEN
+      CONTINUE;
+    END IF;
 
-  def := pg_get_functiondef(fn);
-
-  IF def ~* 'ORDER BY[[:space:]]+cm\.created_at' THEN
     newdef := regexp_replace(
       def,
-      'SELECT[[:space:]]+cm\.company_id[[:space:]]+INTO[[:space:]]+v_company_id[[:space:]]+FROM[[:space:]]+public\.company_members[[:space:]]+cm[[:space:]]+WHERE[[:space:]]+cm\.user_id[[:space:]]*=[[:space:]]+v_user_id[[:space:]]+ORDER BY[[:space:]]+cm\.created_at[[:space:]]+ASC[[:space:]]+LIMIT[[:space:]]+1;',
+      'SELECT[[:space:]]+cm\.company_id[[:space:]]+INTO[[:space:]]+v_company_id[[:space:]]+FROM[[:space:]]+public\.company_members[[:space:]]+cm[[:space:]]+WHERE[[:space:]]+cm\.user_id[[:space:]]*=[[:space:]]+(v_user_id|v_actor|auth\.uid\(\))([[:space:]]+AND[[:space:]]+cm\.access_revoked_at[[:space:]]+IS[[:space:]]+NULL)?[[:space:]]+ORDER BY[[:space:]]+cm\.created_at[[:space:]]+ASC[[:space:]]+LIMIT[[:space:]]+1;',
       'v_company_id := private.get_auth_company_id();',
-      'i'
+      'gi'
     );
 
     IF newdef = def THEN
-      RAISE EXCEPTION 'failed to rewrite private.register_stock_movement tenant lookup';
+      RAISE EXCEPTION 'failed to rewrite tenant lookup in %', r.sig;
     END IF;
 
     EXECUTE newdef;
-  END IF;
+  END LOOP;
 END;
 $$;
 

@@ -65,6 +65,11 @@ describe("BLOCO 1 — membership revogada no SQL", () => {
     expect(fn).not.toMatch(/ORDER BY[\s\S]*created_at[\s\S]*LIMIT 1/);
   });
 
+  it("seed_demo_account remoto é desligado (fail-closed)", () => {
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.seed_demo_account");
+    expect(sql).toContain("REVOKE ALL ON FUNCTION public.seed_demo_account(boolean)");
+  });
+
   it("RPCs públicas de mutação exigem p_company_id e membership ativa", () => {
     expect(sql).toContain("PERFORM private.activate_company_context(p_company_id)");
     expect(sql).toContain("PERFORM private.require_app_permission(p_company_id, 'appointments.create')");
