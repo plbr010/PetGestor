@@ -358,6 +358,18 @@ RLS por `company_id` + `private.is_company_member`. Movimentações imutáveis. 
 
 Ver `docs/INVENTORY.md`. **Migration pendente de aplicação remota.**
 
+## Etapa — PDV (BLOCO 6)
+
+Migrations: `20260818140000_point_of_sale.sql`, `20260825160000_pdv_finalize.sql`, `20260911300000_pdv_server_side_price_checkout.sql`
+
+- Preço/total: `products.sale_price_cents` no servidor; snapshot em `sale_items`
+- `sales.cash_received_cents` = tendered; `change_cents` = troco (não é receita)
+- `sales.checkout_fingerprint` compara payload material na idempotência
+- Estoque: `UPDATE … WHERE current_stock = previous AND new >= 0`
+- Cancelamento de venda paga: `sale_paid_requires_refund`
+
+Ver `docs/PDV.md`. Diagnóstico: `docs/sql/diagnose-bloco-6-pdv.sql`
+
 ## Entidades NÃO criadas na Etapa 9
 
 PDV, comissão, NF, assinatura SaaS (trial implementado na 10A).

@@ -21,7 +21,8 @@ export function CancelSaleForm({ saleId }: { saleId: string }) {
       <div>
         <h3 className="font-medium text-destructive">Cancelar venda</h3>
         <p className="text-sm text-muted-foreground">
-          O estoque será devolvido e o lançamento financeiro cancelado.
+          Vendas pagas não são canceladas neste fluxo. Estorno exige política de refund
+          ainda não disponível.
         </p>
       </div>
 

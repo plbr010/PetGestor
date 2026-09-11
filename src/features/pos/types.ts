@@ -77,6 +77,7 @@ export type SaleDetail = {
   totalCents: number;
   paidCents: number;
   changeCents: number;
+  cashReceivedCents: number;
   createdByName: string;
   discountAppliedBy: string | null;
   cancelledAt: string | null;

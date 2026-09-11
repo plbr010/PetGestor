@@ -52,5 +52,5 @@ export function parseSalePaymentMethodFilter(
 }
 
 export function canCancelSale(status: SaleStatus, cancelledAt: string | null): boolean {
-  return cancelledAt == null && (status === "completed" || status === "partially_paid");
+  return cancelledAt == null && status === "open";
 }

@@ -15,7 +15,7 @@ import {
   parseOpenCashSessionForm,
   parseRegisterSalePaymentForm,
 } from "@/features/pos/schemas";
-import type { CartLine, SalePaymentInput } from "@/features/pos/types";
+import type { SalePaymentInput } from "@/features/pos/types";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { hasPermission } from "@/lib/auth/permissions";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
@@ -71,18 +71,7 @@ export async function completeSaleAction(
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("complete_product_sale", {
     p_idempotency_key: parsed.data.idempotencyKey,
-    p_items: buildRpcItemsPayload(
-      parsed.data.items.map((item) => ({
-        productId: item.productId,
-        name: "",
-        unit: "unit",
-        unitPriceCents: item.unitPriceCents,
-        costPriceCents: 0,
-        quantity: item.quantity,
-        availableStock: 0,
-        trackStock: true,
-      })) satisfies CartLine[],
-    ),
+    p_items: buildRpcItemsPayload(parsed.data.items),
     p_payments: buildRpcPaymentsPayload(parsed.data.payments satisfies SalePaymentInput[]),
     p_customer_id: parsed.data.customerId,
     p_discount_type: parsed.data.discountType,

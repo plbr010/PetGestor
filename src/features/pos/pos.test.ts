@@ -18,6 +18,7 @@ import {
   computeGrossMarginCents,
   computeLineSubtotalCents,
   determineSaleStatus,
+  settleCheckoutPayments,
   sumPaymentsCents,
   validateCartQuantity,
   validatePayments,
@@ -111,6 +112,12 @@ describe("PDV / vendas", () => {
     const payments = [{ amountCents: 10000, paymentMethod: "cash" as const, idempotencyKey: SALE_KEY }];
     expect(computeChangeCents(8700, payments, 10000)).toBe(1300);
     expect(computeEffectivePaidCents(8700, payments, 10000)).toBe(8700);
+    const settled = settleCheckoutPayments(8700, payments, 10000);
+    expect(settled.ok).toBe(true);
+    if (settled.ok) {
+      expect(settled.value.appliedCashCents).toBe(8700);
+      expect(settled.value.changeCents).toBe(1300);
+    }
   });
 
   it("G) pagamento PIX", () => {
@@ -318,11 +325,12 @@ describe("PDV / vendas", () => {
     expect(available).toBe(3);
   });
 
-  it("W) histórico — payload RPC de itens", () => {
+  it("W) histórico — payload RPC de itens não envia preço", () => {
     const payload = buildRpcItemsPayload([
       cartLine({ productId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", quantity: 1.5 }),
     ]);
     expect(payload[0]?.quantity).toBe(1.5);
+    expect(payload[0]).not.toHaveProperty("unit_price_cents");
   });
 
   it("dashboard — limites do dia não lançam Invalid time value", () => {

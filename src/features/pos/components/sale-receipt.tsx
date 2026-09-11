@@ -99,6 +99,12 @@ export function SaleReceipt({
               <span>{formatCentsToBRL(payment.amountCents)}</span>
             </div>
           ))}
+          {sale.cashReceivedCents > 0 ? (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Dinheiro recebido</span>
+              <span>{formatCentsToBRL(sale.cashReceivedCents)}</span>
+            </div>
+          ) : null}
           {sale.changeCents > 0 ? (
             <div className="flex justify-between font-medium">
               <span>Troco</span>
