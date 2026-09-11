@@ -4,9 +4,10 @@ import { useActionState, useMemo, useState } from "react";
 import { Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 
 import { PAYMENT_METHOD_LABELS } from "@/features/finance/status";
-import { formatQuantity } from "@/features/inventory/stock-engine";
+import { formatQuantity, SELLABLE_STOCK_REASON_LABELS } from "@/features/inventory/stock-engine";
 import { PRODUCT_UNIT_SHORT_LABELS } from "@/features/inventory/units";
 import { completeSaleAction, type PosActionState } from "@/features/pos/actions";
+import { posStockHint } from "@/features/pos/catalog";
 import {
   computeCartSubtotalCents,
   computeCartTotalCents,
@@ -37,6 +38,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import { StockStatusBadge } from "@/features/inventory/components/stock-status-badge";
 
 const initialState: PosActionState = {};
@@ -115,6 +117,10 @@ export function PosWorkspace({ products, categories, customers }: PosWorkspacePr
   const balanceCents = Math.max(0, totalCents - paidCents);
 
   function addProduct(product: PosProductItem) {
+    if (!product.canSell || product.salePriceCents == null) {
+      return;
+    }
+
     const draftQty = quantityDrafts[product.id];
     const quantity = parseSaleQuantityInput(draftQty ?? "1") ?? 1;
 
@@ -227,16 +233,14 @@ export function PosWorkspace({ products, categories, customers }: PosWorkspacePr
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {filteredProducts.map((product) => {
             const unit = PRODUCT_UNIT_SHORT_LABELS[product.unit];
-            const canSell =
-              !product.trackStock ||
-              product.availableStock > 0 ||
-              product.stockStatus !== "out";
+            const hint = posStockHint(product.availabilityReason);
+            const canSell = product.canSell && product.salePriceCents != null;
 
             return (
               <button
                 key={product.id}
                 type="button"
-                disabled={!canSell || product.salePriceCents == null}
+                disabled={!canSell}
                 onClick={() => addProduct(product)}
                 className="rounded-xl border bg-card p-4 text-left transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -247,7 +251,16 @@ export function PosWorkspace({ products, categories, customers }: PosWorkspacePr
                       {product.categoryName ?? "Sem categoria"}
                     </p>
                   </div>
-                  <StockStatusBadge status={product.stockStatus} />
+                  {product.availabilityReason === "expired" ? (
+                    <Badge
+                      variant="outline"
+                      className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                    >
+                      {SELLABLE_STOCK_REASON_LABELS.expired}
+                    </Badge>
+                  ) : (
+                    <StockStatusBadge status={product.stockStatus} />
+                  )}
                 </div>
                 <div className="mt-3 flex items-end justify-between gap-2">
                   <div>
@@ -257,9 +270,14 @@ export function PosWorkspace({ products, categories, customers }: PosWorkspacePr
                         : "—"}
                     </p>
                     {product.trackStock ? (
-                      <p className="text-xs text-muted-foreground">
-                        Disp.: {formatQuantity(product.availableStock, unit)}
-                      </p>
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          Disp.: {formatQuantity(product.availableStock, unit)}
+                        </p>
+                        {hint ? (
+                          <p className="text-xs text-muted-foreground">{hint}</p>
+                        ) : null}
+                      </>
                     ) : null}
                   </div>
                   <Input

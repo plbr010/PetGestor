@@ -41,9 +41,17 @@ Módulo de ponto de venda integrado ao estoque e ao financeiro.
 ## Estoque
 
 - Baixa via `register_stock_movement` com `type = sale` e `reference_type = sale`
-- FEFO em lotes (mesma regra do estoque); lotes vencidos excluídos do disponível
+- FEFO em lotes (mesma regra do estoque); lotes vencidos (`expiration_date` < hoje civil da empresa) excluídos do disponível
+- Lote com `expiration_date` igual ao dia civil da empresa permanece vendável naquele dia
+- Catálogo do PDV deriva `canSell` de `availableStock`; estoque só vencido não é adicionável ao carrinho
 - Concorrência: `SELECT … FOR UPDATE` + `UPDATE … WHERE current_stock = previous AND new >= 0`
 - Estoque nunca fica negativo; duas vendas da última unidade: uma vence, a outra `insufficient_stock`
+
+## Período (listagem, métricas, filtros)
+
+- Intervalo half-open no fuso da empresa: `[start, endExclusive)`
+- Inclui 23:59:59.999 do último dia civil; o evento em 00:00 do dia seguinte pertence ao período seguinte
+- Aplica-se a vendas, métricas do dashboard e `getPosSalesReport` (hoje/semana/mês/custom)
 
 ## Financeiro
 
@@ -83,6 +91,7 @@ Módulo de ponto de venda integrado ao estoque e ao financeiro.
 - `supabase/migrations/20260818140000_point_of_sale.sql`
 - `supabase/migrations/20260825160000_pdv_finalize.sql`
 - `supabase/migrations/20260911300000_pdv_server_side_price_checkout.sql` (**BLOCO 6 — aplicar no Supabase**)
+- `supabase/migrations/20260911320000_stock_expiration_company_civil_today.sql` (**hardening BLOCO 6 — validade civil**)
 - Diagnóstico somente leitura: `docs/sql/diagnose-bloco-6-pdv.sql`
 
 ## Tabelas

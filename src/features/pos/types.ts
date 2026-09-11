@@ -1,3 +1,4 @@
+import type { SellableStockReason } from "@/features/inventory/stock-engine";
 import type { DiscountType, PaymentMethod, ProductUnit, SaleStatus } from "@/types/database.types";
 
 export type PosProductItem = {
@@ -12,8 +13,11 @@ export type PosProductItem = {
   costPriceCents: number;
   currentStock: number;
   availableStock: number;
+  minimumStock: number;
   trackStock: boolean;
   stockStatus: "normal" | "low" | "out" | "archived";
+  availabilityReason: SellableStockReason;
+  canSell: boolean;
 };
 
 export type CartLine = {

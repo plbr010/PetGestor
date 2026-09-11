@@ -207,6 +207,54 @@ describe("BLOCO 6 — estoque concorrente", () => {
   });
 });
 
+describe("BLOCO 6 hardening — checkout não vende lote só vencido", () => {
+  it("currentStock 10 todo vencido bloqueia a venda", () => {
+    const store = seededStore();
+    store.today = "2026-09-11";
+    store.addProduct(
+      catalogProduct({
+        currentStock: 10,
+        batches: [
+          {
+            id: "b1",
+            batchCode: "V1",
+            quantityRemaining: 10,
+            expirationDate: "2026-09-10",
+            unitCostCents: 2000,
+          },
+        ],
+      }),
+    );
+
+    const result = store.checkout(createCheckoutActor(COMPANY_A), request());
+    expect(result).toEqual({ ok: false, error: "insufficient_stock" });
+    expect(store.products.get(PRODUCT_A)?.currentStock).toBe(10);
+  });
+
+  it("lote que vence hoje ainda vende", () => {
+    const store = seededStore();
+    store.today = "2026-09-11";
+    store.addProduct(
+      catalogProduct({
+        currentStock: 10,
+        batches: [
+          {
+            id: "b1",
+            batchCode: "H1",
+            quantityRemaining: 10,
+            expirationDate: "2026-09-11",
+            unitCostCents: 2000,
+          },
+        ],
+      }),
+    );
+
+    const result = store.checkout(createCheckoutActor(COMPANY_A), request());
+    expect(result.ok).toBe(true);
+    expect(store.products.get(PRODUCT_A)?.currentStock).toBe(9);
+  });
+});
+
 describe("BLOCO 6 — troco e pagamento misto", () => {
   it("venda R$100, cash received R$120 → payment cash R$100 e troco R$20", () => {
     const store = seededStore();
