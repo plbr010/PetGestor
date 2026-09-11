@@ -34,7 +34,7 @@ companies
 - Movimentações não podem ser atualizadas nem apagadas. Correção = nova movimentação (ajuste/inverso).
 - Quantidades `numeric(14,3)` — unidade, kg, g, ml, litro, pacote, caixa, outro.
 - Saldo negativo é bloqueado.
-- Produto vencido (lote com `expiration_date < CURRENT_DATE`) **não entra** no disponível para saída comum; perda/vencimento pode baixar o físico.
+- Produto vencido (lote com `expiration_date` < hoje civil da empresa via `private.company_civil_today`) **não entra** no disponível para saída comum; perda/vencimento pode baixar o físico. Lote com validade igual ao dia civil permanece válido naquele dia.
 - Custo médio ponderado nas entradas/devoluções com custo informado.
 - Idempotência: `UNIQUE (company_id, idempotency_key)` + retorno do movimento existente.
 - Concorrência: `SELECT … FOR UPDATE` no produto dentro da RPC.

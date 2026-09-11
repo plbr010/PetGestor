@@ -1,11 +1,9 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
 
-import {
-  computeAvailableStock,
-  getStockStatus,
-  toQuantity,
-} from "@/features/inventory/stock-engine";
+import { toQuantity } from "@/features/inventory/stock-engine";
+import { mapPosCatalogProduct, type PosCatalogProductRow } from "@/features/pos/catalog";
+import { getPosPeriodBounds } from "@/features/pos/period";
 import {
   parseSalePaymentMethodFilter,
   parseSalePeriodFilter,
@@ -28,71 +26,7 @@ import {
 } from "@/lib/pagination";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  addDaysToDateString,
-  getTodayInTimezone,
-  getWeekDates,
-  localDateTimeToUtcIso,
-} from "@/lib/timezone";
-import type { PaymentMethod, ProductUnit, SaleStatus } from "@/types/database.types";
-
-type ProductRow = {
-  id: string;
-  name: string;
-  sku: string | null;
-  barcode: string | null;
-  category_id: string | null;
-  unit: ProductUnit;
-  sale_price_cents: number | null;
-  cost_price_cents: number;
-  current_stock: number | string;
-  track_stock: boolean;
-  stock_status: "normal" | "low" | "out" | "archived";
-  product_categories: { name: string } | { name: string }[] | null;
-  product_batches: { quantity_remaining: number | string; expiration_date: string | null }[];
-};
-
-function categoryName(value: ProductRow["product_categories"]): string | null {
-  if (!value) return null;
-  if (Array.isArray(value)) return value[0]?.name ?? null;
-  return value.name;
-}
-
-function mapPosProduct(row: ProductRow, today: string): PosProductItem {
-  const batches = (row.product_batches ?? []).map((batch) => ({
-    id: "",
-    batchCode: null,
-    quantityRemaining: toQuantity(batch.quantity_remaining),
-    expirationDate: batch.expiration_date,
-    unitCostCents: null,
-  }));
-
-  const currentStock = toQuantity(row.current_stock);
-  const availableStock = row.track_stock
-    ? computeAvailableStock(currentStock, batches, today)
-    : currentStock;
-
-  return {
-    id: row.id,
-    name: row.name,
-    sku: row.sku,
-    barcode: row.barcode,
-    categoryId: row.category_id,
-    categoryName: categoryName(row.product_categories),
-    unit: row.unit,
-    salePriceCents: row.sale_price_cents,
-    costPriceCents: row.cost_price_cents,
-    currentStock,
-    availableStock,
-    trackStock: row.track_stock,
-    stockStatus: getStockStatus({
-      currentStock,
-      minimumStock: 0,
-      archivedAt: null,
-      trackStock: row.track_stock,
-    }),
-  };
-}
+import type { PaymentMethod, SaleStatus } from "@/types/database.types";
 
 export async function getPosCatalog(
   companyId: string,
@@ -105,7 +39,7 @@ export async function getPosCatalog(
   let builder = supabase
     .from("products")
     .select(
-      "id, name, sku, barcode, category_id, unit, sale_price_cents, cost_price_cents, current_stock, track_stock, stock_status, product_categories(name), product_batches(quantity_remaining, expiration_date)",
+      "id, name, sku, barcode, category_id, unit, sale_price_cents, cost_price_cents, current_stock, minimum_stock, track_stock, stock_status, product_categories(name), product_batches(quantity_remaining, expiration_date)",
     )
     .eq("company_id", companyId)
     .eq("active", true)
@@ -123,7 +57,7 @@ export async function getPosCatalog(
     throw new Error("Não foi possível carregar os produtos.");
   }
 
-  return (data as ProductRow[]).map((row) => mapPosProduct(row, today));
+  return (data as PosCatalogProductRow[]).map((row) => mapPosCatalogProduct(row, today));
 }
 
 type GetSalesParams = {
@@ -170,59 +104,6 @@ async function loadCustomerNames(
   return new Map((data ?? []).map((row) => [row.id, row.name]));
 }
 
-function startOfLocalDayUtc(date: string, timeZone: string): string {
-  return localDateTimeToUtcIso(date, "00:00", timeZone);
-}
-
-function endOfLocalDayUtc(date: string, timeZone: string): string {
-  return localDateTimeToUtcIso(date, "23:59", timeZone);
-}
-
-function periodBounds(
-  period: string,
-  timeZone: string,
-  from?: string,
-  to?: string,
-): { start?: string; end?: string } {
-  const today = getTodayInTimezone(timeZone);
-
-  if (period === "today") {
-    return {
-      start: startOfLocalDayUtc(today, timeZone),
-      end: endOfLocalDayUtc(today, timeZone),
-    };
-  }
-
-  if (period === "week") {
-    const week = getWeekDates(today);
-    return {
-      start: startOfLocalDayUtc(week[0], timeZone),
-      end: endOfLocalDayUtc(week[6], timeZone),
-    };
-  }
-
-  if (period === "month") {
-    const monthStart = `${today.slice(0, 7)}-01`;
-    const monthEnd = addDaysToDateString(
-      addDaysToDateString(`${today.slice(0, 7)}-01`, 32).slice(0, 7) + "-01",
-      -1,
-    );
-    return {
-      start: startOfLocalDayUtc(monthStart, timeZone),
-      end: endOfLocalDayUtc(monthEnd, timeZone),
-    };
-  }
-
-  if (period === "custom" && from && to) {
-    return {
-      start: startOfLocalDayUtc(from, timeZone),
-      end: endOfLocalDayUtc(to, timeZone),
-    };
-  }
-
-  return {};
-}
-
 export async function getSales({
   companyId,
   timeZone,
@@ -245,7 +126,7 @@ export async function getSales({
   const statusFilter = parseSaleStatusFilter(status);
   const periodFilter = parseSalePeriodFilter(period);
   const paymentFilter = parseSalePaymentMethodFilter(paymentMethod);
-  const bounds = periodBounds(periodFilter, timeZone, from, to);
+  const bounds = getPosPeriodBounds(periodFilter, timeZone, { from, to });
 
   let builder = supabase
     .from("sales")
@@ -268,8 +149,8 @@ export async function getSales({
     builder = builder.gte("sold_at", bounds.start);
   }
 
-  if (bounds.end) {
-    builder = builder.lte("sold_at", bounds.end);
+  if (bounds.endExclusive) {
+    builder = builder.lt("sold_at", bounds.endExclusive);
   }
 
   if (search) {
@@ -418,9 +299,13 @@ export async function getPosDashboardMetrics(
   noStore();
 
   const supabase = await createSupabaseServerClient();
-  const today = getTodayInTimezone(timeZone);
-  const start = startOfLocalDayUtc(today, timeZone);
-  const end = endOfLocalDayUtc(today, timeZone);
+  const bounds = getPosPeriodBounds("today", timeZone);
+  const start = bounds.start;
+  const endExclusive = bounds.endExclusive;
+
+  if (!start || !endExclusive) {
+    throw new Error("Não foi possível determinar o período do PDV.");
+  }
 
   const [{ data: sales }, { data: itemRows }] = await Promise.all([
     supabase
@@ -429,13 +314,13 @@ export async function getPosDashboardMetrics(
       .eq("company_id", companyId)
       .neq("status", "cancelled")
       .gte("sold_at", start)
-      .lte("sold_at", end),
+      .lt("sold_at", endExclusive),
     supabase
       .from("sale_items")
       .select("quantity, sales!inner(sold_at, status, company_id)")
       .eq("company_id", companyId)
       .gte("sales.sold_at", start)
-      .lte("sales.sold_at", end)
+      .lt("sales.sold_at", endExclusive)
       .neq("sales.status", "cancelled"),
   ]);
 
@@ -456,7 +341,7 @@ export async function getPosSalesReport(
 ): Promise<PosSalesReport> {
   noStore();
 
-  const bounds = periodBounds(parseSalePeriodFilter(period), timeZone);
+  const bounds = getPosPeriodBounds(parseSalePeriodFilter(period), timeZone);
   const supabase = await createSupabaseServerClient();
 
   let salesQuery = supabase
@@ -466,7 +351,7 @@ export async function getPosSalesReport(
     .neq("status", "cancelled");
 
   if (bounds.start) salesQuery = salesQuery.gte("sold_at", bounds.start);
-  if (bounds.end) salesQuery = salesQuery.lte("sold_at", bounds.end);
+  if (bounds.endExclusive) salesQuery = salesQuery.lt("sold_at", bounds.endExclusive);
 
   const { data: sales } = await salesQuery;
   const saleIds = (sales ?? []).map((row) => row.id);

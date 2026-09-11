@@ -99,6 +99,57 @@ export const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
   archived: "Arquivado",
 };
 
+/**
+ * Disponibilidade operacional para venda.
+ * Fonte de verdade: availableStock (currentStock − lotes vencidos), nunca currentStock isolado.
+ */
+export type SellableStockReason = "untracked" | "available" | "low" | "out" | "expired";
+
+export type SellableStockAvailability = {
+  canSell: boolean;
+  reason: SellableStockReason;
+  status: StockStatus;
+};
+
+export const SELLABLE_STOCK_REASON_LABELS: Record<SellableStockReason, string> = {
+  untracked: "Sem controle",
+  available: "Disponível",
+  low: "Estoque baixo",
+  out: "Sem estoque",
+  expired: "Vencido",
+};
+
+export function getSellableStockAvailability(input: {
+  trackStock: boolean;
+  currentStock: number;
+  availableStock: number;
+  minimumStock?: number;
+  archivedAt?: string | null;
+}): SellableStockAvailability {
+  if (input.archivedAt) {
+    return { canSell: false, reason: "out", status: "archived" };
+  }
+
+  if (!input.trackStock) {
+    return { canSell: true, reason: "untracked", status: "normal" };
+  }
+
+  if (input.availableStock <= 0) {
+    if (input.currentStock > 0) {
+      return { canSell: false, reason: "expired", status: "out" };
+    }
+
+    return { canSell: false, reason: "out", status: "out" };
+  }
+
+  const minimumStock = input.minimumStock ?? 0;
+  if (minimumStock > 0 && input.availableStock <= minimumStock) {
+    return { canSell: true, reason: "low", status: "low" };
+  }
+
+  return { canSell: true, reason: "available", status: "normal" };
+}
+
 export type StockBatchState = {
   id: string;
   batchCode: string | null;
@@ -143,6 +194,10 @@ export type StockEngineResult =
     }
   | { ok: false; error: string };
 
+/**
+ * Lote vencido no dia civil informado (hoje da empresa, YYYY-MM-DD).
+ * expiration_date < today → vencido; expiration_date = today → ainda válido.
+ */
 export function isExpiredDate(expirationDate: string | null, today: string): boolean {
   return Boolean(expirationDate && expirationDate < today);
 }

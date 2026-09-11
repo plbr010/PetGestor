@@ -1,3 +1,16 @@
+## [0.48.1] — 2026-09-11
+
+### Corrigido — hardening incremental do BLOCO 6 (PDV)
+
+- Disponibilidade do PDV usa `availableStock` (saldo − lotes vencidos), não `currentStock` isolado
+- Produto com estoque só vencido não é clicável; UI distingue sem estoque, estoque baixo e vencido/indisponível
+- Validade do lote usa o dia civil da empresa (`private.company_civil_today`): vence hoje permanece válido; venceu ontem não
+- Período do PDV (listagem, métricas, filtros, relatório) é half-open `[start, endExclusive)` — inclui 23:59:59.999 e exclui 00:00 do dia seguinte
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911320000_stock_expiration_company_civil_today.sql`
+
+Não reaplica BLOCOs 1–6. Não inicia BLOCO 7.
+
 ## [0.48.0] — 2026-09-11
 
 ### Corrigido — PDV: preço server-side, checkout atômico, estoque e troco (BLOCO 6)
