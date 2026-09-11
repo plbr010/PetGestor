@@ -1252,9 +1252,9 @@ REVOKE ALL ON FUNCTION public.create_service_with_prices(
   p_pricing_mode text,
   p_price_cents integer,
   p_duration_minutes integer,
-  p_active boolean DEFAULT true,
-  p_size_prices jsonb DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_active boolean,
+  p_size_prices jsonb,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.create_service_with_prices(
@@ -1263,9 +1263,9 @@ GRANT EXECUTE ON FUNCTION public.create_service_with_prices(
   p_pricing_mode text,
   p_price_cents integer,
   p_duration_minutes integer,
-  p_active boolean DEFAULT true,
-  p_size_prices jsonb DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_active boolean,
+  p_size_prices jsonb,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1301,8 +1301,8 @@ REVOKE ALL ON FUNCTION public.update_service_with_prices(
   p_price_cents integer,
   p_duration_minutes integer,
   p_active boolean,
-  p_size_prices jsonb DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_size_prices jsonb,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.update_service_with_prices(
@@ -1313,8 +1313,8 @@ GRANT EXECUTE ON FUNCTION public.update_service_with_prices(
   p_price_cents integer,
   p_duration_minutes integer,
   p_active boolean,
-  p_size_prices jsonb DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_size_prices jsonb,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1344,8 +1344,8 @@ REVOKE ALL ON FUNCTION public.grant_employee_access(
   p_email text,
   p_access_profile text,
   p_permissions jsonb,
-  p_own_schedule_only boolean DEFAULT false,
-  p_company_id uuid DEFAULT NULL
+  p_own_schedule_only boolean,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.grant_employee_access(
@@ -1353,8 +1353,8 @@ GRANT EXECUTE ON FUNCTION public.grant_employee_access(
   p_email text,
   p_access_profile text,
   p_permissions jsonb,
-  p_own_schedule_only boolean DEFAULT false,
-  p_company_id uuid DEFAULT NULL
+  p_own_schedule_only boolean,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1382,16 +1382,16 @@ REVOKE ALL ON FUNCTION public.update_employee_access(
   p_employee_id uuid,
   p_access_profile text,
   p_permissions jsonb,
-  p_own_schedule_only boolean DEFAULT false,
-  p_company_id uuid DEFAULT NULL
+  p_own_schedule_only boolean,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.update_employee_access(
   p_employee_id uuid,
   p_access_profile text,
   p_permissions jsonb,
-  p_own_schedule_only boolean DEFAULT false,
-  p_company_id uuid DEFAULT NULL
+  p_own_schedule_only boolean,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1414,12 +1414,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.revoke_employee_access(
   p_employee_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.revoke_employee_access(
   p_employee_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1454,11 +1454,11 @@ REVOKE ALL ON FUNCTION public.create_employee_with_schedule(
   p_email text,
   p_job_title text,
   p_notes text,
-  p_active boolean DEFAULT true,
-  p_can_be_scheduled boolean DEFAULT true,
-  p_service_ids uuid[] DEFAULT ARRAY[]::uuid[],
-  p_working_hours jsonb DEFAULT '[]'::jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_active boolean,
+  p_can_be_scheduled boolean,
+  p_service_ids uuid[],
+  p_working_hours jsonb,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.create_employee_with_schedule(
@@ -1467,11 +1467,11 @@ GRANT EXECUTE ON FUNCTION public.create_employee_with_schedule(
   p_email text,
   p_job_title text,
   p_notes text,
-  p_active boolean DEFAULT true,
-  p_can_be_scheduled boolean DEFAULT true,
-  p_service_ids uuid[] DEFAULT ARRAY[]::uuid[],
-  p_working_hours jsonb DEFAULT '[]'::jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_active boolean,
+  p_can_be_scheduled boolean,
+  p_service_ids uuid[],
+  p_working_hours jsonb,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1510,9 +1510,9 @@ REVOKE ALL ON FUNCTION public.update_employee_with_schedule(
   p_notes text,
   p_active boolean,
   p_can_be_scheduled boolean,
-  p_service_ids uuid[] DEFAULT ARRAY[]::uuid[],
-  p_working_hours jsonb DEFAULT '[]'::jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_service_ids uuid[],
+  p_working_hours jsonb,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.update_employee_with_schedule(
@@ -1524,9 +1524,9 @@ GRANT EXECUTE ON FUNCTION public.update_employee_with_schedule(
   p_notes text,
   p_active boolean,
   p_can_be_scheduled boolean,
-  p_service_ids uuid[] DEFAULT ARRAY[]::uuid[],
-  p_working_hours jsonb DEFAULT '[]'::jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_service_ids uuid[],
+  p_working_hours jsonb,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1558,10 +1558,10 @@ REVOKE ALL ON FUNCTION public.create_appointment(
   p_service_id uuid,
   p_employee_id uuid,
   p_scheduled_start timestamptz,
-  p_pet_size text DEFAULT NULL,
-  p_notes text DEFAULT NULL,
-  p_customer_package_id uuid DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_pet_size text,
+  p_notes text,
+  p_customer_package_id uuid,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.create_appointment(
@@ -1569,10 +1569,10 @@ GRANT EXECUTE ON FUNCTION public.create_appointment(
   p_service_id uuid,
   p_employee_id uuid,
   p_scheduled_start timestamptz,
-  p_pet_size text DEFAULT NULL,
-  p_notes text DEFAULT NULL,
-  p_customer_package_id uuid DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_pet_size text,
+  p_notes text,
+  p_customer_package_id uuid,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1606,10 +1606,10 @@ REVOKE ALL ON FUNCTION public.update_appointment(
   p_service_id uuid,
   p_employee_id uuid,
   p_scheduled_start timestamptz,
-  p_pet_size text DEFAULT NULL,
-  p_notes text DEFAULT NULL,
-  p_customer_package_id uuid DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_pet_size text,
+  p_notes text,
+  p_customer_package_id uuid,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.update_appointment(
@@ -1618,10 +1618,10 @@ GRANT EXECUTE ON FUNCTION public.update_appointment(
   p_service_id uuid,
   p_employee_id uuid,
   p_scheduled_start timestamptz,
-  p_pet_size text DEFAULT NULL,
-  p_notes text DEFAULT NULL,
-  p_customer_package_id uuid DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_pet_size text,
+  p_notes text,
+  p_customer_package_id uuid,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1645,14 +1645,14 @@ $$;
 
 REVOKE ALL ON FUNCTION public.check_in_appointment(
   p_appointment_id uuid,
-  p_intake_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_intake_notes text,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.check_in_appointment(
   p_appointment_id uuid,
-  p_intake_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_intake_notes text,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1675,12 +1675,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.start_service_order(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.start_service_order(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1703,12 +1703,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.mark_service_order_ready(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.mark_service_order_ready(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1732,14 +1732,14 @@ $$;
 
 REVOKE ALL ON FUNCTION public.replace_service_product_recipes(
   p_service_id uuid,
-  p_items jsonb DEFAULT '[]'::jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_items jsonb,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.replace_service_product_recipes(
   p_service_id uuid,
-  p_items jsonb DEFAULT '[]'::jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_items jsonb,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1762,12 +1762,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.seed_service_order_consumptions(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.seed_service_order_consumptions(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1795,16 +1795,16 @@ REVOKE ALL ON FUNCTION public.upsert_service_order_consumption(
   p_service_order_id uuid,
   p_product_id uuid,
   p_quantity numeric,
-  p_source text DEFAULT 'manual',
-  p_company_id uuid DEFAULT NULL
+  p_source text,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.upsert_service_order_consumption(
   p_service_order_id uuid,
   p_product_id uuid,
   p_quantity numeric,
-  p_source text DEFAULT 'manual',
-  p_company_id uuid DEFAULT NULL
+  p_source text,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1827,12 +1827,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.remove_service_order_consumption(
   p_consumption_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.remove_service_order_consumption(
   p_consumption_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1856,14 +1856,14 @@ $$;
 
 REVOKE ALL ON FUNCTION public.complete_service_order(
   p_service_order_id uuid,
-  p_completion_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_completion_notes text,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.complete_service_order(
   p_service_order_id uuid,
-  p_completion_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_completion_notes text,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1886,12 +1886,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.cancel_service_order(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.cancel_service_order(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1917,18 +1917,18 @@ $$;
 
 REVOKE ALL ON FUNCTION public.update_service_order_notes(
   p_service_order_id uuid,
-  p_intake_notes text DEFAULT NULL,
-  p_internal_notes text DEFAULT NULL,
-  p_completion_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_intake_notes text,
+  p_internal_notes text,
+  p_completion_notes text,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.update_service_order_notes(
   p_service_order_id uuid,
-  p_intake_notes text DEFAULT NULL,
-  p_internal_notes text DEFAULT NULL,
-  p_completion_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_intake_notes text,
+  p_internal_notes text,
+  p_completion_notes text,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1954,15 +1954,15 @@ $$;
 REVOKE ALL ON FUNCTION public.mark_financial_entry_paid(
   p_entry_id uuid,
   p_payment_method text,
-  p_paid_at timestamptz DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_paid_at timestamptz,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.mark_financial_entry_paid(
   p_entry_id uuid,
   p_payment_method text,
-  p_paid_at timestamptz DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_paid_at timestamptz,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -1985,12 +1985,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.reopen_financial_entry(
   p_entry_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.reopen_financial_entry(
   p_entry_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2013,12 +2013,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.cancel_financial_entry(
   p_entry_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.cancel_financial_entry(
   p_entry_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2049,9 +2049,9 @@ REVOKE ALL ON FUNCTION public.create_service_package_with_items(
   p_description text,
   p_price_cents integer,
   p_validity_days integer,
-  p_active boolean DEFAULT true,
-  p_items jsonb DEFAULT '[]'::jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_active boolean,
+  p_items jsonb,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.create_service_package_with_items(
@@ -2059,9 +2059,9 @@ GRANT EXECUTE ON FUNCTION public.create_service_package_with_items(
   p_description text,
   p_price_cents integer,
   p_validity_days integer,
-  p_active boolean DEFAULT true,
-  p_items jsonb DEFAULT '[]'::jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_active boolean,
+  p_items jsonb,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2096,7 +2096,7 @@ REVOKE ALL ON FUNCTION public.update_service_package_with_items(
   p_validity_days integer,
   p_active boolean,
   p_items jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.update_service_package_with_items(
@@ -2107,7 +2107,7 @@ GRANT EXECUTE ON FUNCTION public.update_service_package_with_items(
   p_validity_days integer,
   p_active boolean,
   p_items jsonb,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2138,9 +2138,9 @@ REVOKE ALL ON FUNCTION public.sell_customer_service_package(
   p_customer_id uuid,
   p_pet_id uuid,
   p_starts_at date,
-  p_financial_status text DEFAULT 'pending',
-  p_payment_method text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_financial_status text,
+  p_payment_method text,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.sell_customer_service_package(
@@ -2148,9 +2148,9 @@ GRANT EXECUTE ON FUNCTION public.sell_customer_service_package(
   p_customer_id uuid,
   p_pet_id uuid,
   p_starts_at date,
-  p_financial_status text DEFAULT 'pending',
-  p_payment_method text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_financial_status text,
+  p_payment_method text,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2175,13 +2175,13 @@ $$;
 REVOKE ALL ON FUNCTION public.consume_customer_service_package(
   p_service_order_id uuid,
   p_customer_package_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.consume_customer_service_package(
   p_service_order_id uuid,
   p_customer_package_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2204,12 +2204,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.reverse_customer_service_package_usage(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.reverse_customer_service_package_usage(
   p_service_order_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2232,12 +2232,12 @@ $$;
 
 REVOKE ALL ON FUNCTION public.cancel_customer_service_package(
   p_customer_package_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.cancel_customer_service_package(
   p_customer_package_id uuid,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2269,24 +2269,24 @@ REVOKE ALL ON FUNCTION public.complete_product_sale(
   p_idempotency_key uuid,
   p_items jsonb,
   p_payments jsonb,
-  p_customer_id uuid DEFAULT NULL,
-  p_discount_type text DEFAULT NULL,
-  p_discount_fixed_cents integer DEFAULT 0,
-  p_discount_percent numeric DEFAULT NULL,
-  p_cash_received_cents integer DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_customer_id uuid,
+  p_discount_type text,
+  p_discount_fixed_cents integer,
+  p_discount_percent numeric,
+  p_cash_received_cents integer,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.complete_product_sale(
   p_idempotency_key uuid,
   p_items jsonb,
   p_payments jsonb,
-  p_customer_id uuid DEFAULT NULL,
-  p_discount_type text DEFAULT NULL,
-  p_discount_fixed_cents integer DEFAULT 0,
-  p_discount_percent numeric DEFAULT NULL,
-  p_cash_received_cents integer DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_customer_id uuid,
+  p_discount_type text,
+  p_discount_fixed_cents integer,
+  p_discount_percent numeric,
+  p_cash_received_cents integer,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2311,13 +2311,13 @@ $$;
 REVOKE ALL ON FUNCTION public.cancel_product_sale(
   p_sale_id uuid,
   p_reason text,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.cancel_product_sale(
   p_sale_id uuid,
   p_reason text,
-  p_company_id uuid DEFAULT NULL
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2347,8 +2347,8 @@ REVOKE ALL ON FUNCTION public.register_sale_payment(
   p_amount_cents integer,
   p_payment_method text,
   p_idempotency_key text,
-  p_paid_at timestamptz DEFAULT now(),
-  p_company_id uuid DEFAULT NULL
+  p_paid_at timestamptz,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.register_sale_payment(
@@ -2356,8 +2356,8 @@ GRANT EXECUTE ON FUNCTION public.register_sale_payment(
   p_amount_cents integer,
   p_payment_method text,
   p_idempotency_key text,
-  p_paid_at timestamptz DEFAULT now(),
-  p_company_id uuid DEFAULT NULL
+  p_paid_at timestamptz,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2380,15 +2380,15 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.open_cash_session(
-  p_opening_balance_cents integer DEFAULT 0,
-  p_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_opening_balance_cents integer,
+  p_notes text,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.open_cash_session(
-  p_opening_balance_cents integer DEFAULT 0,
-  p_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_opening_balance_cents integer,
+  p_notes text,
+  p_company_id uuid
 ) TO authenticated;
 
 
@@ -2414,15 +2414,15 @@ $$;
 REVOKE ALL ON FUNCTION public.close_cash_session(
   p_session_id uuid,
   p_counted_cash_cents integer,
-  p_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_notes text,
+  p_company_id uuid
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.close_cash_session(
   p_session_id uuid,
   p_counted_cash_cents integer,
-  p_notes text DEFAULT NULL,
-  p_company_id uuid DEFAULT NULL
+  p_notes text,
+  p_company_id uuid
 ) TO authenticated;
 
 
