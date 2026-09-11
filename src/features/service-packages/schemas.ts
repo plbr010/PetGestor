@@ -1,7 +1,10 @@
 import { z } from "zod";
 
-import { parseBRLToCents, isValidPriceCents } from "@/lib/money";
-import { parsePriceInput } from "@/features/services/utils";
+import {
+  parseBRLToCents,
+  isValidPackagePriceCents,
+  MAX_PACKAGE_PRICE_CENTS,
+} from "@/lib/money";
 import type { PaymentMethod } from "@/types/database.types";
 
 const optionalDescription = z
@@ -27,9 +30,12 @@ export const servicePackageFormSchema = z.object({
     .min(2, "O nome deve ter pelo menos 2 caracteres.")
     .max(120, "Nome muito longo."),
   description: optionalDescription,
-  priceCents: z.number().int().refine(isValidPriceCents, {
-    message: "Informe um preço válido.",
-  }),
+  priceCents: z
+    .number({ error: "Informe um preço maior que zero." })
+    .int()
+    .refine(isValidPackagePriceCents, {
+      message: "Informe um preço maior que zero, até R$ 999.999,99.",
+    }),
   validityDays: z
     .number()
     .int()
@@ -53,6 +59,7 @@ export const sellPackageFormSchema = z.object({
       "other",
     ] satisfies PaymentMethod[])
     .nullable(),
+  idempotencyKey: z.string().uuid("Não foi possível registrar a venda. Atualize a página e tente novamente."),
 });
 
 export type ServicePackageFormInput = z.infer<typeof servicePackageFormSchema>;
@@ -71,9 +78,22 @@ function parsePackageItems(formData: FormData) {
   }));
 }
 
+function parsePackagePriceInput(value: FormDataEntryValue | null): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const raw = String(value).trim();
+  if (raw.length === 0) {
+    return null;
+  }
+
+  return parseBRLToCents(raw, MAX_PACKAGE_PRICE_CENTS);
+}
+
 export function parseServicePackageForm(formData: FormData) {
   const activeRaw = formData.get("active");
-  const priceCents = parsePriceInput(formData.get("price"));
+  const priceCents = parsePackagePriceInput(formData.get("price"));
   const validityDays = Number(formData.get("validityDays"));
 
   return servicePackageFormSchema.safeParse({
@@ -98,9 +118,6 @@ export function parseSellPackageForm(formData: FormData) {
       paymentMethod && String(paymentMethod).length > 0
         ? String(paymentMethod)
         : null,
+    idempotencyKey: formData.get("idempotencyKey"),
   });
-}
-
-export function parseBRLField(value: string): number | null {
-  return parseBRLToCents(value);
 }

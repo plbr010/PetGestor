@@ -1505,6 +1505,7 @@ export type Database = {
           status: CustomerPackageStatus;
           price_cents_snapshot: number;
           financial_entry_id: string | null;
+          idempotency_key: string;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -1522,6 +1523,7 @@ export type Database = {
           status?: CustomerPackageStatus;
           price_cents_snapshot: number;
           financial_entry_id?: string | null;
+          idempotency_key: string;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -1539,6 +1541,7 @@ export type Database = {
           status?: CustomerPackageStatus;
           price_cents_snapshot?: number;
           financial_entry_id?: string | null;
+          idempotency_key?: string;
           created_by?: string;
           created_at?: string;
           updated_at?: string;
@@ -2860,6 +2863,7 @@ export type Database = {
           p_starts_at: string;
           p_financial_status?: string;
           p_payment_method?: string | null;
+          p_idempotency_key: string;
           p_company_id: string;
         };
         Returns: string;

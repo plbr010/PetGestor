@@ -307,6 +307,41 @@ financial_entries (manual: receitas e despesas)
 
 Ver `docs/FINANCE.md`. **Migration pendente de aplicação remota.**
 
+## BLOCO 4 — Pacotes vendidos (pagamento, saldo, consumo)
+
+Migration incremental: `supabase/migrations/20260911200000_customer_service_packages_payment_idempotency.sql`
+
+Não reaplica BLOCO 1, 2 ou 3. Não altera relatórios.
+
+### Separação de status
+
+| Camada | Campo | Valores |
+|--------|-------|---------|
+| Operacional | `customer_service_packages.status` | `active`, `expired`, `fully_used`, `cancelled` |
+| Financeiro | `financial_entries.status` (`source_type = service_package`) | `pending`, `paid`, `cancelled` |
+
+Consumível somente se: `financial_status = paid` AND `package_status = active` AND saldo > 0 AND `expires_at >= hoje civil da empresa` AND pet/serviço/tenant compatíveis.
+
+Pacote **pending não é crédito**.
+
+### Venda
+
+- Preço = `service_packages.price_cents` no servidor (snapshot em `price_cents_snapshot` e `financial_entries.amount_cents`)
+- Preço vendido deve ser `> 0` e `<= 99999999`
+- `idempotency_key` UNIQUE `(company_id, idempotency_key)` — retry devolve o pacote original
+- Vínculo canônico: `customer_service_packages.financial_entry_id` ↔ `financial_entries.customer_service_package_id`
+
+### Validade
+
+`expires_at` é o último dia civil **inclusivo** no fuso `companies.timezone`. Expirado quando `expires_at < private.company_civil_today(company_id)`.
+
+### Cancelamento
+
+- Pending sem consumo: pacote + receita pending → `cancelled` (idempotente)
+- Paid (com ou sem uso): bloqueado até existir política de estorno/reembolso
+
+Diagnóstico de legado (somente leitura): `docs/sql/diagnose-bloco-4-packages.sql`
+
 ## Etapa — Estoque
 
 Migration: `supabase/migrations/20260818120000_inventory.sql`

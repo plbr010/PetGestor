@@ -41,6 +41,10 @@ export function mapFinanceError(message: string | undefined): string {
     return "Selecione uma forma de pagamento válida.";
   }
 
+  if (code.includes("package_price_mismatch")) {
+    return "O valor financeiro do pacote está inconsistente com o preço da venda.";
+  }
+
   if (code.includes("invalid_status_transition")) {
     return "Esta alteração não é permitida no status atual.";
   }

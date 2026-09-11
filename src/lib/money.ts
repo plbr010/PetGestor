@@ -4,6 +4,9 @@
 
 export const MAX_PRICE_CENTS = 999_999;
 export const MAX_INVENTORY_PRICE_CENTS = 99_999_999;
+/** Catálogo/venda de pacote: CHECK do banco `price_cents > 0 AND <= 99999999`. */
+export const MIN_PACKAGE_PRICE_CENTS = 1;
+export const MAX_PACKAGE_PRICE_CENTS = MAX_INVENTORY_PRICE_CENTS;
 export const MIN_DURATION_MINUTES = 5;
 export const MAX_DURATION_MINUTES = 720;
 
@@ -113,6 +116,14 @@ export function formatCentsToInput(cents: number): string {
 
 export function isValidPriceCents(cents: number): boolean {
   return Number.isInteger(cents) && cents >= 0 && cents <= MAX_PRICE_CENTS;
+}
+
+export function isValidPackagePriceCents(cents: number): boolean {
+  return (
+    Number.isInteger(cents) &&
+    cents >= MIN_PACKAGE_PRICE_CENTS &&
+    cents <= MAX_PACKAGE_PRICE_CENTS
+  );
 }
 
 export function isValidDurationMinutes(minutes: number): boolean {

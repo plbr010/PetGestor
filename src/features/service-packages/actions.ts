@@ -210,6 +210,7 @@ export async function sellCustomerPackageAction(
     p_starts_at: parsed.data.startsAt,
     p_financial_status: parsed.data.financialStatus,
     p_payment_method: parsed.data.paymentMethod,
+    p_idempotency_key: parsed.data.idempotencyKey,
     p_company_id: context.membership.company.id,
   });
 

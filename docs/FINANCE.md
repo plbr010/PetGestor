@@ -58,6 +58,8 @@ Sempre de `appointments.price_cents_snapshot` — **nunca** do preço atual do s
 
 - Lançamentos **manuais**: canceláveis.
 - Lançamentos de **atendimento**: **não** canceláveis manualmente (RPC bloqueia).
+- Lançamentos de **pacote pending**: cancelados junto com o pacote (`cancel_customer_service_package`).
+- Lançamentos de **pacote paid**: o pacote **não** pode ser cancelado enquanto a receita permanecer paga — não há estorno automático neste bloco.
 - Usar `cancelled_at` + `status = cancelled` — sem DELETE físico.
 
 ### Edição

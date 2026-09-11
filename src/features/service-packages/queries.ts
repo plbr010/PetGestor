@@ -7,8 +7,10 @@ import {
 } from "@/features/service-packages/utils";
 import type {
   CustomerPackageListItem,
+  CustomerPackageStatus,
   CustomerPackageUsageItem,
   PackageCreditOption,
+  PackageFinancialStatus,
   ServicePackageDetail,
   ServicePackageListItem,
 } from "@/features/service-packages/types";
@@ -142,13 +144,63 @@ export async function requireServicePackageById(companyId: string, packageId: st
   return pkg;
 }
 
+function parseFinancialStatus(value: string | null | undefined): PackageFinancialStatus | null {
+  if (value === "pending" || value === "paid" || value === "cancelled") {
+    return value;
+  }
+
+  return null;
+}
+
+export async function getPackageFinancialStatusMap(
+  companyId: string,
+  packageIds: string[],
+): Promise<Map<string, PackageFinancialStatus>> {
+  const statuses = new Map<string, PackageFinancialStatus>();
+
+  if (packageIds.length === 0) {
+    return statuses;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("financial_entries")
+    .select("customer_service_package_id, status")
+    .eq("company_id", companyId)
+    .eq("source_type", "service_package")
+    .in("customer_service_package_id", packageIds)
+    .is("deleted_at", null);
+
+  if (error || !data) {
+    return statuses;
+  }
+
+  for (const row of data) {
+    if (!row.customer_service_package_id) {
+      continue;
+    }
+
+    const parsed = parseFinancialStatus(row.status);
+    if (!parsed) {
+      continue;
+    }
+
+    const previous = statuses.get(row.customer_service_package_id);
+    if (!previous || (previous !== "paid" && parsed === "paid")) {
+      statuses.set(row.customer_service_package_id, parsed);
+    }
+  }
+
+  return statuses;
+}
+
 function mapCustomerPackageRow(
   row: {
     id: string;
     package_name_snapshot: string;
     pet_id: string;
     customer_id: string;
-    status: CustomerPackageListItem["status"];
+    status: CustomerPackageStatus;
     starts_at: string;
     expires_at: string;
     price_cents_snapshot: number;
@@ -166,6 +218,7 @@ function mapCustomerPackageRow(
       | null;
   },
   timeZone: string,
+  financialStatus: PackageFinancialStatus | null,
 ): CustomerPackageListItem {
   const pet = unwrapJoin(row.pets);
   const customer = unwrapJoin(row.customers);
@@ -186,6 +239,7 @@ function mapCustomerPackageRow(
     row.expires_at,
     totals.remaining,
     timeZone,
+    financialStatus,
   );
 
   return {
@@ -196,6 +250,8 @@ function mapCustomerPackageRow(
     pet_name: pet?.name ?? "—",
     customer_name: customer?.name ?? "—",
     status: displayStatus,
+    operational_status: row.status,
+    financial_status: financialStatus,
     starts_at: row.starts_at,
     expires_at: row.expires_at,
     price_cents_snapshot: row.price_cents_snapshot,
@@ -240,8 +296,17 @@ export async function getCustomerPackagesForPet(
     return [];
   }
 
+  const financialByPackage = await getPackageFinancialStatusMap(
+    companyId,
+    data.map((row) => row.id),
+  );
+
   return data.map((row) =>
-    mapCustomerPackageRow(row as unknown as Parameters<typeof mapCustomerPackageRow>[0], timeZone),
+    mapCustomerPackageRow(
+      row as unknown as Parameters<typeof mapCustomerPackageRow>[0],
+      timeZone,
+      financialByPackage.get(row.id) ?? null,
+    ),
   );
 }
 

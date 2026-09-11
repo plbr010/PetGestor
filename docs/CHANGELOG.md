@@ -1,3 +1,23 @@
+## [0.46.0] — 2026-09-11
+
+### Corrigido — Pacotes: pagamento, saldo, consumo, idempotência e expiração (BLOCO 4)
+
+- Pacote vendido como **pending não é crédito**: não aparece na agenda, não zera preço e não desconta sessão
+- Pagamento `pending → paid` ativa o **mesmo** pacote (sem recriar saldo nem `financial_entry`)
+- Venda transacional com `idempotency_key` única por empresa — duplo clique, retry e duas abas com a mesma chave geram uma venda
+- Preço da venda vem do catálogo no servidor; pacote vendido exige preço > 0
+- Consumo idempotente por appointment, com `UPDATE … WHERE remaining > 0`; saldo nunca negativo
+- Cancelar appointment devolve exatamente uma sessão; retry não devolve duas; no-show permanece como já definido
+- `expires_at` é o último dia civil **inclusivo** no fuso da empresa (`companies.timezone`)
+- Cancelar pacote pending cancela a receita pending; pacote **pago** (com ou sem uso) é bloqueado sem política de refund
+- Relatórios de pacotes **não** foram alterados neste bloco
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911200000_customer_service_packages_payment_idempotency.sql`
+
+Diagnóstico de legado: `docs/sql/diagnose-bloco-4-packages.sql`
+
+Não reaplica BLOCO 1, 2 ou 3.
+
 ## [0.45.0] — 2026-09-11
 
 ### Corrigido — Check-in, OS, máquina de estados e concorrência (BLOCO 3)

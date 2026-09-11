@@ -28,15 +28,20 @@ Rotas:
 
 O formulário usa o **pacote vendido** (`customer_service_packages`), não o modelo de catálogo (`service_packages`).
 
-- Após selecionar tutor, pet e serviço, lista só pacotes ativos, já iniciados, não expirados, com saldo daquele serviço
+- Após selecionar tutor, pet e serviço, lista só pacotes **pagos**, ativos, já iniciados, não expirados, com saldo daquele serviço
+- Pacote com financeiro `pending` **não** aparece como crédito e **não** zera o preview
 - `create_appointment(..., p_customer_package_id)` consome 1 sessão e zera `price_cents_snapshot`
 - Índice único em uso `consumed` por `appointment_id` impede consumo duplicado
 - Cancelar (`status = cancelled`) estorna a sessão; reagendar o mesmo agendamento reutiliza o uso existente
+- **No-show não devolve sessão** (regra vigente; sem política nova neste bloco)
 - Check-in preenche `service_order_id` no uso já registrado
 - Recorrência + pacote não é permitido — cada sessão deve ser agendada avulsa
-- Se existe catálogo para o serviço mas o pet ainda não tem pacote vendido, a UI explica e aponta a ficha do pet
+- Se existe catálogo para o serviço mas o pet ainda não tem pacote **pago** e elegível, a UI explica e aponta a ficha do pet
 
-**MIGRATION:** `supabase/migrations/20260902160000_appointment_package_booking.sql`
+**Validade:** `expires_at` é o último dia civil **inclusivo** no fuso `companies.timezone`. Expirado quando `expires_at < hoje civil`.
+
+**MIGRATION:** `supabase/migrations/20260902160000_appointment_package_booking.sql`  
+**BLOCO 4:** `supabase/migrations/20260911200000_customer_service_packages_payment_idempotency.sql`
 
 ## Snapshots de serviço
 

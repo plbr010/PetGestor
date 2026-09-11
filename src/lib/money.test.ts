@@ -4,8 +4,11 @@ import {
   formatCentsToBRL,
   formatCentsToInput,
   isValidDurationMinutes,
+  isValidPackagePriceCents,
   isValidPriceCents,
+  MAX_PACKAGE_PRICE_CENTS,
   MAX_PRICE_CENTS,
+  MIN_PACKAGE_PRICE_CENTS,
   parseBRLToCents,
 } from "@/lib/money";
 
@@ -49,6 +52,14 @@ describe("validators", () => {
     expect(isValidPriceCents(MAX_PRICE_CENTS)).toBe(true);
     expect(isValidPriceCents(-1)).toBe(false);
     expect(isValidPriceCents(1.5)).toBe(false);
+  });
+
+  it("preço de pacote exige valor maior que zero e usa o teto do banco", () => {
+    expect(isValidPackagePriceCents(0)).toBe(false);
+    expect(isValidPackagePriceCents(MIN_PACKAGE_PRICE_CENTS)).toBe(true);
+    expect(isValidPackagePriceCents(MAX_PACKAGE_PRICE_CENTS)).toBe(true);
+    expect(isValidPackagePriceCents(MAX_PACKAGE_PRICE_CENTS + 1)).toBe(false);
+    expect(parseBRLToCents("10000,00", MAX_PACKAGE_PRICE_CENTS)).toBe(1_000_000);
   });
 
   it("valida duração", () => {

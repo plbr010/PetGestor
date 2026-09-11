@@ -1,4 +1,5 @@
 import type { AppointmentStatus, CustomerPackageStatus, PetSize } from "@/types/database.types";
+import type { PackageFinancialStatus } from "@/features/service-packages/types";
 import type { PetChip } from "@/features/pets/types";
 
 export type AppointmentListItem = {
@@ -70,6 +71,7 @@ export type AppointmentCustomerPackageOption = {
   startsAt: string;
   expiresAt: string;
   status: CustomerPackageStatus;
+  financialStatus: PackageFinancialStatus | null;
   items: AppointmentPackageItemOption[];
 };
 

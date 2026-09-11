@@ -1,13 +1,30 @@
 import { addDaysToDateString, getTodayInTimezone } from "@/lib/timezone";
 
-import type { CustomerPackageStatus } from "@/features/service-packages/types";
+import type {
+  CustomerPackageDisplayStatus,
+  CustomerPackageStatus,
+  PackageFinancialStatus,
+} from "@/features/service-packages/types";
 
-export const CUSTOMER_PACKAGE_STATUS_LABELS: Record<CustomerPackageStatus, string> = {
+export const CUSTOMER_PACKAGE_STATUS_LABELS: Record<CustomerPackageDisplayStatus, string> = {
+  pending_payment: "Pagamento pendente",
   active: "Ativo",
   expired: "Expirado",
   fully_used: "Utilizado",
   cancelled: "Cancelado",
 };
+
+/**
+ * `expires_at` é o último dia civil INCLUSIVO de validade.
+ * Expirado somente quando `expires_at < hoje civil da empresa`.
+ */
+export function isPackageExpiredOnCivilDate(expiresAt: string, today: string): boolean {
+  return expiresAt < today;
+}
+
+export function isPackageStartedOnCivilDate(startsAt: string, today: string): boolean {
+  return startsAt.slice(0, 10) <= today;
+}
 
 export function computePackageExpiresAt(startsAt: string, validityDays: number): string {
   return addDaysToDateString(startsAt, validityDays - 1);
@@ -31,38 +48,63 @@ export function resolveDisplayStatus(
   expiresAt: string,
   remaining: number,
   timeZone: string,
-): CustomerPackageStatus {
+  financialStatus: PackageFinancialStatus | null,
+  today?: string,
+): CustomerPackageDisplayStatus {
   if (status === "cancelled") {
     return "cancelled";
   }
 
-  if (remaining <= 0) {
+  if (financialStatus !== "paid") {
+    return "pending_payment";
+  }
+
+  if (remaining <= 0 || status === "fully_used") {
     return "fully_used";
   }
 
-  const today = getTodayInTimezone(timeZone);
+  const civilToday = today ?? getTodayInTimezone(timeZone);
 
-  if (expiresAt < today) {
+  if (isPackageExpiredOnCivilDate(expiresAt.slice(0, 10), civilToday) || status === "expired") {
     return "expired";
   }
 
-  return status === "active" ? "active" : status;
+  return "active";
 }
 
 export function canConsumePackage(params: {
   status: CustomerPackageStatus;
+  financialStatus: PackageFinancialStatus | null;
   expiresAt: string;
   remainingForService: number;
   timeZone: string;
+  startsAt?: string;
+  today?: string;
 }): boolean {
+  const civilToday = params.today ?? getTodayInTimezone(params.timeZone);
+
+  if (params.financialStatus !== "paid") {
+    return false;
+  }
+
+  if (params.startsAt && !isPackageStartedOnCivilDate(params.startsAt, civilToday)) {
+    return false;
+  }
+
+  if (params.remainingForService <= 0) {
+    return false;
+  }
+
   const displayStatus = resolveDisplayStatus(
     params.status,
     params.expiresAt,
     params.remainingForService,
     params.timeZone,
+    params.financialStatus,
+    civilToday,
   );
 
-  return displayStatus === "active" && params.remainingForService > 0;
+  return displayStatus === "active";
 }
 
 export type BookingPackageCandidate = {
@@ -73,6 +115,7 @@ export type BookingPackageCandidate = {
   startsAt: string;
   expiresAt: string;
   status: CustomerPackageStatus;
+  financialStatus: PackageFinancialStatus | null;
   items: Array<{ serviceId: string; serviceName: string; remaining: number }>;
 };
 
@@ -100,7 +143,7 @@ export function getEligibleCustomerPackagesForBooking(params: {
       continue;
     }
 
-    if (pkg.startsAt.slice(0, 10) > params.today) {
+    if (!isPackageStartedOnCivilDate(pkg.startsAt, params.today)) {
       continue;
     }
 
@@ -112,9 +155,12 @@ export function getEligibleCustomerPackagesForBooking(params: {
     if (
       !canConsumePackage({
         status: pkg.status,
+        financialStatus: pkg.financialStatus,
         expiresAt: pkg.expiresAt.slice(0, 10),
         remainingForService: item.remaining,
         timeZone: params.timeZone,
+        startsAt: pkg.startsAt,
+        today: params.today,
       })
     ) {
       continue;
@@ -154,7 +200,7 @@ export function getUnassignedPackageHint(params: {
   }
 
   if (soldForPet) {
-    return "Este pet não tem sessão disponível neste pacote para o serviço selecionado (sem saldo, expirado, ainda não iniciado ou incompatível).";
+    return "Este pet não tem sessão disponível neste pacote para o serviço selecionado (pagamento pendente, sem saldo, expirado, ainda não iniciado ou incompatível).";
   }
 
   return null;
@@ -184,7 +230,16 @@ export function mapPackageError(message?: string | null): string {
     package_already_consumed: "Este atendimento já utilizou um pacote.",
     appointment_already_covered: "Este atendimento já está coberto por pacote.",
     package_pet_mismatch: "Este pacote não pertence a este pet.",
-    package_has_usages: "Não é possível cancelar um pacote com consumos registrados.",
+    package_has_usages:
+      "Este pacote já teve sessões utilizadas. Não é possível cancelar sem uma política explícita de estorno parcial.",
+    package_paid_requires_refund:
+      "Este pacote já foi pago. Faça o estorno/reembolso financeiro antes de cancelar o pacote.",
+    package_payment_pending: "Este pacote ainda não foi pago e não pode ser utilizado.",
+    package_price_mismatch: "O valor financeiro do pacote está inconsistente com o preço da venda.",
+    invalid_price_cents: "Informe um preço maior que zero.",
+    invalid_idempotency_key: "Não foi possível registrar a venda. Atualize a página e tente novamente.",
+    idempotency_key_conflict: "Esta tentativa de venda conflita com outra já registrada.",
+    payment_method_required: "Informe a forma de pagamento.",
     usage_not_found: "Nenhum consumo de pacote encontrado para estornar.",
     invalid_package_items: "Informe ao menos um serviço no pacote.",
     duplicate_service_in_package: "Serviço duplicado no pacote.",

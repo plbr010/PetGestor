@@ -7,6 +7,20 @@ export const CUSTOMER_PACKAGE_STATUSES = [
 
 export type CustomerPackageStatus = (typeof CUSTOMER_PACKAGE_STATUSES)[number];
 
+export const PACKAGE_FINANCIAL_STATUSES = ["pending", "paid", "cancelled"] as const;
+
+export type PackageFinancialStatus = (typeof PACKAGE_FINANCIAL_STATUSES)[number];
+
+export const CUSTOMER_PACKAGE_DISPLAY_STATUSES = [
+  "pending_payment",
+  "active",
+  "expired",
+  "fully_used",
+  "cancelled",
+] as const;
+
+export type CustomerPackageDisplayStatus = (typeof CUSTOMER_PACKAGE_DISPLAY_STATUSES)[number];
+
 export type ServicePackageItemInput = {
   serviceId: string;
   quantity: number;
@@ -50,7 +64,9 @@ export type CustomerPackageListItem = {
   pet_name: string;
   customer_id: string;
   customer_name: string;
-  status: CustomerPackageStatus;
+  status: CustomerPackageDisplayStatus;
+  operational_status: CustomerPackageStatus;
+  financial_status: PackageFinancialStatus | null;
   starts_at: string;
   expires_at: string;
   price_cents_snapshot: number;

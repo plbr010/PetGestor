@@ -5,6 +5,7 @@ import {
   computePackageExpiresAt,
   getEligibleCustomerPackagesForBooking,
   getUnassignedPackageHint,
+  isPackageExpiredOnCivilDate,
   packageItemsToRpcPayload,
   resolveDisplayStatus,
   sumPackageQuantities,
@@ -36,31 +37,46 @@ describe("computePackageExpiresAt", () => {
   });
 });
 
+describe("isPackageExpiredOnCivilDate", () => {
+  it("expires_at é o último dia válido (inclusivo)", () => {
+    expect(isPackageExpiredOnCivilDate("2026-09-10", "2026-09-11")).toBe(true);
+    expect(isPackageExpiredOnCivilDate("2026-09-11", "2026-09-11")).toBe(false);
+    expect(isPackageExpiredOnCivilDate("2026-09-12", "2026-09-11")).toBe(false);
+  });
+});
+
 describe("resolveDisplayStatus", () => {
   it("marca pacote expirado", () => {
     expect(
-      resolveDisplayStatus("active", "2026-01-01", 3, "America/Sao_Paulo"),
+      resolveDisplayStatus("active", "2026-01-01", 3, "America/Sao_Paulo", "paid"),
     ).toBe("expired");
   });
 
   it("marca pacote totalmente utilizado", () => {
     expect(
-      resolveDisplayStatus("active", "2099-01-01", 0, "America/Sao_Paulo"),
+      resolveDisplayStatus("active", "2099-01-01", 0, "America/Sao_Paulo", "paid"),
     ).toBe("fully_used");
   });
 
-  it("mantém pacote ativo com saldo e validade", () => {
+  it("mantém pacote ativo com saldo, pagamento pago e validade", () => {
     expect(
-      resolveDisplayStatus("active", "2099-12-31", 2, "America/Sao_Paulo"),
+      resolveDisplayStatus("active", "2099-12-31", 2, "America/Sao_Paulo", "paid"),
     ).toBe("active");
+  });
+
+  it("mostra pagamento pendente mesmo com saldo e status operacional active", () => {
+    expect(
+      resolveDisplayStatus("active", "2099-12-31", 2, "America/Sao_Paulo", "pending"),
+    ).toBe("pending_payment");
   });
 });
 
 describe("canConsumePackage", () => {
-  it("permite consumo com saldo e pacote ativo", () => {
+  it("permite consumo com saldo, pago e pacote ativo", () => {
     expect(
       canConsumePackage({
         status: "active",
+        financialStatus: "paid",
         expiresAt: "2099-12-31",
         remainingForService: 2,
         timeZone: "America/Sao_Paulo",
@@ -68,10 +84,23 @@ describe("canConsumePackage", () => {
     ).toBe(true);
   });
 
+  it("impede consumo de pacote pending", () => {
+    expect(
+      canConsumePackage({
+        status: "active",
+        financialStatus: "pending",
+        expiresAt: "2099-12-31",
+        remainingForService: 2,
+        timeZone: "America/Sao_Paulo",
+      }),
+    ).toBe(false);
+  });
+
   it("impede consumo expirado", () => {
     expect(
       canConsumePackage({
         status: "active",
+        financialStatus: "paid",
         expiresAt: "2020-01-01",
         remainingForService: 2,
         timeZone: "America/Sao_Paulo",
@@ -83,6 +112,7 @@ describe("canConsumePackage", () => {
     expect(
       canConsumePackage({
         status: "active",
+        financialStatus: "paid",
         expiresAt: "2099-12-31",
         remainingForService: 0,
         timeZone: "America/Sao_Paulo",
@@ -115,6 +145,7 @@ function soldPackage(
     startsAt: string;
     expiresAt: string;
     status: "active" | "expired" | "fully_used" | "cancelled";
+    financialStatus: "pending" | "paid" | "cancelled";
     remaining: number;
     serviceId: string;
   }> = {},
@@ -128,6 +159,7 @@ function soldPackage(
     startsAt: overrides.startsAt ?? "2026-01-01",
     expiresAt: overrides.expiresAt ?? "2099-12-31",
     status: overrides.status ?? ("active" as const),
+    financialStatus: overrides.financialStatus ?? ("paid" as const),
     items: [
       {
         serviceId,
@@ -181,6 +213,15 @@ describe("getEligibleCustomerPackagesForBooking", () => {
       getEligibleCustomerPackagesForBooking({
         ...base,
         packages: [soldPackage({ expiresAt: "2026-01-01" })],
+      }),
+    ).toHaveLength(0);
+  });
+
+  it("nunca lista pacote pending como crédito disponível", () => {
+    expect(
+      getEligibleCustomerPackagesForBooking({
+        ...base,
+        packages: [soldPackage({ financialStatus: "pending" })],
       }),
     ).toHaveLength(0);
   });
