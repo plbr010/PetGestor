@@ -1,9 +1,16 @@
 /**
  * Conversão de horário local da empresa ↔ UTC (TIMESTAMPTZ).
+ *
+ * Fonte de verdade operacional: timezone da empresa (`companies.timezone`).
+ * Datas civis (YYYY-MM-DD) nunca são interpretadas como instante UTC.
  * Usa Intl — sem dependências extras.
  */
 
 export const DEFAULT_TIMEZONE = "America/Sao_Paulo";
+
+export const CIVIL_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+export const CIVIL_DATE_INVALID_MESSAGE = "Informe uma data válida.";
 
 export function isValidTimezone(timezone: string): boolean {
   try {
@@ -21,6 +28,130 @@ export function resolveCompanyTimeZone(timeZone: string | null | undefined): str
     return trimmed;
   }
   return DEFAULT_TIMEZONE;
+}
+
+export type CivilDateParts = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+/**
+ * Valida calendário real. Rejeita 2026-02-31, 2026-04-31, 2026-13-01, etc.
+ * Não usa Date.UTC para “corrigir” o dia — compara ida e volta.
+ */
+export function isValidCivilDate(value: string): boolean {
+  if (!CIVIL_DATE_PATTERN.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    year < 1 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return false;
+  }
+
+  const utc = Date.UTC(year, month - 1, day);
+  const roundTrip = new Date(utc);
+
+  return (
+    roundTrip.getUTCFullYear() === year &&
+    roundTrip.getUTCMonth() === month - 1 &&
+    roundTrip.getUTCDate() === day
+  );
+}
+
+export function parseCivilDate(value: string): CivilDateParts | null {
+  if (!isValidCivilDate(value)) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  return { year, month, day };
+}
+
+export function formatCivilDate(parts: CivilDateParts): string {
+  const year = String(parts.year).padStart(4, "0");
+  const month = String(parts.month).padStart(2, "0");
+  const day = String(parts.day).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Formata YYYY-MM-DD como rótulo de calendário, sem deslocar o dia.
+ * Sempre usa UTC no Date civil — nunca o timezone da empresa/navegador.
+ */
+export function formatCivilDateLabel(
+  date: string,
+  options?: {
+    locale?: string;
+    weekday?: "long" | "short" | "narrow" | "none";
+    includeYear?: boolean;
+  },
+): string {
+  const parsed = parseCivilDate(date);
+  if (!parsed) {
+    return date;
+  }
+
+  const weekday = options?.weekday ?? "long";
+
+  return new Intl.DateTimeFormat(options?.locale ?? "pt-BR", {
+    weekday: weekday === "none" ? undefined : weekday,
+    day: "numeric",
+    month: "long",
+    year: options?.includeYear === false ? undefined : "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)));
+}
+
+/** Data civil como dd/mm/aaaa, sem deslocar o dia. */
+export function formatCivilDateNumeric(
+  date: string,
+  locale = "pt-BR",
+): string {
+  const parsed = parseCivilDate(date);
+  if (!parsed) {
+    return date;
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)));
+}
+
+export function civilDateWeekday(date: string): number {
+  const parsed = parseCivilDate(date);
+  if (!parsed) {
+    return 0;
+  }
+
+  return new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)).getUTCDay();
+}
+
+export function diffCivilDays(from: string, to: string): number {
+  const start = parseCivilDate(from);
+  const end = parseCivilDate(to);
+  if (!start || !end) {
+    return 0;
+  }
+
+  const ms =
+    Date.UTC(end.year, end.month - 1, end.day) -
+    Date.UTC(start.year, start.month - 1, start.day);
+  return ms / 86_400_000;
 }
 
 function getZonedParts(date: Date, timeZone: string) {
@@ -60,15 +191,25 @@ function getZonedParts(date: Date, timeZone: string) {
 }
 
 /**
- * Converte data (YYYY-MM-DD) + hora (HH:mm) no fuso da empresa para ISO UTC.
+ * Converte data civil (YYYY-MM-DD) + hora local (HH:mm) no fuso da empresa para ISO UTC.
+ * Uma única conversão: civil + hora + timezone → timestamptz.
  */
 export function localDateTimeToUtcIso(
   date: string,
   time: string,
   timeZone: string = DEFAULT_TIMEZONE,
 ): string {
-  const [year, month, day] = date.split("-").map(Number);
+  const parsed = parseCivilDate(date);
+  if (!parsed) {
+    throw new Error("invalid_civil_date");
+  }
+
+  if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(time)) {
+    throw new Error("invalid_local_time");
+  }
+
   const [hour, minute] = time.split(":").map(Number);
+  const { year, month, day } = parsed;
 
   let guess = Date.UTC(year, month - 1, day, hour, minute, 0);
 
@@ -92,8 +233,11 @@ export function localDateTimeToUtcIso(
     guess += targetAsUtc - zonedAsUtc;
   }
 
-  return new Date(guess).toISOString();
+  throw new Error("invalid_local_time");
 }
+
+/** Alias explícito da conversão civil+hora+timezone → UTC. */
+export const localDateTimeToUtc = localDateTimeToUtcIso;
 
 /**
  * Formata instante UTC como hora local da empresa (HH:mm).
@@ -108,7 +252,7 @@ export function formatUtcInTimezone(
 }
 
 /**
- * Formata instante UTC como data local (YYYY-MM-DD).
+ * Formata instante UTC como data civil local (YYYY-MM-DD) no fuso da empresa.
  */
 export function formatUtcDateInTimezone(
   isoUtc: string,
@@ -117,6 +261,28 @@ export function formatUtcDateInTimezone(
   const date = new Date(isoUtc);
   const parts = getZonedParts(date, timeZone);
   return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+export function utcToCompanyLocal(
+  isoUtc: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): { date: string; time: string } {
+  return {
+    date: formatUtcDateInTimezone(isoUtc, timeZone),
+    time: formatUtcInTimezone(isoUtc, timeZone),
+  };
+}
+
+/**
+ * Limites UTC do dia civil da empresa: [início, próximo dia).
+ */
+export function getCivilDayUtcBounds(
+  date: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): { start: string; end: string } {
+  const start = localDateTimeToUtcIso(date, "00:00", timeZone);
+  const end = localDateTimeToUtcIso(addDaysToDateString(date, 1), "00:00", timeZone);
+  return { start, end };
 }
 
 /**
@@ -151,14 +317,26 @@ export function getTodayInTimezone(timeZone: string = DEFAULT_TIMEZONE): string 
 }
 
 export function addDaysToDateString(date: string, days: number): string {
-  const [year, month, day] = date.split("-").map(Number);
-  const result = new Date(Date.UTC(year, month - 1, day + days));
-  return result.toISOString().slice(0, 10);
+  const parsed = parseCivilDate(date);
+  if (!parsed) {
+    throw new Error("invalid_civil_date");
+  }
+
+  const result = new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day + days));
+  return formatCivilDate({
+    year: result.getUTCFullYear(),
+    month: result.getUTCMonth() + 1,
+    day: result.getUTCDate(),
+  });
 }
 
 export function getWeekDates(date: string): string[] {
-  const [year, month, day] = date.split("-").map(Number);
-  const anchor = new Date(Date.UTC(year, month - 1, day));
+  const parsed = parseCivilDate(date);
+  if (!parsed) {
+    throw new Error("invalid_civil_date");
+  }
+
+  const anchor = new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day));
   const weekday = anchor.getUTCDay();
   const start = new Date(anchor);
   start.setUTCDate(anchor.getUTCDate() - weekday);
@@ -166,7 +344,11 @@ export function getWeekDates(date: string): string[] {
   return Array.from({ length: 7 }, (_, index) => {
     const current = new Date(start);
     current.setUTCDate(start.getUTCDate() + index);
-    return current.toISOString().slice(0, 10);
+    return formatCivilDate({
+      year: current.getUTCFullYear(),
+      month: current.getUTCMonth() + 1,
+      day: current.getUTCDate(),
+    });
   });
 }
 
@@ -175,11 +357,19 @@ export function isPastLocalDateTime(
   time: string,
   timeZone: string = DEFAULT_TIMEZONE,
 ): boolean {
+  if (!isValidCivilDate(date)) {
+    return true;
+  }
+
   const iso = localDateTimeToUtcIso(date, time, timeZone);
   return new Date(iso).getTime() < Date.now();
 }
 
 export function isPastLocalDate(date: string, timeZone: string = DEFAULT_TIMEZONE): boolean {
+  if (!isValidCivilDate(date)) {
+    return true;
+  }
+
   const today = getTodayInTimezone(timeZone);
   return date < today;
 }

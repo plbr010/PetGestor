@@ -58,4 +58,50 @@ describe("parseEmployeeForm", () => {
     const result = parseEmployeeForm(formData);
     expect(result.success).toBe(false);
   });
+
+  it("aceita intervalo de almoço válido", () => {
+    const formData = buildEmployeeForm();
+    formData.set("weekday_1_break_start", "12:00");
+    formData.set("weekday_1_break_end", "13:00");
+    const result = parseEmployeeForm(formData);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const monday = result.data.workingHours.find((hour) => hour.weekday === 1);
+      expect(monday?.breakStart).toBe("12:00");
+      expect(monday?.breakEnd).toBe("13:00");
+    }
+  });
+
+  it("rejeita intervalo invertido", () => {
+    const formData = buildEmployeeForm();
+    formData.set("weekday_1_break_start", "13:00");
+    formData.set("weekday_1_break_end", "12:00");
+    expect(parseEmployeeForm(formData).success).toBe(false);
+  });
+
+  it("rejeita intervalo fora da jornada", () => {
+    const formData = buildEmployeeForm();
+    formData.set("weekday_1_break_start", "07:00");
+    formData.set("weekday_1_break_end", "08:30");
+    expect(parseEmployeeForm(formData).success).toBe(false);
+  });
+
+  it("rejeita intervalo de tamanho zero", () => {
+    const formData = buildEmployeeForm();
+    formData.set("weekday_1_break_start", "12:00");
+    formData.set("weekday_1_break_end", "12:00");
+    expect(parseEmployeeForm(formData).success).toBe(false);
+  });
+
+  it("rejeita somente início do intervalo", () => {
+    const formData = buildEmployeeForm();
+    formData.set("weekday_1_break_start", "12:00");
+    expect(parseEmployeeForm(formData).success).toBe(false);
+  });
+
+  it("rejeita somente fim do intervalo", () => {
+    const formData = buildEmployeeForm();
+    formData.set("weekday_1_break_end", "13:00");
+    expect(parseEmployeeForm(formData).success).toBe(false);
+  });
 });

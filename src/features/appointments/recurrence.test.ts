@@ -5,8 +5,10 @@ import {
   expandRecurrenceStarts,
   formatRecurrenceSkipSummary,
   RECURRENCE_MAX_OCCURRENCES,
+  shiftOccurrenceCivilStart,
   stepRecurrenceLocalDate,
 } from "@/features/appointments/recurrence";
+import { localDateTimeToUtcIso, utcToCompanyLocal } from "@/lib/timezone";
 
 describe("recurrence date helpers", () => {
   it("soma meses com clamp (31 jan → 28/29 fev)", () => {
@@ -64,6 +66,11 @@ describe("expandRecurrenceStarts", () => {
     });
 
     expect(starts).toHaveLength(3);
+    expect(starts.map((iso) => utcToCompanyLocal(iso, tz))).toEqual([
+      { date: "2026-08-15", time: "09:00" },
+      { date: "2026-09-15", time: "09:00" },
+      { date: "2026-10-15", time: "09:00" },
+    ]);
   });
 
   it("gera custom_days por quantidade", () => {
@@ -104,6 +111,56 @@ describe("expandRecurrenceStarts", () => {
     });
 
     expect(starts).toHaveLength(RECURRENCE_MAX_OCCURRENCES);
+  });
+
+  it("preserva hora civil com DST em America/New_York", () => {
+    const startIso = localDateTimeToUtcIso("2026-03-07", "09:00", "America/New_York");
+    const starts = expandRecurrenceStarts({
+      startUtcIso: startIso,
+      timeZone: "America/New_York",
+      frequency: "weekly",
+      intervalValue: 1,
+      maxOccurrences: 3,
+      endsAtLocalDate: null,
+    });
+
+    expect(starts.map((iso) => utcToCompanyLocal(iso, "America/New_York"))).toEqual([
+      { date: "2026-03-07", time: "09:00" },
+      { date: "2026-03-14", time: "09:00" },
+      { date: "2026-03-21", time: "09:00" },
+    ]);
+    expect(new Date(starts[1]!).getTime() - new Date(starts[0]!).getTime()).not.toBe(
+      7 * 24 * 60 * 60 * 1000,
+    );
+  });
+
+  it("preserva hora civil em timezone UTC", () => {
+    const startIso = localDateTimeToUtcIso("2026-10-10", "09:00", "UTC");
+    const starts = expandRecurrenceStarts({
+      startUtcIso: startIso,
+      timeZone: "UTC",
+      frequency: "weekly",
+      intervalValue: 1,
+      maxOccurrences: 2,
+      endsAtLocalDate: null,
+    });
+    expect(utcToCompanyLocal(starts[1]!, "UTC")).toEqual({ date: "2026-10-17", time: "09:00" });
+  });
+});
+
+describe("shiftOccurrenceCivilStart", () => {
+  it("reagendamento de série não soma milissegundos UTC cegamente", () => {
+    const occurrence = localDateTimeToUtcIso("2026-03-14", "09:00", "America/New_York");
+    const shifted = shiftOccurrenceCivilStart({
+      occurrenceStartUtcIso: occurrence,
+      timeZone: "America/New_York",
+      dateDeltaDays: 0,
+      localTime: "10:00",
+    });
+    expect(utcToCompanyLocal(shifted, "America/New_York")).toEqual({
+      date: "2026-03-14",
+      time: "10:00",
+    });
   });
 });
 

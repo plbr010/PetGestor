@@ -38,7 +38,10 @@
 28. **Pacote vendido** — após vender pacote na ficha do pet, o formulário de novo agendamento lista o pacote (tutor + pet + serviço compatível)
 29. **Pacote só catálogo** — criar modelo em Serviços → Pacotes sem vender: o agendamento explica que o pacote ainda não foi atribuído ao pet
 30. **Consumo único** — criar agendamento com pacote desconta 1 sessão; reagendar não desconta outra; cancelar devolve o saldo
-31. **Agendamento sem pacote** — fluxo avulso continua cobrando o preço do serviço
+32. **Intervalo de almoço** — jornada 08:00–18:00 com 12:00–13:00; 11:00–12:00 ok; 11:30–12:30, 12:00–13:00 e 12:30–13:30 negados
+33. **Data civil** — agendar 10/10/2026 09:00 em `America/Sao_Paulo` e ver 10/10/2026 09:00 na agenda dia, semana e detalhe
+34. **Recorrência atômica** — retry da mesma chave não duplica série; conflito pula ocorrência e informa o resultado
+35. **Status concorrente** — confirmar e cancelar ao mesmo tempo: apenas uma transição persiste; retry é idempotente
 
 ## Concorrência (detalhe)
 

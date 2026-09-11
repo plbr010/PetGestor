@@ -28,6 +28,9 @@ describe("employee utils", () => {
   it("formatWorkingHourRange cobre folga e intervalo", () => {
     expect(formatWorkingHourRange(false, null, null)).toBe("Folga");
     expect(formatWorkingHourRange(true, "08:00:00", "18:00:00")).toBe("08:00–18:00");
+    expect(formatWorkingHourRange(true, "08:00", "18:00", "12:00", "13:00")).toBe(
+      "08:00–18:00 (intervalo 12:00–13:00)",
+    );
   });
 
   it("formatServicesSummary resume serviços", () => {

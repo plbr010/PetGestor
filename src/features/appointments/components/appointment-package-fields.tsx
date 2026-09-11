@@ -23,6 +23,7 @@ type AppointmentPackageFieldsProps = {
   onChange: (value: string) => void;
   currentPackageId?: string | null;
   idPrefix?: string;
+  omitFieldName?: boolean;
 };
 
 export function AppointmentPackageFields({
@@ -36,6 +37,7 @@ export function AppointmentPackageFields({
   onChange,
   currentPackageId,
   idPrefix = "",
+  omitFieldName = false,
 }: AppointmentPackageFieldsProps) {
   const today = getTodayInTimezone(companyTimezone);
   const fieldId = `${idPrefix}customerPackageId`;
@@ -94,7 +96,7 @@ export function AppointmentPackageFields({
         <Label htmlFor={fieldId}>Usar sessão de pacote</Label>
         <Select
           id={fieldId}
-          name="customerPackageId"
+          name={omitFieldName ? undefined : "customerPackageId"}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           disabled={!customerId || !petId || !serviceId}

@@ -10,10 +10,14 @@ import {
 } from "@/features/appointments/schemas";
 import {
   expandRecurrenceStarts,
-  formatRecurrenceSkipSummary,
+  shiftOccurrenceCivilStart,
   type RecurrenceFrequency,
 } from "@/features/appointments/recurrence";
-import { canTransitionStatus } from "@/features/appointments/status";
+import {
+  interpretStatusTransitionResult,
+  shouldEmitStatusSideEffects,
+  type StatusTransitionRpcResult,
+} from "@/features/appointments/status-transition";
 import {
   countMatchingWaitlistEntries,
 } from "@/features/appointments/waitlist/utils";
@@ -27,13 +31,10 @@ import {
 import { notifyAppointmentAssigned } from "@/features/app-notifications/emitters";
 import { requirePermission } from "@/lib/auth/require-permission";
 import type { Permission } from "@/lib/auth/permissions";
-import {
-  didMutateAccessibleRow,
-  GENERIC_NOT_FOUND_MESSAGE,
-} from "@/lib/security/tenant-access";
+import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { localDateTimeToUtcIso } from "@/lib/timezone";
+import { localDateTimeToUtcIso, diffCivilDays, utcToCompanyLocal, isValidCivilDate } from "@/lib/timezone";
 import type { AppointmentStatus, PetSize } from "@/types/database.types";
 
 export type AppointmentActionState = {
@@ -64,26 +65,57 @@ function resolveIntervalValue(
   return 1;
 }
 
-async function linkAppointmentToRecurrence(
-  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
-  companyId: string,
-  appointmentId: string,
-  recurrenceId: string,
-  recurrenceIndex: number,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("appointments")
-    .update({
-      recurrence_id: recurrenceId,
-      recurrence_index: recurrenceIndex,
-    })
-    .eq("id", appointmentId)
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .select("id")
-    .maybeSingle();
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
 
-  return didMutateAccessibleRow({ data, error });
+  return value.filter((item): item is string => typeof item === "string" && item.length > 0);
+}
+
+function parseRecurrenceRpcResult(value: unknown): {
+  appointmentIds: string[];
+  skippedCount: number;
+  idempotent: boolean;
+} | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const appointmentIds = asStringArray(record.appointment_ids);
+  const skippedCount =
+    typeof record.skipped_count === "number" ? record.skipped_count : 0;
+
+  if (appointmentIds.length === 0) {
+    return null;
+  }
+
+  return {
+    appointmentIds,
+    skippedCount,
+    idempotent: record.idempotent === true,
+  };
+}
+
+function parseStatusTransitionRpc(value: unknown): StatusTransitionRpcResult | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.id !== "string" || typeof record.status !== "string") {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    status: record.status as StatusTransitionRpcResult["status"],
+    changed: record.changed === true,
+    idempotent: record.idempotent === true,
+    following_updated:
+      typeof record.following_updated === "number" ? record.following_updated : 0,
+  };
 }
 
 export async function createAppointmentAction(
@@ -160,91 +192,46 @@ export async function createAppointmentAction(
     };
   }
 
-  const { data: recurrence, error: recurrenceError } = await supabase
-    .from("appointment_recurrences")
-    .insert({
-      company_id: companyId,
-      frequency,
-      interval_value: intervalValue,
-      ends_at: endsAt,
-      max_occurrences: maxOccurrences,
-      created_by: context.user.id,
-      active: true,
-    })
-    .select("id")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("create_appointment_recurrence", {
+    p_pet_id: parsed.data.petId,
+    p_service_id: parsed.data.serviceId,
+    p_employee_id: parsed.data.employeeId,
+    p_scheduled_starts: starts,
+    p_pet_size: parsed.data.petSize,
+    p_notes: parsed.data.notes,
+    p_frequency: frequency,
+    p_interval_value: intervalValue,
+    p_ends_at: endsAt,
+    p_max_occurrences: maxOccurrences,
+    p_idempotency_key: parsed.data.idempotencyKey,
+    p_company_id: context.membership.company.id,
+  });
 
-  if (recurrenceError || !recurrence) {
-    return { error: "Não foi possível criar a recorrência." };
+  if (error || !data) {
+    return { error: mapAppointmentError(error?.message) };
   }
 
-  const createdIds: string[] = [];
-  let skippedCount = 0;
-
-  for (let index = 0; index < starts.length; index += 1) {
-    const occurrenceStart = starts[index]!;
-    const { data: appointmentId, error } = await supabase.rpc("create_appointment", {
-      p_pet_id: parsed.data.petId,
-      p_service_id: parsed.data.serviceId,
-      p_employee_id: parsed.data.employeeId,
-      p_scheduled_start: occurrenceStart,
-      p_pet_size: parsed.data.petSize,
-      p_notes: parsed.data.notes,
-      p_customer_package_id: null,
-      p_company_id: context.membership.company.id,
-    });
-
-    if (error || !appointmentId) {
-      skippedCount += 1;
-      continue;
-    }
-
-    const linked = await linkAppointmentToRecurrence(
-      supabase,
-      companyId,
-      String(appointmentId),
-      recurrence.id,
-      index + 1,
-    );
-
-    if (!linked) {
-      skippedCount += 1;
-      continue;
-    }
-
-    createdIds.push(String(appointmentId));
-    await syncAppointmentNotifications(
-      supabase,
-      companyId,
-      String(appointmentId),
-      timeZone,
-    );
-  }
-
-  if (createdIds[0]) {
-    await notifyAppointmentAssigned(supabase, companyId, createdIds[0]);
-  }
-
-  if (createdIds.length === 0) {
-    await supabase
-      .from("appointment_recurrences")
-      .update({ active: false })
-      .eq("id", recurrence.id)
-      .eq("company_id", companyId);
-
+  const recurrenceResult = parseRecurrenceRpcResult(data);
+  if (!recurrenceResult) {
     return {
       error:
         "Nenhum agendamento pôde ser criado. Verifique conflitos, jornada e disponibilidade.",
     };
   }
 
-  await supabase
-    .from("appointment_recurrences")
-    .update({ source_appointment_id: createdIds[0]! })
-    .eq("id", recurrence.id)
-    .eq("company_id", companyId);
+  const createdIds = recurrenceResult.appointmentIds;
+  const skippedCount = recurrenceResult.skippedCount;
 
-  const summary = formatRecurrenceSkipSummary(createdIds.length, skippedCount);
+  if (!recurrenceResult.idempotent) {
+    for (const appointmentId of createdIds) {
+      await syncAppointmentNotifications(supabase, companyId, appointmentId, timeZone);
+    }
+
+    if (createdIds[0]) {
+      await notifyAppointmentAssigned(supabase, companyId, createdIds[0]);
+    }
+  }
+
   revalidateAgendaPaths(createdIds[0]);
 
   if (skippedCount > 0) {
@@ -254,8 +241,6 @@ export async function createAppointmentAction(
   }
 
   redirect(`/dashboard/agenda/${createdIds[0]}?recorrencia=1&criados=${createdIds.length}`);
-  // Unreachable, keeps type happy if redirect typing changes
-  return { success: summary };
 }
 
 async function updateFollowingRecurrenceAppointments(params: {
@@ -271,7 +256,8 @@ async function updateFollowingRecurrenceAppointments(params: {
   petSize: string | null;
   notes: string | null;
   customerPackageId: string | null;
-  dateDeltaMs: number;
+  dateDeltaDays: number;
+  localTime: string;
 }): Promise<{ updated: number; skipped: number }> {
   const { data: following, error } = await params.supabase
     .from("appointments")
@@ -295,9 +281,12 @@ async function updateFollowingRecurrenceAppointments(params: {
       continue;
     }
 
-    const nextStart = new Date(
-      new Date(row.scheduled_start).getTime() + params.dateDeltaMs,
-    ).toISOString();
+    const nextStart = shiftOccurrenceCivilStart({
+      occurrenceStartUtcIso: row.scheduled_start,
+      timeZone: params.timeZone,
+      dateDeltaDays: params.dateDeltaDays,
+      localTime: params.localTime,
+    });
 
     const { error: updateError } = await params.supabase.rpc("update_appointment", {
       p_appointment_id: row.id,
@@ -393,8 +382,8 @@ export async function updateAppointmentAction(
     current.recurrence_id &&
     (current.status === "scheduled" || current.status === "confirmed")
   ) {
-    const dateDeltaMs =
-      new Date(scheduledStart).getTime() - new Date(current.scheduled_start).getTime();
+    const origin = utcToCompanyLocal(current.scheduled_start, timeZone);
+    const dateDeltaDays = diffCivilDays(origin.date, parsed.data.date);
 
     const result = await updateFollowingRecurrenceAppointments({
       supabase,
@@ -409,7 +398,8 @@ export async function updateAppointmentAction(
       petSize: parsed.data.petSize,
       notes: parsed.data.notes,
       customerPackageId: parsed.data.customerPackageId ?? null,
-      dateDeltaMs,
+      dateDeltaDays,
+      localTime: parsed.data.time,
     });
 
     revalidateAgendaPaths(appointmentId);
@@ -446,81 +436,59 @@ async function transitionAppointmentStatus(
   const companyId = context.membership.company.id;
   const supabase = await createSupabaseServerClient();
 
-  const { data: current, error: fetchError } = await supabase
-    .from("appointments")
-    .select("id, status, company_id, recurrence_id, scheduled_start")
-    .eq("id", appointmentId)
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("transition_appointment_status", {
+    p_appointment_id: appointmentId,
+    p_next_status: nextStatus,
+    p_cancellation_reason: extra?.cancellation_reason ?? null,
+    p_series_scope: extra?.seriesScope ?? "this",
+    p_company_id: companyId,
+  });
 
-  if (fetchError || !current) {
+  if (error) {
+    return { error: mapAppointmentError(error.message) };
+  }
+
+  const rpc = parseStatusTransitionRpc(data);
+  const outcome = interpretStatusTransitionResult({
+    requested: nextStatus,
+    rpc,
+  });
+
+  if (outcome.kind === "not_found") {
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  if (!canTransitionStatus(current.status, nextStatus)) {
-    return { error: "Esta alteração de status não é permitida." };
+  if (outcome.kind === "conflict") {
+    return { error: "Este agendamento já foi atualizado por outra ação." };
   }
 
-  const { data, error } = await supabase
-    .from("appointments")
-    .update({
-      status: nextStatus,
-      ...(extra?.cancellation_reason !== undefined
-        ? { cancellation_reason: extra.cancellation_reason }
-        : {}),
-    })
-    .eq("id", appointmentId)
-    .eq("company_id", companyId)
-    .select("id")
-    .maybeSingle();
+  if (shouldEmitStatusSideEffects(outcome) && rpc) {
+    if (nextStatus === "cancelled" || nextStatus === "no_show") {
+      await cancelAppointmentNotificationsForStatusChange(
+        supabase,
+        companyId,
+        appointmentId,
+      );
 
-  if (!didMutateAccessibleRow({ data, error })) {
-    return { error: GENERIC_NOT_FOUND_MESSAGE };
-  }
+      const followingIds = asStringArray(
+        data && typeof data === "object"
+          ? (data as Record<string, unknown>).following_ids
+          : [],
+      );
 
-  if (nextStatus === "cancelled" || nextStatus === "no_show") {
-    await cancelAppointmentNotificationsForStatusChange(
-      supabase,
-      companyId,
-      appointmentId,
-    );
-  }
-
-  let followingCancelled = 0;
-
-  if (
-    nextStatus === "cancelled" &&
-    extra?.seriesScope === "this_and_following" &&
-    current.recurrence_id
-  ) {
-    const { data: following } = await supabase
-      .from("appointments")
-      .update({
-        status: "cancelled",
-        cancellation_reason: extra.cancellation_reason ?? "Cancelado com a série",
-      })
-      .eq("company_id", companyId)
-      .eq("recurrence_id", current.recurrence_id)
-      .gt("scheduled_start", current.scheduled_start)
-      .in("status", ["scheduled", "confirmed"])
-      .is("deleted_at", null)
-      .select("id");
-
-    followingCancelled = following?.length ?? 0;
-
-    if (following?.length) {
-      for (const row of following) {
+      for (const followingId of followingIds) {
         await cancelAppointmentNotificationsForStatusChange(
           supabase,
           companyId,
-          row.id,
+          followingId,
         );
       }
     }
   }
 
   revalidateAgendaPaths(appointmentId);
+
+  const followingCancelled = rpc?.following_updated ?? 0;
 
   if (nextStatus === "cancelled" && extra?.seriesScope === "this_and_following") {
     return {
@@ -674,7 +642,7 @@ export async function getAvailableSlotsAction(input: {
   if (
     !isValidUuid(input.employeeId) ||
     !isValidUuid(input.serviceId) ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(input.date)
+    !isValidCivilDate(input.date)
   ) {
     return { slots: [], error: "Parâmetros inválidos." };
   }

@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 import { TIME_BLOCK_REASONS } from "@/features/appointments/time-blocks/types";
-import { isPastLocalDateTime } from "@/lib/timezone";
+import { CIVIL_DATE_INVALID_MESSAGE, isPastLocalDateTime, isValidCivilDate } from "@/lib/timezone";
 
 export const timeBlockFormSchema = z
   .object({
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data válida."),
+    date: z.string().refine(isValidCivilDate, CIVIL_DATE_INVALID_MESSAGE),
     startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Informe um horário inicial válido."),
     endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Informe um horário final válido."),
     employeeId: z

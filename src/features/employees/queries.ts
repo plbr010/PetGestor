@@ -182,7 +182,7 @@ export async function getEmployeeById(
       .eq("employee_id", employeeId),
     supabase
       .from("employee_working_hours")
-      .select("id, weekday, enabled, start_time, end_time")
+      .select("id, weekday, enabled, start_time, end_time, break_start, break_end")
       .eq("company_id", companyId)
       .eq("employee_id", employeeId)
       .order("weekday", { ascending: true }),

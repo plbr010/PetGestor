@@ -132,7 +132,7 @@ export default async function EmployeeDetailPage({
         <Card>
           <CardHeader>
             <CardTitle>Horários semanais</CardTitle>
-            <CardDescription>Jornada padrão — um intervalo por dia.</CardDescription>
+            <CardDescription>Jornada padrão — um período por dia, com intervalo opcional.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {employee.workingHours.map((hour) => (
@@ -142,7 +142,13 @@ export default async function EmployeeDetailPage({
               >
                 <span className="font-medium">{getWeekdayLabel(hour.weekday)}</span>
                 <span className="text-muted-foreground">
-                  {formatWorkingHourRange(hour.enabled, hour.start_time, hour.end_time)}
+                  {formatWorkingHourRange(
+                    hour.enabled,
+                    hour.start_time,
+                    hour.end_time,
+                    hour.break_start,
+                    hour.break_end,
+                  )}
                 </span>
               </div>
             ))}

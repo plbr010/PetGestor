@@ -10,11 +10,12 @@ import type {
 } from "@/features/appointments/types";
 import { isRangeBlockedByTimeBlocks } from "@/features/appointments/waitlist/utils";
 import { getTimeBlocksForSlotCheck } from "@/features/appointments/time-blocks/queries";
-import { generateTimeSlots, SLOT_INTERVAL_MINUTES } from "@/features/appointments/utils";
+import { slotSurvivesWorkingHours } from "@/features/appointments/working-hours";
 import { buildPetPhotoThumbMap, withPetPhotoThumb } from "@/features/pets/enrich-photo-thumbs";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   addDaysToDateString,
+  getCivilDayUtcBounds,
   getWeekdayInTimezone,
   isPastLocalDateTime,
   localDateTimeToUtcIso,
@@ -139,9 +140,7 @@ async function mapAppointmentRows(
 }
 
 function getDayBoundsUtc(date: string, timeZone: string) {
-  const start = localDateTimeToUtcIso(date, "00:00", timeZone);
-  const end = localDateTimeToUtcIso(addDaysToDateString(date, 1), "00:00", timeZone);
-  return { start, end };
+  return getCivilDayUtcBounds(date, timeZone);
 }
 
 async function queryAppointmentsInRange(
@@ -374,7 +373,7 @@ export async function getAvailableTimeSlots(
 
   const { data: workingHour } = await supabase
     .from("employee_working_hours")
-    .select("enabled, start_time, end_time")
+    .select("enabled, start_time, end_time, break_start, break_end")
     .eq("company_id", companyId)
     .eq("employee_id", employeeId)
     .eq("weekday", weekday)
@@ -425,11 +424,16 @@ export async function getAvailableTimeSlots(
 
     const slotStart = new Date(localDateTimeToUtcIso(date, slot, timeZone)).getTime();
     const slotEnd = slotStart + durationMinutes * 60_000;
-    const workEnd = new Date(
-      localDateTimeToUtcIso(date, workingHour.end_time.slice(0, 5), timeZone),
-    ).getTime();
 
-    if (slotEnd > workEnd) {
+    const fitsHours = slotSurvivesWorkingHours(slot, durationMinutes, {
+      enabled: workingHour.enabled,
+      startTime: workingHour.start_time,
+      endTime: workingHour.end_time,
+      breakStart: workingHour.break_start,
+      breakEnd: workingHour.break_end,
+    });
+
+    if (!fitsHours) {
       continue;
     }
 

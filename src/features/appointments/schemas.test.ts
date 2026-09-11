@@ -31,6 +31,39 @@ describe("parseAppointmentForm", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejeita data civil impossível", () => {
+    const result = parseAppointmentForm(buildForm({ date: "2026-02-31" }), timezone);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe("Informe uma data válida.");
+      expect(result.error.issues[0]?.path).toEqual(["date"]);
+    }
+  });
+
+  it("aceita 29/02 em ano bissexto", () => {
+    const result = parseAppointmentForm(buildForm({ date: "2028-02-29", time: "09:00" }), timezone);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita término de recorrência impossível", () => {
+    const result = parseAppointmentForm(
+      buildForm({
+        repeatEnabled: "on",
+        recurrenceFrequency: "weekly",
+        recurrenceEndMode: "date",
+        recurrenceEndsAt: "2026-04-31",
+        idempotencyKey: "550e8400-e29b-41d4-a716-446655440099",
+      }),
+      timezone,
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.includes("recurrenceEndsAt"))).toBe(
+        true,
+      );
+    }
+  });
+
   it("rejeita data passada", () => {
     const result = parseAppointmentForm(buildForm({ date: "2000-01-01" }), timezone);
     expect(result.success).toBe(false);
@@ -56,6 +89,7 @@ describe("parseAppointmentForm", () => {
         recurrenceFrequency: "weekly",
         recurrenceEndMode: "count",
         recurrenceMaxOccurrences: "8",
+        idempotencyKey: "550e8400-e29b-41d4-a716-446655440099",
       }),
       timezone,
     );
@@ -75,6 +109,7 @@ describe("parseAppointmentForm", () => {
         recurrenceIntervalDays: "5",
         recurrenceEndMode: "date",
         recurrenceEndsAt: "2099-12-31",
+        idempotencyKey: "550e8400-e29b-41d4-a716-446655440099",
       }),
       timezone,
     );
@@ -86,6 +121,7 @@ describe("parseAppointmentForm", () => {
       buildForm({
         repeatEnabled: "on",
         recurrenceFrequency: "monthly",
+        idempotencyKey: "550e8400-e29b-41d4-a716-446655440099",
       }),
       timezone,
     );
@@ -99,6 +135,7 @@ describe("parseAppointmentForm", () => {
         recurrenceFrequency: "weekly",
         recurrenceEndMode: "count",
         recurrenceMaxOccurrences: "53",
+        idempotencyKey: "550e8400-e29b-41d4-a716-446655440099",
       }),
       timezone,
     );
@@ -134,6 +171,7 @@ describe("parseAppointmentForm", () => {
         recurrenceFrequency: "weekly",
         recurrenceEndMode: "count",
         recurrenceMaxOccurrences: "4",
+        idempotencyKey: "550e8400-e29b-41d4-a716-446655440099",
       }),
       timezone,
     );

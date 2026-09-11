@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { WAITLIST_PERIODS } from "@/features/appointments/waitlist/types";
+import { isValidCivilDate } from "@/lib/timezone";
 
 const optionalText = (max: number, message: string) =>
   z
@@ -15,7 +16,7 @@ const optionalDate = z
   .trim()
   .transform((value) => (value.length === 0 ? null : value))
   .nullable()
-  .refine((value) => value === null || /^\d{4}-\d{2}-\d{2}$/.test(value), {
+  .refine((value) => value === null || isValidCivilDate(value), {
     message: "Informe uma data válida.",
   });
 

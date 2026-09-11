@@ -7,6 +7,7 @@ import {
   getAvailableSlotsAction,
   type AppointmentActionState,
 } from "@/features/appointments/actions";
+import { computeAppointmentPreview } from "@/features/appointments/preview";
 import type { AppointmentFormOptions } from "@/features/appointments/types";
 import { AppointmentPackageFields } from "@/features/appointments/components/appointment-package-fields";
 import type { AppointmentQuickPrefill } from "@/features/appointments/waitlist/types";
@@ -42,6 +43,7 @@ export function AppointmentQuickForm({
 }: AppointmentQuickFormProps) {
   const [state, formAction, isPending] = useActionState(createAppointmentInlineAction, initialState);
   const [isLoadingSlots, startSlotTransition] = useTransition();
+  const [formEpoch, setFormEpoch] = useState(0);
 
   const [customerId, setCustomerId] = useState(initial?.customerId ?? options.customers[0]?.id ?? "");
   const [petId, setPetId] = useState(initial?.petId ?? "");
@@ -52,40 +54,24 @@ export function AppointmentQuickForm({
   );
   const [date, setDate] = useState(initial?.date ?? getTodayInTimezone(options.companyTimezone));
   const [time, setTime] = useState(initial?.time ?? "09:00");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [customerPackageId, setCustomerPackageId] = useState("");
 
   const pets = options.petsByCustomer[customerId] ?? [];
   const selectedService = options.services.find((service) => service.id === serviceId);
   const employees = serviceId ? (options.employeesByService[serviceId] ?? []) : [];
-  const coveredByPackage = Boolean(customerPackageId);
 
-  const preview = useMemo(() => {
-    if (!selectedService) {
-      return null;
-    }
-
-    if (selectedService.pricing_mode === "fixed") {
-      return {
-        price: coveredByPackage ? 0 : (selectedService.price_cents ?? 0),
-        duration: selectedService.duration_minutes,
-      };
-    }
-
-    if (!petSize) {
-      return null;
-    }
-
-    const sizePrice = options.sizePricesByService[serviceId]?.find((row) => row.size === petSize);
-    if (!sizePrice) {
-      return null;
-    }
-
-    return {
-      price: coveredByPackage ? 0 : sizePrice.price_cents,
-      duration: sizePrice.duration_minutes,
-    };
-  }, [coveredByPackage, options.sizePricesByService, petSize, selectedService, serviceId]);
+  const preview = useMemo(
+    () =>
+      computeAppointmentPreview({
+        service: selectedService,
+        petSize,
+        sizePrices: options.sizePricesByService[serviceId],
+        customerPackageId,
+      }),
+    [customerPackageId, options.sizePricesByService, petSize, selectedService, serviceId],
+  );
 
   const shouldFetchSlots = Boolean(employeeId && serviceId && date && preview);
 
@@ -94,6 +80,12 @@ export function AppointmentQuickForm({
       onSuccess?.(state.appointmentId);
     }
   }, [onSuccess, state.appointmentId, state.success]);
+
+  useEffect(() => {
+    if (state.error) {
+      setFormEpoch((value) => value + 1);
+    }
+  }, [state]);
 
   useEffect(() => {
     if (!shouldFetchSlots || !preview) {
@@ -132,16 +124,24 @@ export function AppointmentQuickForm({
   return (
     <form action={formAction} className="space-y-4" noValidate>
       {waitlistId ? <input type="hidden" name="waitlistId" value={waitlistId} /> : null}
+      <input type="hidden" name="customerId" value={customerId} />
+      <input type="hidden" name="petId" value={petId} />
+      <input type="hidden" name="serviceId" value={serviceId} />
+      <input type="hidden" name="employeeId" value={employeeId} />
+      <input type="hidden" name="petSize" value={petSize} />
+      <input type="hidden" name="date" value={date} />
+      <input type="hidden" name="time" value={time} />
+      <input type="hidden" name="notes" value={notes} />
+      <input type="hidden" name="customerPackageId" value={customerPackageId} />
       {state.error ? <FormFeedback message={state.error} variant="error" /> : null}
       {state.success ? <FormFeedback message={state.success} variant="success" /> : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="quick-customerId">Tutor *</Label>
-          <Select
-            id="quick-customerId"
-            name="customerId"
-            value={customerId}
+            <Select
+              id="quick-customerId"
+              value={customerId}
             onChange={(event) => {
               setCustomerId(event.target.value);
               setPetId("");
@@ -161,10 +161,9 @@ export function AppointmentQuickForm({
 
         <div className="space-y-2">
           <Label htmlFor="quick-petId">Pet *</Label>
-          <Select
-            id="quick-petId"
-            name="petId"
-            value={petId}
+            <Select
+              id="quick-petId"
+              value={petId}
             onChange={(event) => {
               setPetId(event.target.value);
               setCustomerPackageId("");
@@ -187,7 +186,6 @@ export function AppointmentQuickForm({
         <Label htmlFor="quick-serviceId">Serviço *</Label>
         <Select
           id="quick-serviceId"
-          name="serviceId"
           value={serviceId}
           onChange={(event) => {
             setServiceId(event.target.value);
@@ -211,10 +209,9 @@ export function AppointmentQuickForm({
       {selectedService?.pricing_mode === "by_size" ? (
         <div className="space-y-2">
           <Label htmlFor="quick-petSize">Porte *</Label>
-          <Select
-            id="quick-petSize"
-            name="petSize"
-            value={petSize}
+            <Select
+              id="quick-petSize"
+              value={petSize}
             onChange={(event) => setPetSize(event.target.value as PetSize)}
             required
           >
@@ -234,7 +231,6 @@ export function AppointmentQuickForm({
         <Label htmlFor="quick-employeeId">Profissional *</Label>
         <Select
           id="quick-employeeId"
-          name="employeeId"
           value={employeeId}
           onChange={(event) => setEmployeeId(event.target.value)}
           required
@@ -254,11 +250,10 @@ export function AppointmentQuickForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="quick-date">Data *</Label>
-          <Input
-            id="quick-date"
-            name="date"
-            type="date"
-            value={date}
+            <Input
+              id="quick-date"
+              type="date"
+              value={date}
             min={getTodayInTimezone(options.companyTimezone)}
             onChange={(event) => setDate(event.target.value)}
             required
@@ -268,10 +263,9 @@ export function AppointmentQuickForm({
         <div className="space-y-2">
           <Label htmlFor="quick-time">Horário *</Label>
           {slotsToShow.length > 0 ? (
-            <Select
-              id="quick-time"
-              name="time"
-              value={time}
+              <Select
+                id="quick-time"
+                value={time}
               onChange={(event) => setTime(event.target.value)}
               required
             >
@@ -282,11 +276,10 @@ export function AppointmentQuickForm({
               ))}
             </Select>
           ) : (
-            <Input
-              id="quick-time"
-              name="time"
-              type="time"
-              value={time}
+              <Input
+                id="quick-time"
+                type="time"
+                value={time}
               onChange={(event) => setTime(event.target.value)}
               required
             />
@@ -307,7 +300,7 @@ export function AppointmentQuickForm({
             <span className="text-muted-foreground">Duração: </span>
             <span className="font-medium">{preview.duration} min</span>
           </p>
-          {coveredByPackage ? (
+          {preview.coveredByPackage ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Coberto pelo pacote — nenhuma cobrança avulsa.
             </p>
@@ -316,6 +309,7 @@ export function AppointmentQuickForm({
       ) : null}
 
       <AppointmentPackageFields
+        key={`quick-package-${formEpoch}`}
         customerId={customerId}
         petId={petId}
         serviceId={serviceId}
@@ -325,14 +319,15 @@ export function AppointmentQuickForm({
         value={customerPackageId}
         onChange={setCustomerPackageId}
         idPrefix="quick-"
+        omitFieldName
       />
 
       <div className="space-y-2">
         <Label htmlFor="quick-notes">Observações</Label>
         <Textarea
           id="quick-notes"
-          name="notes"
-          defaultValue={initial?.notes ?? ""}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
           rows={3}
         />
       </div>

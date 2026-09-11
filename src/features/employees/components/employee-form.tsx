@@ -44,7 +44,7 @@ function getWorkingHourDefaults(employee?: EmployeeDetail) {
     const row = employee.workingHours.find((hour) => hour.weekday === day.weekday);
 
     if (!row) {
-      return { weekday: day.weekday, enabled: false, startTime: null, endTime: null };
+      return { weekday: day.weekday, enabled: false, startTime: null, endTime: null, breakStart: null, breakEnd: null };
     }
 
     return {
@@ -52,6 +52,8 @@ function getWorkingHourDefaults(employee?: EmployeeDetail) {
       enabled: row.enabled,
       startTime: row.start_time ? formatTimeDisplay(row.start_time) : null,
       endTime: row.end_time ? formatTimeDisplay(row.end_time) : null,
+      breakStart: row.break_start ? formatTimeDisplay(row.break_start) : null,
+      breakEnd: row.break_end ? formatTimeDisplay(row.break_end) : null,
     };
   });
 }
@@ -219,7 +221,7 @@ export function EmployeeForm({
         <div>
           <h2 className="text-lg font-semibold">Horários de trabalho</h2>
           <p className="text-sm text-muted-foreground">
-            Um intervalo por dia. MVP — futuramente poderá evoluir para múltiplos turnos.
+            Um período de trabalho por dia, com intervalo de almoço opcional.
           </p>
         </div>
 
@@ -240,7 +242,7 @@ export function EmployeeForm({
                     />
                     {day.label}
                   </label>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-1">
                       <Label htmlFor={`weekday_${day.weekday}_start`}>Início</Label>
                       <Input
@@ -257,6 +259,24 @@ export function EmployeeForm({
                         name={`weekday_${day.weekday}_end`}
                         type="time"
                         defaultValue={defaults?.endTime ?? ""}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`weekday_${day.weekday}_break_start`}>Início do intervalo</Label>
+                      <Input
+                        id={`weekday_${day.weekday}_break_start`}
+                        name={`weekday_${day.weekday}_break_start`}
+                        type="time"
+                        defaultValue={defaults?.breakStart ?? ""}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`weekday_${day.weekday}_break_end`}>Fim do intervalo</Label>
+                      <Input
+                        id={`weekday_${day.weekday}_break_end`}
+                        name={`weekday_${day.weekday}_break_end`}
+                        type="time"
+                        defaultValue={defaults?.breakEnd ?? ""}
                       />
                     </div>
                   </div>

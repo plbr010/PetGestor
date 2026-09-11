@@ -5,7 +5,12 @@ import {
   RECURRENCE_MAX_OCCURRENCES,
   type RecurrenceFrequency,
 } from "@/features/appointments/recurrence";
-import { isPastLocalDate, isPastLocalDateTime } from "@/lib/timezone";
+import {
+  CIVIL_DATE_INVALID_MESSAGE,
+  isPastLocalDate,
+  isPastLocalDateTime,
+  isValidCivilDate,
+} from "@/lib/timezone";
 import { isValidUuid } from "@/lib/security/uuid";
 import type { PetSize } from "@/types/database.types";
 
@@ -25,7 +30,7 @@ export const appointmentFormSchema = z
     petId: z.uuid({ error: "Selecione um pet." }),
     serviceId: z.uuid({ error: "Selecione um serviço." }),
     employeeId: z.uuid({ error: "Selecione um profissional." }),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data válida."),
+    date: z.string().refine(isValidCivilDate, CIVIL_DATE_INVALID_MESSAGE),
     time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Informe um horário válido."),
     petSize: petSizeSchema.nullable(),
     notes: z
@@ -45,11 +50,8 @@ export const appointmentFormSchema = z
       .min(2, "Informe pelo menos 2 ocorrências.")
       .max(RECURRENCE_MAX_OCCURRENCES, `Máximo de ${RECURRENCE_MAX_OCCURRENCES} ocorrências.`)
       .optional(),
-    recurrenceEndsAt: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data final válida.")
-      .optional()
-      .nullable(),
+    recurrenceEndsAt: z.string().optional().nullable(),
+    idempotencyKey: z.uuid().optional(),
     seriesScope: seriesScopeSchema.optional(),
     customerPackageId: z.uuid().optional().nullable(),
   })
@@ -108,6 +110,12 @@ export const appointmentFormSchema = z
           message: "Informe a data final da recorrência.",
           path: ["recurrenceEndsAt"],
         });
+      } else if (!isValidCivilDate(data.recurrenceEndsAt)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Informe uma data final válida.",
+          path: ["recurrenceEndsAt"],
+        });
       } else if (data.recurrenceEndsAt < data.date) {
         ctx.addIssue({
           code: "custom",
@@ -129,6 +137,14 @@ export const appointmentFormSchema = z
         message:
           "Pacotes não podem ser usados em agendamentos recorrentes. Crie cada sessão avulsa para consumir o saldo.",
         path: ["customerPackageId"],
+      });
+    }
+
+    if (!data.idempotencyKey) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Operação inválida. Recarregue a página e tente novamente.",
+        path: ["idempotencyKey"],
       });
     }
   });
@@ -189,6 +205,7 @@ export function parseAppointmentForm(formData: FormData, companyTimezone: string
         ? seriesScopeRaw
         : undefined,
     customerPackageId: isValidUuid(customerPackageRaw) ? customerPackageRaw : null,
+    idempotencyKey: formData.get("idempotencyKey") || undefined,
   });
 }
 
