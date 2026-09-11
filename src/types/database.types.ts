@@ -1657,6 +1657,7 @@ export type Database = {
           updated_at: string;
           cancelled_at: string | null;
           deleted_at: string | null;
+          idempotency_key: string | null;
         };
         Insert: {
           id?: string;
@@ -1679,6 +1680,7 @@ export type Database = {
           updated_at?: string;
           cancelled_at?: string | null;
           deleted_at?: string | null;
+          idempotency_key?: string | null;
         };
         Update: {
           id?: string;
@@ -1701,6 +1703,7 @@ export type Database = {
           updated_at?: string;
           cancelled_at?: string | null;
           deleted_at?: string | null;
+          idempotency_key?: string | null;
         };
         Relationships: [
           {
@@ -2830,6 +2833,22 @@ export type Database = {
           p_company_id: string;
           p_amount_cents?: number | null;
           p_idempotency_key?: string | null;
+        };
+        Returns: string;
+      };
+      create_manual_financial_entry: {
+        Args: {
+          p_entry_type: FinancialEntryType;
+          p_description: string;
+          p_category?: string | null;
+          p_amount_cents: number;
+          p_due_date?: string | null;
+          p_notes?: string | null;
+          p_desired_status: "pending" | "paid";
+          p_payment_method?: PaymentMethod | null;
+          p_paid_at?: string | null;
+          p_idempotency_key: string;
+          p_company_id: string;
         };
         Returns: string;
       };

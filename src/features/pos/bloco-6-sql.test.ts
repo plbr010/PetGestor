@@ -16,6 +16,7 @@ describe("BLOCO 6 — superfície SQL do PDV", () => {
     expect(migration).not.toContain("20260911180000_service_order_state_machine_concurrency");
     expect(migration).not.toContain("20260911200000_customer_service_packages_payment_idempotency");
     expect(migration).not.toContain("20260911220000_financial_payments_source_of_truth");
+    expect(migration).not.toContain("20260911230000_create_manual_financial_entry_atomic");
   });
 
   it("não apaga vendas/estoque/pagamentos nem desabilita RLS", () => {
