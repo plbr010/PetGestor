@@ -211,6 +211,10 @@ describe("isPastLocalDateTime", () => {
   it("identifica horário passado", () => {
     expect(isPastLocalDateTime("2000-01-01", "08:00", "America/Sao_Paulo")).toBe(true);
   });
+
+  it("não lança em horário com formato inválido", () => {
+    expect(isPastLocalDateTime("2099-12-31", "25:99", "America/Sao_Paulo")).toBe(true);
+  });
 });
 
 describe("getTodayInTimezone", () => {

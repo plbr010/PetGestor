@@ -4,9 +4,10 @@ import {
   appointmentFitsWorkingHours,
   appointmentOverlapsBreak,
   slotSurvivesWorkingHours,
+  type WorkingHourWindow,
 } from "@/features/appointments/working-hours";
 
-const WINDOW = {
+const WINDOW: WorkingHourWindow = {
   enabled: true,
   startTime: "08:00",
   endTime: "18:00",

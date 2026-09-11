@@ -55,7 +55,6 @@ export function AppointmentForm({
 }: AppointmentFormProps) {
   const [state, formAction, isPending] = useActionState(action ?? createAppointmentAction, initialState);
   const [isLoadingSlots, startSlotTransition] = useTransition();
-  const [formEpoch, setFormEpoch] = useState(0);
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const defaultDate =
@@ -87,12 +86,6 @@ export function AppointmentForm({
     appointment?.customer_package_id ?? "",
   );
   const isRecurringEdit = Boolean(appointment?.recurrence_id);
-
-  useEffect(() => {
-    if (state.error) {
-      setFormEpoch((value) => value + 1);
-    }
-  }, [state]);
 
   const pets = options.petsByCustomer[customerId] ?? [];
   const selectedService = options.services.find((service) => service.id === serviceId);
@@ -177,7 +170,7 @@ export function AppointmentForm({
 
       {state.error ? <FormFeedback message={state.error} variant="error" /> : null}
 
-      <section key={`pet-${formEpoch}`} className="space-y-4">
+      <section className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold">Pet</h2>
           <p className="text-sm text-muted-foreground">Selecione o tutor e o pet do atendimento.</p>
@@ -301,7 +294,6 @@ export function AppointmentForm({
       </section>
 
       <AppointmentPackageFields
-        key={`package-${formEpoch}`}
         customerId={customerId}
         petId={petId}
         serviceId={serviceId}

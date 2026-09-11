@@ -11,6 +11,7 @@ import type {
 import { isRangeBlockedByTimeBlocks } from "@/features/appointments/waitlist/utils";
 import { getTimeBlocksForSlotCheck } from "@/features/appointments/time-blocks/queries";
 import { slotSurvivesWorkingHours } from "@/features/appointments/working-hours";
+import { SLOT_INTERVAL_MINUTES, generateTimeSlots } from "@/features/appointments/utils";
 import { buildPetPhotoThumbMap, withPetPhotoThumb } from "@/features/pets/enrich-photo-thumbs";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {

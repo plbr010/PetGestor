@@ -43,7 +43,6 @@ export function AppointmentQuickForm({
 }: AppointmentQuickFormProps) {
   const [state, formAction, isPending] = useActionState(createAppointmentInlineAction, initialState);
   const [isLoadingSlots, startSlotTransition] = useTransition();
-  const [formEpoch, setFormEpoch] = useState(0);
 
   const [customerId, setCustomerId] = useState(initial?.customerId ?? options.customers[0]?.id ?? "");
   const [petId, setPetId] = useState(initial?.petId ?? "");
@@ -80,12 +79,6 @@ export function AppointmentQuickForm({
       onSuccess?.(state.appointmentId);
     }
   }, [onSuccess, state.appointmentId, state.success]);
-
-  useEffect(() => {
-    if (state.error) {
-      setFormEpoch((value) => value + 1);
-    }
-  }, [state]);
 
   useEffect(() => {
     if (!shouldFetchSlots || !preview) {
@@ -309,7 +302,7 @@ export function AppointmentQuickForm({
       ) : null}
 
       <AppointmentPackageFields
-        key={`quick-package-${formEpoch}`}
+        key={`quick-package-${customerPackageId || "none"}`}
         customerId={customerId}
         petId={petId}
         serviceId={serviceId}

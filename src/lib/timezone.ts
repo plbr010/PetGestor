@@ -239,6 +239,24 @@ export function localDateTimeToUtcIso(
 /** Alias explícito da conversão civil+hora+timezone → UTC. */
 export const localDateTimeToUtc = localDateTimeToUtcIso;
 
+export function tryLocalDateTimeToUtcIso(
+  date: string,
+  time: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string | null {
+  try {
+    return localDateTimeToUtcIso(date, time, timeZone);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "invalid_civil_date" || error.message === "invalid_local_time")
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 /**
  * Formata instante UTC como hora local da empresa (HH:mm).
  */
@@ -357,11 +375,15 @@ export function isPastLocalDateTime(
   time: string,
   timeZone: string = DEFAULT_TIMEZONE,
 ): boolean {
-  if (!isValidCivilDate(date)) {
+  if (!isValidCivilDate(date) || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(time)) {
     return true;
   }
 
-  const iso = localDateTimeToUtcIso(date, time, timeZone);
+  const iso = tryLocalDateTimeToUtcIso(date, time, timeZone);
+  if (!iso) {
+    return true;
+  }
+
   return new Date(iso).getTime() < Date.now();
 }
 

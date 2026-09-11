@@ -34,7 +34,7 @@ import type { Permission } from "@/lib/auth/permissions";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { localDateTimeToUtcIso, diffCivilDays, utcToCompanyLocal, isValidCivilDate } from "@/lib/timezone";
+import { diffCivilDays, utcToCompanyLocal, isValidCivilDate, tryLocalDateTimeToUtcIso } from "@/lib/timezone";
 import type { AppointmentStatus, PetSize } from "@/types/database.types";
 
 export type AppointmentActionState = {
@@ -131,11 +131,15 @@ export async function createAppointmentAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
-  const scheduledStart = localDateTimeToUtcIso(
+  const scheduledStart = tryLocalDateTimeToUtcIso(
     parsed.data.date,
     parsed.data.time,
     timeZone,
   );
+
+  if (!scheduledStart) {
+    return { error: "Informe uma data e um horário válidos no fuso da empresa." };
+  }
 
   const supabase = await createSupabaseServerClient();
 
@@ -336,11 +340,15 @@ export async function updateAppointmentAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
-  const scheduledStart = localDateTimeToUtcIso(
+  const scheduledStart = tryLocalDateTimeToUtcIso(
     parsed.data.date,
     parsed.data.time,
     timeZone,
   );
+
+  if (!scheduledStart) {
+    return { error: "Informe uma data e um horário válidos no fuso da empresa." };
+  }
 
   const supabase = await createSupabaseServerClient();
 
@@ -535,11 +543,15 @@ export async function createAppointmentInlineAction(
     return { error: "Use a página completa para agendamentos recorrentes." };
   }
 
-  const scheduledStart = localDateTimeToUtcIso(
+  const scheduledStart = tryLocalDateTimeToUtcIso(
     parsed.data.date,
     parsed.data.time,
     timeZone,
   );
+
+  if (!scheduledStart) {
+    return { error: "Informe uma data e um horário válidos no fuso da empresa." };
+  }
 
   const supabase = await createSupabaseServerClient();
 

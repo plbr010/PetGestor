@@ -9,7 +9,7 @@ import {
   formatPriceSnapshot,
   groupAppointmentsByLocalDate,
 } from "@/features/appointments/utils";
-import { civilDateWeekday } from "@/lib/timezone";
+import { civilDateWeekday, formatUtcInTimezone } from "@/lib/timezone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 
