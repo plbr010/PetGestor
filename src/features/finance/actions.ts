@@ -64,62 +64,30 @@ async function createManualEntry(
   }
 
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase.rpc("create_manual_financial_entry", {
+    p_entry_type: entryType,
+    p_description: parsed.data.description,
+    p_category: parsed.data.category,
+    p_amount_cents: amountCents,
+    p_due_date: parsed.data.dueDate ?? null,
+    p_notes: parsed.data.notes,
+    p_desired_status: parsed.data.status,
+    p_payment_method: parsed.data.paymentMethod,
+    p_paid_at: parsed.data.status === "paid" ? new Date().toISOString() : null,
+    p_idempotency_key: parsed.data.idempotencyKey,
+    p_company_id: context.membership.company.id,
+  });
 
-  if (!user) {
-    return { error: GENERIC_NOT_FOUND_MESSAGE };
+  if (error || !data) {
+    return { error: mapFinanceError(error?.message) };
   }
 
-  const { data, error } = await supabase
-    .from("financial_entries")
-    .insert({
-      company_id: context.membership.company.id,
-      entry_type: entryType,
-      status: "pending",
-      source_type: "manual",
-      description: parsed.data.description,
-      category: parsed.data.category,
-      amount_cents: amountCents,
-      due_date: parsed.data.dueDate ?? null,
-      payment_method: null,
-      paid_at: null,
-      notes: parsed.data.notes,
-      created_by: user.id,
-    })
-    .select("id")
-    .maybeSingle();
-
-  if (!didMutateAccessibleRow({ data, error }) || !data) {
-    return { error: "Não foi possível criar o lançamento." };
+  if (parsed.data.status === "pending") {
+    await notifyPaymentPending(supabase, context.membership.company.id, data);
   }
 
-  if (parsed.data.status === "paid") {
-    const paymentKey =
-      parsed.data.idempotencyKey ??
-      (typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${data.id}-manual-paid`);
-
-    const paid = await supabase.rpc("mark_financial_entry_paid", {
-      p_entry_id: data.id,
-      p_payment_method: parsed.data.paymentMethod!,
-      p_paid_at: new Date().toISOString(),
-      p_company_id: context.membership.company.id,
-      p_amount_cents: amountCents,
-      p_idempotency_key: paymentKey,
-    });
-
-    if (paid.error || !paid.data) {
-      return { error: mapFinanceError(paid.error?.message) };
-    }
-  } else {
-    await notifyPaymentPending(supabase, context.membership.company.id, data.id);
-  }
-
-  revalidateFinancePaths(data.id);
-  redirect(`/dashboard/financeiro/${data.id}`);
+  revalidateFinancePaths(data);
+  redirect(`/dashboard/financeiro/${data}`);
 }
 
 export async function createManualFinancialEntryAction(

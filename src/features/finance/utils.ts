@@ -51,6 +51,10 @@ export function mapFinanceError(message: string | undefined): string {
     return "Informe um valor de pagamento válido.";
   }
 
+  if (code.includes("idempotency_key_conflict")) {
+    return "Esta tentativa de criação conflita com um lançamento já registrado.";
+  }
+
   if (code.includes("invalid_idempotency_key")) {
     return "Não foi possível confirmar o pagamento. Atualize a página e tente novamente.";
   }

@@ -24,7 +24,9 @@ Valores monetários são armazenados em **centavos inteiros** (`INTEGER`), nunca
 
 **Legado:** `status = paid` sem nenhuma parcela ativa **não** gera linha histórica automaticamente. Totais usam `amount_cents` como recebido até haver reconciliação manual. Diagnóstico: `docs/sql/diagnose-bloco-5-finance.sql`.
 
-Novos lançamentos manuais pagos geram `financial_payment` canônico na mesma operação (RPC + trigger de INSERT).
+Novos lançamentos manuais pagos geram `financial_payment` canônico na **mesma transação** da RPC `create_manual_financial_entry` (entry + parcela + status derivado, ou rollback). O trigger `ensure_manual_paid_has_payment` permanece como rede de segurança para INSERT direto de manuais já `paid`.
+
+Retry da criação usa `financial_entries.idempotency_key` (única por empresa). Mesma chave + mesmos dados devolve a entry original; payload incompatível → `idempotency_key_conflict`.
 
 ## Status
 
@@ -103,6 +105,8 @@ Antes de inserir pagamento: `SELECT … FOR UPDATE` na entry, recálculo do sald
 
 `idempotency_key` única por empresa (pagamentos ativos). Retry com a mesma chave não duplica.
 
+Criação manual: `idempotency_key` na **entry** (`financial_entries_company_idempotency_key_uidx`). Uma RPC `create_manual_financial_entry` — não INSERT + `mark_financial_entry_paid` em duas transações.
+
 ## Formas de pagamento
 
 | Código | Label |
@@ -130,6 +134,7 @@ Validação alinhada em UI, Server Action, RPC e CHECK do banco.
 - `supabase/migrations/20260806081500_finance.sql`
 - `supabase/migrations/20260818140000_point_of_sale.sql` (`financial_payments`)
 - `supabase/migrations/20260911220000_financial_payments_source_of_truth.sql` (**BLOCO 5 — aplicar no Supabase**)
+- `supabase/migrations/20260911230000_create_manual_financial_entry_atomic.sql` (**hardening BLOCO 5 — criação manual atômica**)
 
 ## Não incluído neste bloco
 

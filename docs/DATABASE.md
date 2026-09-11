@@ -300,6 +300,11 @@ Migration: `supabase/migrations/20260806081500_finance.sql`
 
 BLOCO 5: `supabase/migrations/20260911220000_financial_payments_source_of_truth.sql`
 
+Hardening BLOCO 5 (criação manual atômica): `supabase/migrations/20260911230000_create_manual_financial_entry_atomic.sql`
+
+- `financial_entries.idempotency_key` — UNIQUE `(company_id, idempotency_key)` enquanto `deleted_at IS NULL`
+- RPC `create_manual_financial_entry`: uma transação para pending (só entry) ou paid (entry + `financial_payment` + status derivado)
+
 ### Fonte de verdade
 
 - `financial_entries.amount_cents` = faturado

@@ -13,6 +13,7 @@ function buildManualForm(overrides: Record<string, string> = {}) {
   formData.set("amount", "80,00");
   formData.set("status", "pending");
   formData.set("notes", "");
+  formData.set("idempotencyKey", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
 
   for (const [key, value] of Object.entries(overrides)) {
     formData.set(key, value);
@@ -39,6 +40,11 @@ describe("parseManualIncomeForm", () => {
       buildManualForm({ status: "paid", paymentMethod: "pix" }),
     );
     expect(result.success).toBe(true);
+  });
+
+  it("exige chave de idempotência da criação", () => {
+    const result = parseManualIncomeForm(buildManualForm({ idempotencyKey: "" }));
+    expect(result.success).toBe(false);
   });
 
   it("rejeita pendente com forma de pagamento", () => {
