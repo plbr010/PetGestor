@@ -2588,6 +2588,7 @@ export type Database = {
           p_duration_minutes: number;
           p_active?: boolean;
           p_size_prices?: Json | null;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2601,6 +2602,7 @@ export type Database = {
           p_duration_minutes: number;
           p_active: boolean;
           p_size_prices?: Json | null;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2611,6 +2613,7 @@ export type Database = {
           p_access_profile: string;
           p_permissions: Json;
           p_own_schedule_only?: boolean;
+          p_company_id: string;
         };
         Returns: Json;
       };
@@ -2620,12 +2623,14 @@ export type Database = {
           p_access_profile: string;
           p_permissions: Json;
           p_own_schedule_only?: boolean;
+          p_company_id: string;
         };
         Returns: undefined;
       };
       revoke_employee_access: {
         Args: {
           p_employee_id: string;
+          p_company_id: string;
         };
         Returns: undefined;
       };
@@ -2640,6 +2645,7 @@ export type Database = {
           p_can_be_scheduled?: boolean;
           p_service_ids?: string[];
           p_working_hours?: Json;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2655,6 +2661,7 @@ export type Database = {
           p_can_be_scheduled: boolean;
           p_service_ids?: string[];
           p_working_hours?: Json;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2667,6 +2674,7 @@ export type Database = {
           p_pet_size?: string | null;
           p_notes?: string | null;
           p_customer_package_id?: string | null;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2692,6 +2700,7 @@ export type Database = {
           p_pet_size?: string | null;
           p_notes?: string | null;
           p_customer_package_id?: string | null;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2699,26 +2708,28 @@ export type Database = {
         Args: {
           p_appointment_id: string;
           p_intake_notes?: string | null;
+          p_company_id: string;
         };
         Returns: string;
       };
       start_service_order: {
-        Args: { p_service_order_id: string };
+        Args: { p_service_order_id: string; p_company_id: string };
         Returns: string;
       };
       mark_service_order_ready: {
-        Args: { p_service_order_id: string };
+        Args: { p_service_order_id: string; p_company_id: string };
         Returns: string;
       };
       replace_service_product_recipes: {
         Args: {
           p_service_id: string;
           p_items?: Json;
+          p_company_id: string;
         };
         Returns: string;
       };
       seed_service_order_consumptions: {
-        Args: { p_service_order_id: string };
+        Args: { p_service_order_id: string; p_company_id: string };
         Returns: string;
       };
       upsert_service_order_consumption: {
@@ -2727,22 +2738,24 @@ export type Database = {
           p_product_id: string;
           p_quantity: number;
           p_source?: string;
+          p_company_id: string;
         };
         Returns: string;
       };
       remove_service_order_consumption: {
-        Args: { p_consumption_id: string };
+        Args: { p_consumption_id: string; p_company_id: string };
         Returns: string;
       };
       complete_service_order: {
         Args: {
           p_service_order_id: string;
           p_completion_notes?: string | null;
+          p_company_id: string;
         };
         Returns: string;
       };
       cancel_service_order: {
-        Args: { p_service_order_id: string };
+        Args: { p_service_order_id: string; p_company_id: string };
         Returns: string;
       };
       update_service_order_notes: {
@@ -2751,6 +2764,7 @@ export type Database = {
           p_intake_notes?: string | null;
           p_internal_notes?: string | null;
           p_completion_notes?: string | null;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2759,15 +2773,16 @@ export type Database = {
           p_entry_id: string;
           p_payment_method: PaymentMethod;
           p_paid_at?: string | null;
+          p_company_id: string;
         };
         Returns: string;
       };
       reopen_financial_entry: {
-        Args: { p_entry_id: string };
+        Args: { p_entry_id: string; p_company_id: string };
         Returns: string;
       };
       cancel_financial_entry: {
-        Args: { p_entry_id: string };
+        Args: { p_entry_id: string; p_company_id: string };
         Returns: string;
       };
       create_service_package_with_items: {
@@ -2778,6 +2793,7 @@ export type Database = {
           p_validity_days: number;
           p_active?: boolean;
           p_items?: Json;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2790,6 +2806,7 @@ export type Database = {
           p_validity_days: number;
           p_active: boolean;
           p_items: Json;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2801,6 +2818,7 @@ export type Database = {
           p_starts_at: string;
           p_financial_status?: string;
           p_payment_method?: string | null;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2808,15 +2826,16 @@ export type Database = {
         Args: {
           p_service_order_id: string;
           p_customer_package_id: string;
+          p_company_id: string;
         };
         Returns: string;
       };
       reverse_customer_service_package_usage: {
-        Args: { p_service_order_id: string };
+        Args: { p_service_order_id: string; p_company_id: string };
         Returns: string;
       };
       cancel_customer_service_package: {
-        Args: { p_customer_package_id: string };
+        Args: { p_customer_package_id: string; p_company_id: string };
         Returns: string;
       };
       register_stock_movement: {
@@ -2834,6 +2853,7 @@ export type Database = {
           p_counted_stock?: number | null;
           p_reference_type?: string | null;
           p_reference_id?: string | null;
+          p_company_id?: string;
         };
         Returns: string;
       };
@@ -2847,6 +2867,7 @@ export type Database = {
           p_discount_fixed_cents?: number;
           p_discount_percent?: number | null;
           p_cash_received_cents?: number | null;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2854,6 +2875,7 @@ export type Database = {
         Args: {
           p_sale_id: string;
           p_reason: string;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2864,6 +2886,7 @@ export type Database = {
           p_payment_method: string;
           p_idempotency_key: string;
           p_paid_at?: string;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2871,6 +2894,7 @@ export type Database = {
         Args: {
           p_opening_balance_cents?: number;
           p_notes?: string | null;
+          p_company_id: string;
         };
         Returns: string;
       };
@@ -2879,6 +2903,7 @@ export type Database = {
           p_session_id: string;
           p_counted_cash_cents: number;
           p_notes?: string | null;
+          p_company_id: string;
         };
         Returns: string;
       };

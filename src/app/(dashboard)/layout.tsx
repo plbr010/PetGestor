@@ -7,7 +7,7 @@ import { loadOnboardingSnapshot } from "@/features/onboarding-tour/queries";
 import { TrialBanner } from "@/features/subscription/components/trial-banner";
 import { getCompanyEntitlement } from "@/features/subscription/queries";
 import { requireCompany } from "@/features/companies/queries";
-import { hasPermission } from "@/lib/auth/permissions";
+import { hasActiveAccess, hasPermission } from "@/lib/auth/permissions";
 import { isPlatformAdmin } from "@/lib/auth/require-platform-admin";
 import { requireUser } from "@/lib/auth/require-user";
 
@@ -24,8 +24,18 @@ export default async function AuthenticatedAppLayout({
 }>) {
   const user = await requireUser();
   const dashboardContext = await requireCompany(user.id);
-  const entitlement = await getCompanyEntitlement(dashboardContext.membership.company.id);
   const platformAdmin = await isPlatformAdmin(user);
+
+  if (!hasActiveAccess(dashboardContext.membership) && !platformAdmin) {
+    return (
+      <DashboardUserProvider value={{ ...dashboardContext, isPlatformAdmin: platformAdmin }}>
+        <div className="flex min-h-screen flex-col">{children}</div>
+        <WhatsAppFloatingButton />
+      </DashboardUserProvider>
+    );
+  }
+
+  const entitlement = await getCompanyEntitlement(dashboardContext.membership.company.id);
   const showTrialBanner =
     !platformAdmin && hasPermission(dashboardContext.membership, "subscription.manage");
 

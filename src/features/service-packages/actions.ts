@@ -11,7 +11,7 @@ import {
   mapPackageError,
   packageItemsToRpcPayload,
 } from "@/features/service-packages/utils";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -50,7 +50,7 @@ export async function createServicePackageAction(
   _prevState: ServicePackageActionState,
   formData: FormData,
 ): Promise<ServicePackageActionState> {
-  await requireCompanyContext();
+  const context = await requirePermission("services.manage");
   const parsed = parseServicePackageForm(formData);
 
   if (!parsed.success) {
@@ -66,6 +66,7 @@ export async function createServicePackageAction(
     p_validity_days: parsed.data.validityDays,
     p_active: parsed.data.active,
     p_items: packageItemsToRpcPayload(parsed.data.items),
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -85,7 +86,7 @@ export async function updateServicePackageAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("services.manage");
   const parsed = parseServicePackageForm(formData);
 
   if (!parsed.success) {
@@ -102,6 +103,7 @@ export async function updateServicePackageAction(
     p_validity_days: parsed.data.validityDays,
     p_active: parsed.data.active,
     p_items: packageItemsToRpcPayload(parsed.data.items),
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -120,7 +122,7 @@ export async function toggleServicePackageActiveAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("services.manage");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -147,7 +149,7 @@ export async function archiveServicePackageAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("services.manage");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -176,7 +178,7 @@ export async function sellCustomerPackageAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("finance.create");
   const parsed = parseSellPackageForm(formData);
 
   if (!parsed.success) {
@@ -208,6 +210,7 @@ export async function sellCustomerPackageAction(
     p_starts_at: parsed.data.startsAt,
     p_financial_status: parsed.data.financialStatus,
     p_payment_method: parsed.data.paymentMethod,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -226,12 +229,13 @@ export async function consumePackageCreditAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("consume_customer_service_package", {
     p_service_order_id: serviceOrderId,
     p_customer_package_id: customerPackageId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -249,11 +253,12 @@ export async function reversePackageUsageAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("reverse_customer_service_package_usage", {
     p_service_order_id: serviceOrderId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -272,11 +277,12 @@ export async function cancelCustomerPackageAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("finance.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("cancel_customer_service_package", {
     p_customer_package_id: customerPackageId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {

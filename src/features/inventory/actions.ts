@@ -401,6 +401,7 @@ export async function registerStockEntryAction(
     p_supplier_id: parsed.data.supplierId,
     p_batch_code: parsed.data.batchCode,
     p_expiration_date: parsed.data.expirationDate,
+    p_company_id: context.membership.company.id,
   });
 
   if (error) {
@@ -436,6 +437,7 @@ export async function registerStockExitAction(
     p_idempotency_key: parsed.data.idempotencyKey,
     p_reason: parsed.data.reason,
     p_notes: parsed.data.notes,
+    p_company_id: context.membership.company.id,
   });
 
   if (error) {
@@ -472,6 +474,7 @@ export async function registerStockAdjustmentAction(
     p_reason: "adjustment",
     p_notes: parsed.data.notes,
     p_counted_stock: parsed.data.countedStock,
+    p_company_id: context.membership.company.id,
   });
 
   if (error) {

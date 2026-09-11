@@ -23,6 +23,12 @@ vi.mock("next/cache", () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }));
 
+vi.mock("next/navigation", () => ({
+  redirect: (path: string) => {
+    throw new Error(`REDIRECT:${path}`);
+  },
+}));
+
 describe("completeOnboardingTutorialAction", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -32,7 +38,7 @@ describe("completeOnboardingTutorialAction", () => {
     revalidatePathMock.mockReset();
     requireUserMock.mockResolvedValue({ id: "user-1", email: "a@b.com" });
     requireCompanyMock.mockResolvedValue({
-      membership: { company: { id: "company-1" } },
+      membership: { company: { id: "company-1" }, accessRevokedAt: null },
     });
   });
 

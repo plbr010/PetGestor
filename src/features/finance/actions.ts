@@ -219,6 +219,7 @@ export async function markFinancialEntryPaidAction(
     p_entry_id: entryId,
     p_payment_method: parsed.data.paymentMethod,
     p_paid_at: paidAt ?? null,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -242,11 +243,12 @@ export async function reopenFinancialEntryAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requirePermission("finance.edit");
+  const context = await requirePermission("finance.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("reopen_financial_entry", {
     p_entry_id: entryId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -264,11 +266,12 @@ export async function cancelFinancialEntryAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requirePermission("finance.edit");
+  const context = await requirePermission("finance.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("cancel_financial_entry", {
     p_entry_id: entryId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {

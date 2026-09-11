@@ -9,7 +9,7 @@ import {
 } from "@/features/app-notifications/queries";
 import { syncDerivedAppNotifications } from "@/features/app-notifications/sync-derived";
 import type { AppNotificationRecord } from "@/features/app-notifications/types";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -24,7 +24,7 @@ function revalidateNotificationViews() {
 }
 
 export async function getAppNotificationsPanelAction(): Promise<AppNotificationsPanelData> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("dashboard.view");
   const supabase = await createSupabaseServerClient();
   const companyId = context.membership.company.id;
 
@@ -50,7 +50,7 @@ export async function getAppNotificationsPanelAction(): Promise<AppNotifications
 }
 
 export async function getUnreadAppNotificationCountAction(): Promise<number> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("dashboard.view");
   const supabase = await createSupabaseServerClient();
   const companyId = context.membership.company.id;
 
@@ -69,7 +69,7 @@ export async function getUnreadAppNotificationCountAction(): Promise<number> {
 export async function listAppNotificationsPageAction(
   filter: ListAppNotificationsFilter = "all",
 ): Promise<AppNotificationRecord[]> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("dashboard.view");
   const supabase = await createSupabaseServerClient();
   const companyId = context.membership.company.id;
 
@@ -94,7 +94,7 @@ export async function markAppNotificationReadAction(
     return { ok: false };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("dashboard.view");
   const supabase = await createSupabaseServerClient();
   const now = new Date().toISOString();
 
@@ -114,7 +114,7 @@ export async function markAppNotificationReadAction(
 }
 
 export async function markAllAppNotificationsReadAction(): Promise<{ ok: boolean }> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("dashboard.view");
   const supabase = await createSupabaseServerClient();
   const companyId = context.membership.company.id;
   const now = new Date().toISOString();

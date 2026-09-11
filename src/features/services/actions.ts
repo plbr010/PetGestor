@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { parseServiceForm } from "@/features/services/schemas";
 import { sizePricesToRpcPayload } from "@/features/services/utils";
 import { parseQuantityInput } from "@/features/inventory/stock-engine";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -69,7 +69,11 @@ function parseRecipesJson(formData: FormData): { product_id: string; quantity: n
   }
 }
 
-async function saveServiceRecipes(serviceId: string, formData: FormData): Promise<string | null> {
+async function saveServiceRecipes(
+  serviceId: string,
+  formData: FormData,
+  companyId: string,
+): Promise<string | null> {
   const recipes = parseRecipesJson(formData);
   if (recipes == null) {
     return "Revise os produtos e quantidades da receita.";
@@ -79,6 +83,7 @@ async function saveServiceRecipes(serviceId: string, formData: FormData): Promis
   const { error } = await supabase.rpc("replace_service_product_recipes", {
     p_service_id: serviceId,
     p_items: recipes,
+    p_company_id: companyId,
   });
 
   if (error) {
@@ -92,7 +97,7 @@ export async function createServiceAction(
   _prevState: ServiceActionState,
   formData: FormData,
 ): Promise<ServiceActionState> {
-  await requireCompanyContext();
+  const context = await requirePermission("services.manage");
   const parsed = parseServiceForm(formData);
 
   if (!parsed.success) {
@@ -115,13 +120,18 @@ export async function createServiceAction(
       parsed.data.pricingMode === "by_size" && parsed.data.sizePrices
         ? sizePricesToRpcPayload(parsed.data.sizePrices)
         : null,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
     return { error: "Não foi possível cadastrar o serviço. Tente novamente." };
   }
 
-  const recipeError = await saveServiceRecipes(String(data), formData);
+  const recipeError = await saveServiceRecipes(
+    String(data),
+    formData,
+    context.membership.company.id,
+  );
   if (recipeError) {
     return { error: recipeError };
   }
@@ -140,7 +150,7 @@ export async function updateServiceAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("services.manage");
   const parsed = parseServiceForm(formData);
 
   if (!parsed.success) {
@@ -164,13 +174,18 @@ export async function updateServiceAction(
       parsed.data.pricingMode === "by_size" && parsed.data.sizePrices
         ? sizePricesToRpcPayload(parsed.data.sizePrices)
         : null,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
     return { error: mapRpcError(error) };
   }
 
-  const recipeError = await saveServiceRecipes(serviceId, formData);
+  const recipeError = await saveServiceRecipes(
+    serviceId,
+    formData,
+    context.membership.company.id,
+  );
   if (recipeError) {
     return { error: recipeError };
   }
@@ -186,7 +201,7 @@ export async function archiveServiceAction(serviceId: string): Promise<ServiceAc
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("services.manage");
   const supabase = await createSupabaseServerClient();
 
   const mutation = await supabase
@@ -215,7 +230,7 @@ export async function toggleServiceActiveAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("services.manage");
   const supabase = await createSupabaseServerClient();
 
   const mutation = await supabase

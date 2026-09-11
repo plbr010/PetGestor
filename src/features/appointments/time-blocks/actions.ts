@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { parseTimeBlockForm } from "@/features/appointments/time-blocks/schemas";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -21,7 +21,7 @@ export async function createTimeBlockAction(
   _prevState: TimeBlockActionState,
   formData: FormData,
 ): Promise<TimeBlockActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.edit");
   const timeZone = context.membership.company.timezone;
   const parsed = parseTimeBlockForm(formData, timeZone);
 
@@ -60,7 +60,7 @@ export async function removeTimeBlockAction(blockId: string): Promise<TimeBlockA
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("appointments.edit");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase

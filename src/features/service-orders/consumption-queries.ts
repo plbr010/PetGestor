@@ -46,14 +46,16 @@ export async function getServiceOrderConsumptions(
 }
 
 export async function ensureServiceOrderConsumptionsSeeded(
+  companyId: string,
   serviceOrderId: string,
 ): Promise<void> {
-  if (!isValidUuid(serviceOrderId)) {
+  if (!isValidUuid(companyId) || !isValidUuid(serviceOrderId)) {
     return;
   }
 
   const supabase = await createSupabaseServerClient();
   await supabase.rpc("seed_service_order_consumptions", {
     p_service_order_id: serviceOrderId,
+    p_company_id: companyId,
   });
 }

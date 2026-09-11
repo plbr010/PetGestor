@@ -4,10 +4,27 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPublicEnv } from "@/lib/env/public-env";
 import type { Database } from "@/types/database.types";
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
+export const PATHNAME_HEADER = "x-pathname";
+
+export function buildRequestHeadersWithPathname(request: NextRequest): Headers {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(PATHNAME_HEADER, request.nextUrl.pathname);
+  return requestHeaders;
+}
+
+function nextWithPathname(request: NextRequest): NextResponse {
+  const requestHeaders = buildRequestHeadersWithPathname(request);
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
   });
+  response.headers.set(PATHNAME_HEADER, request.nextUrl.pathname);
+  return response;
+}
+
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = nextWithPathname(request);
 
   const env = getPublicEnv();
 
@@ -24,9 +41,7 @@ export async function updateSession(request: NextRequest) {
             request.cookies.set(name, value);
           });
 
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+          supabaseResponse = nextWithPathname(request);
 
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options);
@@ -42,7 +57,7 @@ export async function updateSession(request: NextRequest) {
 
   await supabase.auth.getClaims();
 
-  supabaseResponse.headers.set("x-pathname", request.nextUrl.pathname);
+  supabaseResponse.headers.set(PATHNAME_HEADER, request.nextUrl.pathname);
 
   return supabaseResponse;
 }

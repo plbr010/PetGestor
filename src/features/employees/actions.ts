@@ -22,7 +22,7 @@ export async function createEmployeeAction(
   _prevState: EmployeeActionState,
   formData: FormData,
 ): Promise<EmployeeActionState> {
-  await requirePermission("employees.manage");
+  const context = await requirePermission("employees.manage");
   const parsed = parseEmployeeForm(formData);
 
   if (!parsed.success) {
@@ -41,6 +41,7 @@ export async function createEmployeeAction(
     p_can_be_scheduled: parsed.data.canBeScheduled,
     p_service_ids: parsed.data.serviceIds,
     p_working_hours: workingHoursToRpcPayload(parsed.data.workingHours),
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -61,7 +62,7 @@ export async function updateEmployeeAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requirePermission("employees.manage");
+  const context = await requirePermission("employees.manage");
   const parsed = parseEmployeeForm(formData);
 
   if (!parsed.success) {
@@ -81,6 +82,7 @@ export async function updateEmployeeAction(
     p_can_be_scheduled: parsed.data.canBeScheduled,
     p_service_ids: parsed.data.serviceIds,
     p_working_hours: workingHoursToRpcPayload(parsed.data.workingHours),
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {

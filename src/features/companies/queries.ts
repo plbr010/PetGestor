@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
+  hasActiveAccess,
   isAccessProfile,
   normalizeStoredPermissions,
   type AccessProfile,
@@ -73,88 +74,24 @@ function mapMembershipRow(
   };
 }
 
-async function loadMembership(
+const MEMBERSHIP_SELECT =
+  "role, company_id, access_profile, permissions, access_revoked_at, employee_id, own_schedule_only";
+
+export type MembershipLookupStatus = "active" | "revoked" | "none" | "error";
+
+export type MembershipLookupResult =
+  | { status: "active"; membership: CompanyMembership }
+  | { status: "revoked"; membership: CompanyMembership }
+  | { status: "none" }
+  | { status: "error"; code: string; message: string };
+
+async function hydrateMembership(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
-  userId: string,
-): Promise<CompanyMembership | null> {
-  // Prefere membership ativa mais recentemente atualizada (ex.: convite aceito agora).
-  const preferred = await supabase
-    .from("company_members")
-    .select(
-      "role, company_id, access_profile, permissions, access_revoked_at, employee_id, own_schedule_only",
-    )
-    .eq("user_id", userId)
-    .is("access_revoked_at", null)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  let memberRow = preferred.data;
-  let memberError = preferred.error;
-
-  if (memberError || !memberRow) {
-    if (memberError) {
-      logMembershipDiagnostic(
-        "company_members_select_permissions",
-        memberError.code,
-        memberError.message,
-      );
-    }
-
-    const byCreated = await supabase
-      .from("company_members")
-      .select(
-        "role, company_id, access_profile, permissions, access_revoked_at, employee_id, own_schedule_only",
-      )
-      .eq("user_id", userId)
-      .is("access_revoked_at", null)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (!byCreated.error && byCreated.data) {
-      memberRow = byCreated.data;
-      memberError = null;
-    } else {
-      const minimal = await supabase
-        .from("company_members")
-        .select("role, company_id")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      memberRow = minimal.data
-        ? {
-            ...minimal.data,
-            access_profile:
-              minimal.data.role === "owner" || minimal.data.role === "admin"
-                ? "owner_admin"
-                : "reception",
-            permissions: [],
-            access_revoked_at: null,
-            employee_id: null,
-            own_schedule_only: false,
-          }
-        : null;
-      memberError = byCreated.error ?? minimal.error;
-    }
-  }
-
-  if (memberError) {
-    logMembershipDiagnostic("company_members_select", memberError.code, memberError.message);
-    return null;
-  }
-
-  if (!memberRow) {
-    return null;
-  }
-
-  // Membership revogada não conta como acesso ativo
-  if (memberRow.access_revoked_at) {
-    return null;
-  }
-
+  memberRow: MembershipRow,
+): Promise<
+  | { status: "active" | "revoked"; membership: CompanyMembership }
+  | { status: "error"; code: string; message: string }
+> {
   const { data: companyRow, error: companyError } = await supabase
     .from("companies")
     .select("id, name, timezone")
@@ -163,15 +100,90 @@ async function loadMembership(
 
   if (companyError) {
     logMembershipDiagnostic("companies_select", companyError.code, companyError.message);
-    return null;
+    return { status: "error", code: companyError.code, message: companyError.message };
   }
 
   if (!companyRow) {
     logMembershipDiagnostic("companies_missing", "PGRST116", "company row not readable");
-    return null;
+    return { status: "error", code: "PGRST116", message: "company row not readable" };
   }
 
-  return mapMembershipRow(memberRow as MembershipRow, companyRow);
+  const membership = mapMembershipRow(memberRow, companyRow);
+
+  if (membership.accessRevokedAt) {
+    return { status: "revoked", membership };
+  }
+
+  return { status: "active", membership };
+}
+
+/**
+ * Carrega membership com fail-closed.
+ * Nunca inventa access_revoked_at = null e nunca promove membership revogada a ativa.
+ */
+export async function loadMembershipForUser(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+): Promise<MembershipLookupResult> {
+  const activeByUpdated = await supabase
+    .from("company_members")
+    .select(MEMBERSHIP_SELECT)
+    .eq("user_id", userId)
+    .is("access_revoked_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeByUpdated.error) {
+    logMembershipDiagnostic(
+      "company_members_select_active",
+      activeByUpdated.error.code,
+      activeByUpdated.error.message,
+    );
+    return {
+      status: "error",
+      code: activeByUpdated.error.code,
+      message: activeByUpdated.error.message,
+    };
+  }
+
+  if (activeByUpdated.data) {
+    if (activeByUpdated.data.access_revoked_at) {
+      return { status: "error", code: "membership_invariant", message: "active query returned revoked row" };
+    }
+    return hydrateMembership(supabase, activeByUpdated.data as MembershipRow);
+  }
+
+  const revoked = await supabase
+    .from("company_members")
+    .select(MEMBERSHIP_SELECT)
+    .eq("user_id", userId)
+    .not("access_revoked_at", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (revoked.error) {
+    logMembershipDiagnostic(
+      "company_members_select_revoked",
+      revoked.error.code,
+      revoked.error.message,
+    );
+    return { status: "error", code: revoked.error.code, message: revoked.error.message };
+  }
+
+  if (revoked.data) {
+    if (!revoked.data.access_revoked_at) {
+      return {
+        status: "error",
+        code: "membership_invariant",
+        message: "revoked query returned active row",
+      };
+    }
+    return hydrateMembership(supabase, revoked.data as MembershipRow);
+  }
+
+  return { status: "none" };
 }
 
 function logMembershipDiagnostic(step: string, code: string, message: string): void {
@@ -233,14 +245,21 @@ export async function getUserContext(userId: string): Promise<Omit<UserContext, 
 
   const supabase = await createSupabaseServerClient();
 
-  const [profile, membership] = await Promise.all([
+  const [profile, membershipResult] = await Promise.all([
     loadProfileForUser(supabase, userId),
-    loadMembership(supabase, userId),
+    loadMembershipForUser(supabase, userId),
   ]);
+
+  if (membershipResult.status === "error") {
+    throw new Error("Não foi possível carregar o acesso à empresa.");
+  }
 
   return {
     profile,
-    membership,
+    membership:
+      membershipResult.status === "active" || membershipResult.status === "revoked"
+        ? membershipResult.membership
+        : null,
   };
 }
 
@@ -280,4 +299,10 @@ export async function requireCompany(userId: string): Promise<DashboardContext> 
     profile: context.profile,
     membership: context.membership,
   };
+}
+
+export function isRevokedMembership(
+  membership: CompanyMembership | null | undefined,
+): boolean {
+  return Boolean(membership && !hasActiveAccess(membership));
 }

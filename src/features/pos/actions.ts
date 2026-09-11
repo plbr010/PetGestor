@@ -89,6 +89,7 @@ export async function completeSaleAction(
     p_discount_fixed_cents: parsed.data.discountFixedCents,
     p_discount_percent: parsed.data.discountPercent,
     p_cash_received_cents: parsed.data.cashReceivedCents,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -126,6 +127,7 @@ export async function registerSalePaymentAction(
     p_payment_method: parsed.data.paymentMethod,
     p_idempotency_key: parsed.data.idempotencyKey,
     p_paid_at: paidAt,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -145,7 +147,7 @@ export async function cancelSaleAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requirePermission("pos.cancel_sale");
+  const context = await requirePermission("pos.cancel_sale");
   const parsed = parseCancelSaleForm(formData);
 
   if (!parsed.success) {
@@ -156,6 +158,7 @@ export async function cancelSaleAction(
   const { data, error } = await supabase.rpc("cancel_product_sale", {
     p_sale_id: saleId,
     p_reason: parsed.data.reason,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -170,7 +173,7 @@ export async function openCashSessionAction(
   _prevState: PosActionState,
   formData: FormData,
 ): Promise<PosActionState> {
-  await requirePermission("pos.close_cash");
+  const context = await requirePermission("pos.close_cash");
   const parsed = parseOpenCashSessionForm(formData);
 
   if (!parsed.success) {
@@ -181,6 +184,7 @@ export async function openCashSessionAction(
   const { data, error } = await supabase.rpc("open_cash_session", {
     p_opening_balance_cents: parsed.data.openingBalanceCents,
     p_notes: parsed.data.notes ?? null,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -195,7 +199,7 @@ export async function closeCashSessionAction(
   _prevState: PosActionState,
   formData: FormData,
 ): Promise<PosActionState> {
-  await requirePermission("pos.close_cash");
+  const context = await requirePermission("pos.close_cash");
   const parsed = parseCloseCashSessionForm(formData);
 
   if (!parsed.success) {
@@ -207,6 +211,7 @@ export async function closeCashSessionAction(
     p_session_id: parsed.data.sessionId,
     p_counted_cash_cents: parsed.data.countedCashCents,
     p_notes: parsed.data.notes ?? null,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {

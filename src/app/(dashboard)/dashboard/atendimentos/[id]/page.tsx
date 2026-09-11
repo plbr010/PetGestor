@@ -57,7 +57,7 @@ export default async function ServiceOrderDetailPage({
   const order = await requireServiceOrderById(companyId, id);
 
   if (order.status === "waiting" || order.status === "in_progress") {
-    await ensureServiceOrderConsumptionsSeeded(order.id);
+    await ensureServiceOrderConsumptionsSeeded(companyId, order.id);
   }
 
   const [

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { countActivePetsForCustomer } from "@/features/customers/queries";
 import { parseCustomerForm } from "@/features/customers/schemas";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
   GENERIC_NOT_FOUND_MESSAGE,
@@ -22,7 +22,7 @@ export async function createCustomerAction(
   _prevState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("customers.create");
   const parsed = parseCustomerForm(formData);
 
   if (!parsed.success) {
@@ -62,7 +62,7 @@ export async function updateCustomerAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("customers.edit");
   const parsed = parseCustomerForm(formData);
 
   if (!parsed.success) {
@@ -101,7 +101,7 @@ export async function archiveCustomerAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("customers.archive");
   const activePets = await countActivePetsForCustomer(
     context.membership.company.id,
     customerId,
@@ -140,7 +140,7 @@ export async function restoreCustomerAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("customers.archive");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase

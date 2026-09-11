@@ -1,3 +1,16 @@
+## [0.43.0] — 2026-09-11
+
+### Corrigido — Autorização, RLS e isolamento multi-tenant (BLOCO 1)
+
+- Membership ativa exige `user_id = auth.uid()` **e** `access_revoked_at IS NULL` em helpers SQL usados por RLS, RPC e Storage
+- `loadMembership` falha fechado: membership revogada nunca é promovida a ativa; erro de consulta não vira permissão
+- RPCs de mutação deixam de inferir a empresa por `ORDER BY created_at LIMIT 1`; recebem `p_company_id` do contexto ativo
+- Policies de mutação passam a exigir permissão granular (`private.has_app_permission`)
+- Server Actions de mutação exigem a permissão mínima (`requirePermission`)
+- Guard de rota: `x-pathname` é copiado para os **headers da request** para `assertCurrentRoutePermission` validar URL direta
+- Storage `company-files`: pasta da empresa + membership ativa + permissão por tipo de path
+- Migration incremental: `supabase/migrations/20260911120000_authorization_rls_tenant_isolation.sql`
+
 ## [0.42.0] — 2026-09-02
 
 ### Corrigido — Agendamento com pacote vendido

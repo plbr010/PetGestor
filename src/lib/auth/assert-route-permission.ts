@@ -13,20 +13,11 @@ export async function assertCurrentRoutePermission(): Promise<void> {
   const headerStore = await headers();
   const pathname = headerStore.get("x-pathname");
 
-  if (!pathname) {
-    return;
-  }
-
   if (
-    pathname.startsWith("/dashboard/sem-permissao") ||
-    pathname.startsWith("/dashboard/acesso-revogado")
+    pathname &&
+    (pathname.startsWith("/dashboard/sem-permissao") ||
+      pathname.startsWith("/dashboard/acesso-revogado"))
   ) {
-    return;
-  }
-
-  const permission = getRequiredPermissionForPath(pathname);
-
-  if (!permission) {
     return;
   }
 
@@ -35,6 +26,17 @@ export async function assertCurrentRoutePermission(): Promise<void> {
   const platformAdmin = await isPlatformAdmin(user);
 
   if (platformAdmin) {
+    return;
+  }
+
+  if (!pathname) {
+    assertPermission(context, "dashboard.view");
+    return;
+  }
+
+  const permission = getRequiredPermissionForPath(pathname);
+
+  if (!permission) {
     return;
   }
 

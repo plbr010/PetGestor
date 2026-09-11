@@ -15,7 +15,7 @@ import {
   notifyProductStockStatus,
   notifyServiceOrderReady,
 } from "@/features/app-notifications/emitters";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -48,12 +48,13 @@ export async function checkInAppointmentInlineAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("check_in_appointment", {
     p_appointment_id: appointmentId,
     p_intake_notes: null,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -76,7 +77,7 @@ export async function checkInAppointmentAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const parsed = parseCheckInForm(formData);
 
   if (!parsed.success) {
@@ -88,6 +89,7 @@ export async function checkInAppointmentAction(
   const { data, error } = await supabase.rpc("check_in_appointment", {
     p_appointment_id: appointmentId,
     p_intake_notes: parsed.data.intakeNotes,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -105,11 +107,12 @@ export async function startServiceOrderAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("start_service_order", {
     p_service_order_id: serviceOrderId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -127,11 +130,12 @@ export async function markServiceOrderReadyAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  const context = await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("mark_service_order_ready", {
     p_service_order_id: serviceOrderId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -176,7 +180,7 @@ export async function upsertServiceOrderConsumptionAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
 
   const productId = String(formData.get("productId") ?? "");
   const quantity = parseQuantityInput(String(formData.get("quantity") ?? ""));
@@ -193,6 +197,7 @@ export async function upsertServiceOrderConsumptionAction(
     p_product_id: productId,
     p_quantity: quantity,
     p_source: source,
+    p_company_id: context.membership.company.id,
   });
 
   if (error) {
@@ -211,10 +216,11 @@ export async function removeServiceOrderConsumptionAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("remove_service_order_consumption", {
     p_consumption_id: consumptionId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error) {
@@ -234,7 +240,7 @@ export async function completeServiceOrderAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const parsed = parseCompleteServiceOrderForm(formData);
 
   if (!parsed.success) {
@@ -246,6 +252,7 @@ export async function completeServiceOrderAction(
   const { data, error } = await supabase.rpc("complete_service_order", {
     p_service_order_id: serviceOrderId,
     p_completion_notes: parsed.data.completionNotes,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -263,11 +270,12 @@ export async function cancelServiceOrderAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("cancel_service_order", {
     p_service_order_id: serviceOrderId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -287,7 +295,7 @@ export async function updateServiceOrderNotesAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const parsed = parseServiceOrderNotesForm(formData);
 
   if (!parsed.success) {
@@ -301,6 +309,7 @@ export async function updateServiceOrderNotesAction(
     p_intake_notes: parsed.data.intakeNotes,
     p_internal_notes: parsed.data.internalNotes,
     p_completion_notes: parsed.data.completionNotes,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
@@ -318,12 +327,13 @@ export async function checkInAppointmentSimpleAction(
     return { error: GENERIC_NOT_FOUND_MESSAGE };
   }
 
-  await requireCompanyContext();
+  const context = await requirePermission("service_orders.update_status");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("check_in_appointment", {
     p_appointment_id: appointmentId,
     p_intake_notes: null,
+    p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {

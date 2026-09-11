@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { normalizeSameDayReminderTime } from "@/features/notifications/scheduler";
 import type { NotificationType } from "@/features/notifications/types";
-import { requireCompanyContext } from "@/lib/auth/require-company-context";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type NotificationSettingsActionState = {
@@ -34,7 +34,7 @@ export async function updateNotificationSettingsAction(
   _prevState: NotificationSettingsActionState,
   formData: FormData,
 ): Promise<NotificationSettingsActionState> {
-  const context = await requireCompanyContext();
+  const context = await requirePermission("settings.manage");
   const companyId = context.membership.company.id;
 
   const parsed = notificationSettingsSchema.safeParse({

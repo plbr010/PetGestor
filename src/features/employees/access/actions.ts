@@ -69,6 +69,7 @@ export async function grantEmployeeAccessAction(
     p_access_profile: parsed.data.accessProfile,
     p_permissions: permissionsToJson(permissions),
     p_own_schedule_only: parsed.data.ownScheduleOnly,
+    p_company_id: context.membership.company.id,
   });
 
   if (error) {
@@ -153,6 +154,7 @@ export async function updateEmployeeAccessAction(
     p_access_profile: parsed.data.accessProfile,
     p_permissions: permissionsToJson(permissions),
     p_own_schedule_only: parsed.data.ownScheduleOnly,
+    p_company_id: context.membership.company.id,
   });
 
   if (error) {
@@ -182,6 +184,7 @@ export async function revokeEmployeeAccessAction(
 
   const { error } = await supabase.rpc("revoke_employee_access", {
     p_employee_id: employeeId,
+    p_company_id: context.membership.company.id,
   });
 
   if (error) {
