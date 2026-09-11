@@ -144,6 +144,10 @@ export default async function ServiceOrderDetailPage({
                 label="Finalização"
                 value={formatTimestampLabel(order.completed_at, timeZone, "Finalizado")}
               />
+              <Row
+                label="Cancelamento"
+                value={formatTimestampLabel(order.cancelled_at, timeZone, "Cancelado")}
+              />
             </CardContent>
           </Card>
         </div>

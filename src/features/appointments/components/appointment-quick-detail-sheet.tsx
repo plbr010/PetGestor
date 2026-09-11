@@ -19,6 +19,7 @@ import {
   formatPriceSnapshot,
 } from "@/features/appointments/utils";
 import { checkInAppointmentInlineAction } from "@/features/service-orders/actions";
+import { isAppointmentCheckInEligible } from "@/features/service-orders/status";
 import { FormFeedback } from "@/components/shared/form-feedback";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -73,10 +74,7 @@ export function AppointmentQuickDetailSheet({
   }
 
   const editable = isEditableStatus(appointment.status);
-  const canCheckIn =
-    appointment.status === "scheduled" ||
-    appointment.status === "confirmed" ||
-    appointment.status === "in_progress";
+  const canCheckIn = isAppointmentCheckInEligible(appointment.status);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

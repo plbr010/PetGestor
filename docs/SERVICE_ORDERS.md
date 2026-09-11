@@ -46,8 +46,27 @@ Agendamento → Pet chegou (check-in) → Aguardando → Em atendimento → Pron
 | Iniciar | waiting → in_progress | → **in_progress** |
 | Marcar pronto | in_progress → ready | in_progress → **completed** |
 | Finalizar entrega | ready → completed | permanece **completed** |
+| Cancelar OS | waiting → cancelled | scheduled/confirmed → **cancelled** |
+| Cancelar/no-show na agenda | waiting → cancelled | cancelled / no_show |
+
+**Regra explícita:** cancelar a OS **cancela o atendimento** daquele agendamento na mesma transação. Não existe `appointment = confirmed` + `OS = cancelled`. Não há reabertura automática de OS cancelada; novo check-in é rejeitado com `service_order_cancelled`.
 
 **Importante:** quando o serviço termina (`ready`), o appointment fica `completed` (serviço contratado concluído). O pet ainda aguarda retirada — a ordem fica `ready`.
+
+### Máquina de estados
+
+| Estado atual | Ações permitidas | Próximo estado |
+|--------------|------------------|----------------|
+| waiting | Iniciar atendimento | in_progress |
+| waiting | Cancelar atendimento | cancelled |
+| in_progress | Marcar como pronto | ready |
+| ready | Finalizar entrega | completed |
+| completed | — (terminal) | — |
+| cancelled | — (terminal) | — |
+
+Retry da mesma ação (duas abas / timeout) é **idempotente**: devolve o estado atual sem repetir efeitos. Transições inválidas (`waiting → completed`, `cancelled → ready`, `completed → in_progress`, `in_progress → cancelled`) falham de forma controlada.
+
+Cancelar `in_progress` ou `ready` **não é permitido** nesta etapa (estoque/receita já podem ter sido aplicados em `ready`).
 
 ## Insumos e estoque
 
@@ -63,14 +82,34 @@ Custo de insumos é gerencial (não altera o preço do cliente). Exibido a quem 
 
 RPC `check_in_appointment`:
 
-- Idempotente: se ordem já existe, retorna id existente (UNIQUE `appointment_id` como proteção final)
-- Rejeita appointment `cancelled`, `no_show`, `completed`
+- Idempotente de verdade: `SELECT … FOR UPDATE` no appointment + `INSERT … ON CONFLICT (appointment_id) DO NOTHING`
+- Duas chamadas simultâneas resultam em **uma** OS e o mesmo `id`
+- `unique_violation` é capturado internamente — não chega à UI
+- Se já existe OS operacional (`waiting` / `in_progress` / `ready`), retry devolve a mesma OS
+- Se a OS existente está `cancelled`, erro acionável `service_order_cancelled` (não devolve a OS cancelada como ativa)
+- Rejeita appointment `cancelled`, `no_show`, `completed`, de outra empresa, ou sem permissão
 - Permite check-in mesmo com horário passado (atrasos normais)
-- `scheduled` → `confirmed` automaticamente no check-in
+- `scheduled` → `confirmed` somente na criação (CAS `WHERE status = 'scheduled'`)
 
 ## Cancelamento
 
-Somente `waiting → cancelled`. Ordens em `in_progress` não podem ser canceladas nesta etapa.
+Somente `waiting → cancelled`. Ordens em `in_progress`/`ready`/`completed` não podem ser canceladas nesta etapa.
+
+O appointment ligado é sincronizado para `cancelled` (motivo `Atendimento cancelado` se ainda não houver). Pacote, se houver, é estornado pelo trigger já existente de cancelamento de agendamento.
+
+Retry de cancelamento é idempotente. Não há reabertura automática.
+
+## Timestamps (timestamptz UTC)
+
+| Campo | Transição |
+|-------|-----------|
+| `check_in_at` | criação da OS |
+| `started_at` | waiting → in_progress (`COALESCE`, retry não sobrescreve) |
+| `ready_at` | in_progress → ready |
+| `completed_at` | ready → completed |
+| `cancelled_at` | waiting → cancelled |
+
+Exibição continua no timezone da empresa.
 
 ## Observações
 
@@ -95,7 +134,9 @@ Somente `waiting → cancelled`. Ordens em `in_progress` não podem ser cancelad
 | `remove_service_order_consumption` | Remover insumo antes da baixa |
 | `replace_service_product_recipes` | Salvar receita do serviço |
 
-`SECURITY DEFINER`, `auth.uid()` obrigatório, `EXECUTE` apenas `authenticated`.
+`SECURITY DEFINER`, `auth.uid()` obrigatório, `p_company_id` explícito + `require_app_permission('service_orders.update_status')`, `EXECUTE` apenas `authenticated`.
+
+Retorno jsonb `{ id, status, changed, idempotent, created }`. Efeitos derivados só quando `changed = true`.
 
 ## RLS
 
@@ -116,4 +157,8 @@ Possível extensão futura: `service_order_items` para extras (hidratação, unh
 
 ## Migration
 
-**MIGRATION PENDENTE:** `supabase/migrations/20260806080000_service_orders.sql`
+**MIGRATION PENDENTE (BLOCO 3):** `supabase/migrations/20260911180000_service_order_state_machine_concurrency.sql`
+
+Não reaplica BLOCO 1 (`20260911120000_authorization_rls_tenant_isolation.sql`) nem BLOCO 2 (`20260911153000_agenda_civil_date_working_hours_recurrence.sql`).
+
+A migration original da etapa 8 permanece: `supabase/migrations/20260806080000_service_orders.sql`.

@@ -323,7 +323,9 @@ PDV, comissão, NF, assinatura SaaS (trial implementado na 10A).
 
 ## Etapa 8 — Ordens de Serviço (Atendimentos)
 
-Migration: `supabase/migrations/20260806080000_service_orders.sql`
+Migration original: `supabase/migrations/20260806080000_service_orders.sql`
+
+BLOCO 3 (máquina de estados / concorrência): `supabase/migrations/20260911180000_service_order_state_machine_concurrency.sql`
 
 ### Modelo
 
@@ -333,8 +335,10 @@ appointments → service_orders (1:1)
 
 - `service_orders` = fluxo operacional
 - `appointments` = agendamento + snapshots comerciais (sem duplicação)
+- `cancelled_at timestamptz` — instante UTC do cancelamento (não sobrescrito em retry)
+- Transições atômicas `UPDATE … WHERE status = expected` + check-in `ON CONFLICT (appointment_id)`
 
-Ver `docs/SERVICE_ORDERS.md`. **Migration pendente de aplicação remota.**
+Ver `docs/SERVICE_ORDERS.md`. **Migration BLOCO 3 pendente de aplicação remota.**
 
 ## Onboarding de ativação
 

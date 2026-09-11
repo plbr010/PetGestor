@@ -22,6 +22,7 @@ export type ServiceOrderListItem = {
   started_at: string | null;
   ready_at: string | null;
   completed_at: string | null;
+  cancelled_at: string | null;
   intake_notes: string | null;
   internal_notes: string | null;
   completion_notes: string | null;

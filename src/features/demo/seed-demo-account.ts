@@ -20,6 +20,7 @@ import {
   formatDateInTimezone,
   resolveFutureLocalDateTime,
 } from "@/features/demo/seed-scheduling";
+import { extractServiceOrderId } from "@/features/service-orders/mutation-result";
 import { localDateTimeToUtcIso } from "@/lib/timezone";
 import type { Database } from "@/types/database.types";
 
@@ -635,9 +636,10 @@ async function seedServiceOrders(
     });
     if (checkInError) throw new Error(`Check-in 2: ${checkInError.message}`);
 
-    if (order2) {
+    const order2Id = extractServiceOrderId(order2);
+    if (order2Id) {
       const { error: startError } = await client.rpc("start_service_order", {
-        p_service_order_id: String(order2),
+        p_service_order_id: order2Id,
         p_company_id: String(companyId),
       });
       if (startError) throw new Error(`Início atendimento 2: ${startError.message}`);
@@ -652,13 +654,14 @@ async function seedServiceOrders(
     });
     if (checkInError) throw new Error(`Check-in 3: ${checkInError.message}`);
 
-    if (order3) {
+    const order3Id = extractServiceOrderId(order3);
+    if (order3Id) {
       await client.rpc("start_service_order", {
-        p_service_order_id: String(order3),
+        p_service_order_id: order3Id,
         p_company_id: companyId,
       });
       const { error: readyError } = await client.rpc("mark_service_order_ready", {
-        p_service_order_id: String(order3),
+        p_service_order_id: order3Id,
         p_company_id: String(companyId),
       });
       if (readyError) throw new Error(`Pronto atendimento 3: ${readyError.message}`);
@@ -672,17 +675,18 @@ async function seedServiceOrders(
       p_appointment_id: fourth,
       p_company_id: String(companyId),
     });
-    if (!checkInError && order4) {
+    const order4Id = extractServiceOrderId(order4);
+    if (!checkInError && order4Id) {
       await client.rpc("start_service_order", {
-        p_service_order_id: String(order4),
+        p_service_order_id: order4Id,
         p_company_id: companyId,
       });
       await client.rpc("mark_service_order_ready", {
-        p_service_order_id: String(order4),
+        p_service_order_id: order4Id,
         p_company_id: companyId,
       });
       const { error: completeError } = await client.rpc("complete_service_order", {
-        p_service_order_id: String(order4),
+        p_service_order_id: order4Id,
         p_company_id: companyId,
       });
       if (completeError) {

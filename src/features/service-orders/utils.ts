@@ -6,12 +6,20 @@ import { getTodayInTimezone } from "@/lib/timezone";
 export function mapServiceOrderError(message: string | undefined): string {
   const code = message ?? "";
 
+  if (code.includes("service_order_cancelled")) {
+    return "Este atendimento foi cancelado. Não é possível fazer um novo check-in neste agendamento.";
+  }
+
   if (code.includes("appointment_not_eligible")) {
     return "Este agendamento não pode receber check-in.";
   }
 
   if (code.includes("appointment_not_found") || code.includes("service_order_not_found")) {
     return "Não foi possível encontrar o registro solicitado.";
+  }
+
+  if (code.includes("unique_violation") || code.includes("23505")) {
+    return "Esta operação já foi registrada. Atualize a página para ver o status atual.";
   }
 
   if (code.includes("invalid_status_transition")) {

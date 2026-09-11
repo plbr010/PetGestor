@@ -1186,6 +1186,7 @@ export type Database = {
           started_at: string | null;
           ready_at: string | null;
           completed_at: string | null;
+          cancelled_at: string | null;
           intake_notes: string | null;
           internal_notes: string | null;
           completion_notes: string | null;
@@ -1203,6 +1204,7 @@ export type Database = {
           started_at?: string | null;
           ready_at?: string | null;
           completed_at?: string | null;
+          cancelled_at?: string | null;
           intake_notes?: string | null;
           internal_notes?: string | null;
           completion_notes?: string | null;
@@ -1220,6 +1222,7 @@ export type Database = {
           started_at?: string | null;
           ready_at?: string | null;
           completed_at?: string | null;
+          cancelled_at?: string | null;
           intake_notes?: string | null;
           internal_notes?: string | null;
           completion_notes?: string | null;
@@ -2749,15 +2752,15 @@ export type Database = {
           p_intake_notes?: string | null;
           p_company_id: string;
         };
-        Returns: string;
+        Returns: Json;
       };
       start_service_order: {
         Args: { p_service_order_id: string; p_company_id: string };
-        Returns: string;
+        Returns: Json;
       };
       mark_service_order_ready: {
         Args: { p_service_order_id: string; p_company_id: string };
-        Returns: string;
+        Returns: Json;
       };
       replace_service_product_recipes: {
         Args: {
@@ -2791,11 +2794,11 @@ export type Database = {
           p_completion_notes?: string | null;
           p_company_id: string;
         };
-        Returns: string;
+        Returns: Json;
       };
       cancel_service_order: {
         Args: { p_service_order_id: string; p_company_id: string };
-        Returns: string;
+        Returns: Json;
       };
       update_service_order_notes: {
         Args: {

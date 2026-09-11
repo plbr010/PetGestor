@@ -9,7 +9,11 @@ export const SERVICE_ORDER_STATUS_LABELS: Record<ServiceOrderStatus, string> = {
   cancelled: "Cancelado",
 };
 
-const ALLOWED_TRANSITIONS: Record<ServiceOrderStatus, ServiceOrderStatus[]> = {
+/** Definição central da máquina de estados da OS (espelhada no SQL). */
+export const ALLOWED_SERVICE_ORDER_TRANSITIONS: Record<
+  ServiceOrderStatus,
+  ServiceOrderStatus[]
+> = {
   waiting: ["in_progress", "cancelled"],
   in_progress: ["ready"],
   ready: ["completed"],
@@ -21,7 +25,7 @@ export function canTransitionServiceOrderStatus(
   from: ServiceOrderStatus,
   to: ServiceOrderStatus,
 ): boolean {
-  return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false;
+  return ALLOWED_SERVICE_ORDER_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
 export function isActiveServiceOrderStatus(status: ServiceOrderStatus): boolean {

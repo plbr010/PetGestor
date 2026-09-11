@@ -157,6 +157,7 @@ export default async function AppointmentDetailPage({
           <CheckInAppointmentPanel
             appointmentId={appointment.id}
             existingServiceOrderId={existingServiceOrder?.id}
+            existingServiceOrderStatus={existingServiceOrder?.status}
           />
         ) : null}
 
