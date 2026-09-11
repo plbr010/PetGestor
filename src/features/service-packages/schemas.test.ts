@@ -44,6 +44,11 @@ describe("parseServicePackageForm", () => {
     }
   });
 
+  it("rejeita preço zero do catálogo de pacote", () => {
+    const parsed = parseServicePackageForm(buildPackageForm({ price: "0,00" }));
+    expect(parsed.success).toBe(false);
+  });
+
   it("rejeita pacote sem itens", () => {
     const form = buildPackageForm();
     form.delete("itemServiceId");
@@ -60,6 +65,7 @@ describe("parseSellPackageForm", () => {
     form.set("packageId", "11111111-1111-4111-8111-111111111111");
     form.set("startsAt", "2026-08-17");
     form.set("financialStatus", "pending");
+    form.set("idempotencyKey", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
 
     const parsed = parseSellPackageForm(form);
     expect(parsed.success).toBe(true);
@@ -71,11 +77,23 @@ describe("parseSellPackageForm", () => {
     form.set("startsAt", "2026-08-17");
     form.set("financialStatus", "paid");
     form.set("paymentMethod", "pix");
+    form.set("idempotencyKey", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
 
     const parsed = parseSellPackageForm(form);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect(parsed.data.paymentMethod).toBe("pix");
+      expect(parsed.data.idempotencyKey).toBe("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     }
+  });
+
+  it("rejeita venda sem chave de idempotência", () => {
+    const form = new FormData();
+    form.set("packageId", "11111111-1111-4111-8111-111111111111");
+    form.set("startsAt", "2026-08-17");
+    form.set("financialStatus", "pending");
+
+    const parsed = parseSellPackageForm(form);
+    expect(parsed.success).toBe(false);
   });
 });

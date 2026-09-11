@@ -469,6 +469,7 @@ async function seedServicePackage(
     p_starts_at: new Date().toISOString(),
     p_financial_status: "paid",
     p_payment_method: "credit_card",
+    p_idempotency_key: crypto.randomUUID(),
     p_company_id: String(companyId),
   });
 

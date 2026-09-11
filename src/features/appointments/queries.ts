@@ -8,6 +8,7 @@ import type {
   AppointmentDetail,
   AppointmentListItem,
 } from "@/features/appointments/types";
+import { getPackageFinancialStatusMap } from "@/features/service-packages/queries";
 import { isRangeBlockedByTimeBlocks } from "@/features/appointments/waitlist/utils";
 import { getTimeBlocksForSlotCheck } from "@/features/appointments/time-blocks/queries";
 import { slotSurvivesWorkingHours } from "@/features/appointments/working-hours";
@@ -581,9 +582,14 @@ export async function getAppointmentFormOptions(companyId: string, companyTimezo
   }
 
   const customerPackages: AppointmentCustomerPackageOption[] = [];
+  const soldRows = soldPackagesResult.error ? [] : (soldPackagesResult.data ?? []);
+  const financialByPackage = await getPackageFinancialStatusMap(
+    companyId,
+    soldRows.map((row) => row.id),
+  );
 
   if (!soldPackagesResult.error) {
-    for (const row of soldPackagesResult.data ?? []) {
+    for (const row of soldRows) {
       const items = (
         row.customer_service_package_items as unknown as
           | Array<{
@@ -607,6 +613,7 @@ export async function getAppointmentFormOptions(companyId: string, companyTimezo
         startsAt: String(row.starts_at).slice(0, 10),
         expiresAt: String(row.expires_at).slice(0, 10),
         status: row.status as CustomerPackageStatus,
+        financialStatus: financialByPackage.get(row.id) ?? null,
         items,
       });
     }

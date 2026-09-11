@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import {
   sellCustomerPackageAction,
@@ -24,6 +24,7 @@ type SellPackageFormProps = {
 const initialState: ServicePackageActionState = {};
 
 export function SellPackageForm({ petId, packages, timeZone }: SellPackageFormProps) {
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [state, formAction, isPending] = useActionState(
     sellCustomerPackageAction.bind(null, petId),
     initialState,
@@ -39,6 +40,7 @@ export function SellPackageForm({ petId, packages, timeZone }: SellPackageFormPr
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       {state.error ? <FormFeedback message={state.error} variant="error" /> : null}
 
       <div className="space-y-2">

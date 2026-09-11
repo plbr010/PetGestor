@@ -9,7 +9,7 @@ import {
 import {
   CUSTOMER_PACKAGE_STATUS_LABELS,
 } from "@/features/service-packages/utils";
-import type { CustomerPackageListItem } from "@/features/service-packages/types";
+import type { CustomerPackageDisplayStatus, CustomerPackageListItem } from "@/features/service-packages/types";
 import { formatDateDisplay } from "@/lib/pet-display";
 import { FormFeedback } from "@/components/shared/form-feedback";
 import { Badge } from "@/components/ui/badge";
@@ -43,9 +43,24 @@ function ProgressBar({ used, total }: { used: number; total: number }) {
   );
 }
 
+function badgeVariant(status: CustomerPackageDisplayStatus): "default" | "secondary" | "outline" {
+  if (status === "active") {
+    return "default";
+  }
+
+  if (status === "pending_payment") {
+    return "outline";
+  }
+
+  return "secondary";
+}
+
 export function PetPackagesPanel({ petId, packages, sold }: PetPackagesPanelProps) {
+  const pendingPackages = packages.filter((pkg) => pkg.status === "pending_payment");
   const activePackages = packages.filter((pkg) => pkg.status === "active");
-  const historyPackages = packages.filter((pkg) => pkg.status !== "active");
+  const historyPackages = packages.filter(
+    (pkg) => pkg.status !== "active" && pkg.status !== "pending_payment",
+  );
 
   return (
     <div className="space-y-6">
@@ -53,14 +68,30 @@ export function PetPackagesPanel({ petId, packages, sold }: PetPackagesPanelProp
         <FormFeedback message="Pacote adicionado com sucesso." variant="success" />
       ) : null}
 
+      {pendingPackages.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pagamento pendente</CardTitle>
+            <CardDescription>
+              O registro existe, mas este pacote ainda não é crédito utilizável na agenda.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {pendingPackages.map((pkg) => (
+              <PackageCard key={pkg.id} pkg={pkg} petId={petId} />
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Pacotes ativos</CardTitle>
-          <CardDescription>Direitos de consumo já pagos para este pet.</CardDescription>
+          <CardDescription>Sessões já pagas e disponíveis para este pet.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {activePackages.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum pacote ativo no momento.</p>
+            <p className="text-sm text-muted-foreground">Nenhum pacote pago e ativo no momento.</p>
           ) : (
             activePackages.map((pkg) => (
               <PackageCard key={pkg.id} pkg={pkg} petId={petId} />
@@ -96,9 +127,10 @@ function PackageCard({
 }) {
   const [message, setMessage] = useState<ServicePackageActionState>({});
   const [isPending, startTransition] = useTransition();
+  const canCancelPending = !readonly && pkg.status === "pending_payment" && pkg.total_used === 0;
 
   function handleCancel() {
-    if (!window.confirm("Cancelar este pacote? Só é possível se ainda não houver consumos.")) {
+    if (!window.confirm("Cancelar este pacote pendente? A receita pendente também será cancelada.")) {
       return;
     }
 
@@ -117,7 +149,7 @@ function PackageCard({
             Válido até {formatDateDisplay(pkg.expires_at)}
           </p>
         </div>
-        <Badge variant={pkg.status === "active" ? "default" : "secondary"}>
+        <Badge variant={badgeVariant(pkg.status)}>
           {CUSTOMER_PACKAGE_STATUS_LABELS[pkg.status]}
         </Badge>
       </div>
@@ -132,10 +164,22 @@ function PackageCard({
         ))}
       </ul>
 
+      {pkg.status === "pending_payment" ? (
+        <p className="text-sm text-muted-foreground">
+          Pagamento pendente. Este pacote não aparece como crédito na agenda e não desconta sessão.
+        </p>
+      ) : null}
+
+      {pkg.financial_status === "paid" && pkg.total_used === 0 && pkg.status === "active" ? (
+        <p className="text-sm text-muted-foreground">
+          Pacote pago. Para cancelar, faça o estorno/reembolso financeiro antes.
+        </p>
+      ) : null}
+
       {message.success ? <FormFeedback message={message.success} variant="success" /> : null}
       {message.error ? <FormFeedback message={message.error} variant="error" /> : null}
 
-      {!readonly && pkg.status === "active" && pkg.total_used === 0 ? (
+      {canCancelPending ? (
         <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleCancel}>
           {isPending ? "Cancelando…" : "Cancelar pacote"}
         </Button>
