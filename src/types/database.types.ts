@@ -2582,6 +2582,15 @@ export type Database = {
         };
         Returns: string;
       };
+      consume_auth_rate_limit: {
+        Args: {
+          p_bucket_key: string;
+          p_limit: number;
+          p_window_seconds: number;
+          p_now?: string;
+        };
+        Returns: Json;
+      };
       complete_onboarding_tutorial: {
         Args: Record<string, never>;
         Returns: undefined;

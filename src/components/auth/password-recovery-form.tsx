@@ -7,6 +7,7 @@ import {
   passwordRecoveryAction,
   type AuthActionState,
 } from "@/features/auth/actions";
+import { AUTH_FIELD_LIMITS } from "@/features/auth/schemas";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,8 +39,8 @@ export function PasswordRecoveryForm() {
       </CardHeader>
       <CardContent>
         <form className="space-y-4" action={formAction} noValidate>
-          {state.error ? <ErrorMessage message={state.error} /> : null}
-          {state.success ? (
+          {!isPending && state.error ? <ErrorMessage message={state.error} /> : null}
+          {!isPending && state.success ? (
             <div
               className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-foreground"
               role="status"
@@ -56,6 +57,7 @@ export function PasswordRecoveryForm() {
               type="email"
               placeholder="seu@email.com"
               autoComplete="email"
+              maxLength={AUTH_FIELD_LIMITS.email}
               required
             />
           </div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Mail } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
+import { ResendConfirmationForm } from "@/components/auth/resend-confirmation-form";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
@@ -34,8 +35,13 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
               : "Enviamos um link de confirmação para o endereço informado no cadastro. Abra o e-mail e clique no link para ativar sua conta."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
+        <CardContent className="space-y-4 text-sm text-muted-foreground">
           <p>Não encontrou o e-mail? Verifique a pasta de spam ou lixo eletrônico.</p>
+          <p>
+            Se você já confirmou o e-mail, entre com sua senha. Esta tela não significa que a
+            conta está pronta — só que o link de confirmação foi enviado.
+          </p>
+          <ResendConfirmationForm />
         </CardContent>
         <CardFooter className="flex flex-col gap-3 border-t bg-muted/20 pt-6">
           <ButtonLink href="/entrar" className="w-full">

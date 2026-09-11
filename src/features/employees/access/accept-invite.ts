@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { loadMembershipForUser } from "@/features/companies/queries";
 import { mapInviteAcceptReason } from "@/features/employees/access/invite-messages";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -157,25 +158,15 @@ export async function resolveAuthLandingPath(): Promise<string> {
     return "/convite";
   }
 
-  const { data: membership } = await supabase
-    .from("company_members")
-    .select("company_id")
-    .eq("user_id", data.claims.sub)
-    .is("access_revoked_at", null)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const membership = await loadMembershipForUser(supabase, data.claims.sub);
 
-  if (membership) {
+  if (membership.status === "active") {
     return "/dashboard";
   }
 
-  const { data: anyMembership } = await supabase
-    .from("company_members")
-    .select("company_id")
-    .eq("user_id", data.claims.sub)
-    .limit(1)
-    .maybeSingle();
+  if (membership.status === "revoked") {
+    return "/dashboard/acesso-revogado";
+  }
 
-  return anyMembership ? "/dashboard" : "/onboarding";
+  return "/onboarding";
 }

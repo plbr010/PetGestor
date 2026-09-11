@@ -140,7 +140,7 @@ Operações mutáveis usam **Server Actions** ou Route Handlers POST/GET apropri
 
 ## Rate limiting
 
-Limites nativos do Supabase Auth em desenvolvimento. Infraestrutura adicional antes de produção.
+Limites nativos do Supabase Auth **e** rate limit dedicado no Postgres (`private.auth_rate_limit_buckets` + `consume_auth_rate_limit`). Chave hasheada (ação + sujeito + IP). Sem senha e sem e-mail em claro. Atomicidade via advisory lock + UPSERT.
 
 ## Variáveis de ambiente
 
@@ -174,9 +174,20 @@ Ver `docs/APPOINTMENTS.md`.
 
 Ver `docs/SERVICE_ORDERS.md`.
 
+## Uploads (fotos)
+
+Substituição de foto do pet:
+
+1. validar tamanho + MIME + magic bytes;
+2. path novo e único (`{companyId}/pets/{petId}/photo/{uuid}.{ext}`);
+3. upload do arquivo novo;
+4. persistir vínculo no banco;
+5. só então remover o arquivo antigo.
+
+Se o update no banco falhar, o arquivo **novo** é limpo (best-effort) e a foto antiga permanece. Falha ao apagar a antiga após persistir a nova não esconde o sucesso — fica órfão residual, sem perda da referência válida.
+
 ## Próximas implementações
 
-- Rate limiting dedicado
 - SMTP próprio para e-mail transacional
 - Revisão de headers e CSP no deploy
 - Auditoria de ações sensíveis

@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState, useTransition } from "react";
 
+import { AUTH_FIELD_LIMITS } from "@/features/auth/schemas";
 import {
   grantEmployeeAccessAction,
   revokeEmployeeAccessAction,
@@ -277,7 +278,9 @@ export function EmployeeAccessPanel({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        {feedback ? <FormFeedback message={feedback.message} variant={feedback.variant} /> : null}
+        {!grantPending && !revokePending && feedback ? (
+          <FormFeedback message={feedback.message} variant={feedback.variant} />
+        ) : null}
 
         {grantState.shareLink ? <InviteShareLink shareLink={grantState.shareLink} /> : null}
 
@@ -296,6 +299,7 @@ export function EmployeeAccessPanel({
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="funcionario@email.com"
+                maxLength={AUTH_FIELD_LIMITS.email}
               />
               <p className="text-xs text-muted-foreground">
                 Não criamos senha manualmente — o funcionário entra com a própria conta.

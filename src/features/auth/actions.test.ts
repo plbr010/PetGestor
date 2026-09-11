@@ -80,10 +80,12 @@ describe("runCompleteOnboarding", () => {
     fromMock.mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: null,
-              error: { code: "42501", message: "permission denied" },
+          eq: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: { code: "42501", message: "permission denied" },
+              }),
             }),
           }),
         }),
@@ -108,10 +110,12 @@ describe("runCompleteOnboarding", () => {
     fromMock.mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: { company_id: "company-456" },
-              error: null,
+          eq: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { company_id: "company-456" },
+                error: null,
+              }),
             }),
           }),
         }),
@@ -127,5 +131,52 @@ describe("runCompleteOnboarding", () => {
       p_company_name: "Pet Shop",
       p_phone: "+5532999999999",
     });
+  });
+
+  it("retry/já onboarded retorna a mesma company", async () => {
+    getClaimsMock.mockResolvedValue({
+      data: { claims: { sub: "user-123" } },
+      error: null,
+    });
+    rpcMock.mockResolvedValue({ data: "company-456", error: null });
+    fromMock.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { company_id: "company-456" },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+    });
+
+    const { runCompleteOnboarding } = await import("@/features/auth/actions");
+    const first = await runCompleteOnboarding("Ana Silva", "Pet Shop", "+5532999999999");
+    const second = await runCompleteOnboarding("Ana Silva", "Pet Shop", "+5532999999999");
+    expect(first).toEqual(second);
+    expect(first).toEqual({ ok: true, companyId: "company-456" });
+  });
+
+  it("membership revogada não ganha acesso", async () => {
+    getClaimsMock.mockResolvedValue({
+      data: { claims: { sub: "user-123" } },
+      error: null,
+    });
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { code: "42501", message: "membership_revoked" },
+    });
+
+    const { runCompleteOnboarding } = await import("@/features/auth/actions");
+    const result = await runCompleteOnboarding("Ana Silva", "Pet Shop", "+5532999999999");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/acesso à empresa foi removido/i);
+    }
   });
 });

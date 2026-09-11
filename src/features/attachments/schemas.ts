@@ -7,20 +7,34 @@ import {
 } from "@/features/attachments/constants";
 
 export const petAttachmentUploadSchema = z.object({
-  petId: z.string().uuid(),
-  category: z.enum(PET_ATTACHMENT_CATEGORIES),
-  description: z.string().trim().max(500).nullable().optional(),
+  petId: z.uuid("Identificador do pet inválido."),
+  category: z.enum(PET_ATTACHMENT_CATEGORIES, {
+    error: "Selecione uma categoria válida.",
+  }),
+  description: z
+    .string({ error: "Descrição inválida." })
+    .trim()
+    .max(500, "A descrição deve ter no máximo 500 caracteres.")
+    .nullable()
+    .optional(),
 });
 
 export const serviceOrderAttachmentUploadSchema = z.object({
-  serviceOrderId: z.string().uuid(),
-  category: z.enum(SERVICE_ORDER_ATTACHMENT_CATEGORIES),
-  phase: z.enum(ATTACHMENT_PHASES).nullable(),
-  description: z.string().trim().max(500).nullable().optional(),
+  serviceOrderId: z.uuid("Identificador do atendimento inválido."),
+  category: z.enum(SERVICE_ORDER_ATTACHMENT_CATEGORIES, {
+    error: "Selecione uma categoria válida.",
+  }),
+  phase: z.enum(ATTACHMENT_PHASES, { error: "Fase inválida." }).nullable(),
+  description: z
+    .string({ error: "Descrição inválida." })
+    .trim()
+    .max(500, "A descrição deve ter no máximo 500 caracteres.")
+    .nullable()
+    .optional(),
 });
 
 export const petPhotoUploadSchema = z.object({
-  petId: z.string().uuid(),
+  petId: z.uuid("Identificador do pet inválido."),
 });
 
 function optionalDescription(value: FormDataEntryValue | null) {
