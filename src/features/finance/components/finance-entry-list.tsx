@@ -64,14 +64,30 @@ export function FinanceEntryList({ entries, timeZone }: FinanceEntryListProps) {
                     entry.entry_type === "income" ? "text-success" : "text-destructive"
                   }`}
                 >
-                  {formatAmountCents(entry.amount_cents)}
+                  <div>{formatAmountCents(entry.amount_cents)}</div>
+                  {entry.status === "partially_paid" ? (
+                    <p className="text-xs font-normal text-muted-foreground">
+                      Recebido {formatAmountCents(entry.received_cents)} · a receber{" "}
+                      {formatAmountCents(entry.remaining_cents)}
+                    </p>
+                  ) : null}
                 </td>
                 <td className="px-3 py-3">
                   <FinancialEntryStatusBadge status={entry.status} />
                 </td>
                 <td className="px-3 py-3">
-                  {entry.status === "paid"
-                    ? `${getPaymentMethodLabel(entry.payment_method)} · ${formatPaidAt(entry.paid_at, timeZone)}`
+                  {entry.received_cents > 0
+                    ? `${
+                        entry.payments.filter((payment) => payment.cancelled_at == null).length > 1
+                          ? "Misto"
+                          : getPaymentMethodLabel(
+                              entry.payments.find((payment) => payment.cancelled_at == null)?.payment_method ??
+                                entry.payment_method,
+                            )
+                      } · ${formatPaidAt(
+                        entry.payments.find((payment) => payment.cancelled_at == null)?.paid_at ?? entry.paid_at,
+                        timeZone,
+                      )}`
                     : "—"}
                 </td>
                 <td className="px-3 py-3">
@@ -108,6 +124,11 @@ export function FinanceEntryList({ entries, timeZone }: FinanceEntryListProps) {
               >
                 {formatAmountCents(entry.amount_cents)}
               </p>
+              {entry.status === "partially_paid" ? (
+                <p className="text-xs text-muted-foreground">
+                  A receber {formatAmountCents(entry.remaining_cents)}
+                </p>
+              ) : null}
             </Link>
           </li>
         ))}

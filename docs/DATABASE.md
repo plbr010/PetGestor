@@ -298,12 +298,13 @@ Mercado Pago, checkout, webhooks, cobrança real, comissão, NF.
 
 Migration: `supabase/migrations/20260806081500_finance.sql`
 
-### Modelo
+BLOCO 5: `supabase/migrations/20260911220000_financial_payments_source_of_truth.sql`
 
-```text
-service_orders → financial_entries (receita automática ao marcar pronto)
-financial_entries (manual: receitas e despesas)
-```
+### Fonte de verdade
+
+- `financial_entries.amount_cents` = faturado
+- `financial_payments` (ativos) = recebido
+- `financial_entries.payment_method` = compatibilidade (último método quando `paid`)
 
 Ver `docs/FINANCE.md`. **Migration pendente de aplicação remota.**
 

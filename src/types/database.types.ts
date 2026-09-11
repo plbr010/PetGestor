@@ -2819,6 +2819,8 @@ export type Database = {
           p_payment_method: PaymentMethod;
           p_paid_at?: string | null;
           p_company_id: string;
+          p_amount_cents?: number | null;
+          p_idempotency_key?: string | null;
         };
         Returns: string;
       };

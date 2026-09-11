@@ -9,9 +9,10 @@ import type {
   FinanceAnalytics,
   FinanceAnalyticsPreset,
 } from "@/features/finance/analytics/types";
+import { getFinancialPeriodBounds } from "@/features/finance/utils";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isValidUuid } from "@/lib/security/uuid";
-import { addDaysToDateString, localDateTimeToUtcIso, resolveCompanyTimeZone } from "@/lib/timezone";
+import { resolveCompanyTimeZone } from "@/lib/timezone";
 import type { FinancialSourceType } from "@/types/database.types";
 
 const ANALYTICS_ENTRY_SELECT = `
@@ -35,9 +36,8 @@ type EntryQueryRow = {
 };
 
 function getPeriodBounds(from: string, to: string, timeZone: string) {
-  const start = localDateTimeToUtcIso(from, "00:00", timeZone);
-  const endIso = localDateTimeToUtcIso(addDaysToDateString(to, 1), "00:00", timeZone);
-  return { start, endIso };
+  const { start, endExclusive } = getFinancialPeriodBounds(from, to, timeZone);
+  return { start, endIso: endExclusive };
 }
 
 function mapEntryRow(row: EntryQueryRow): AnalyticsEntryRow {

@@ -10,8 +10,14 @@ import {
 } from "@/features/finance/actions";
 import { FinancialEntryStatusBadge } from "@/features/finance/components/financial-entry-status-badge";
 import { MarkPaidForm } from "@/features/finance/components/mark-paid-form";
-import { isManualEntryEditable } from "@/features/finance/status";
+import {
+  canCancelFinancialEntry,
+  canReopenFinancialEntry,
+  isManualEntryEditable,
+  PAYMENT_METHOD_LABELS,
+} from "@/features/finance/status";
 import type { FinancialEntryDetail } from "@/features/finance/types";
+import { paymentMethodsLabel } from "@/features/finance/ledger";
 import {
   formatAmountCents,
   formatDisplayDate,
@@ -62,13 +68,25 @@ export function FinanceDetailActions({ entry, timeZone }: FinanceDetailActionsPr
         <Item label="Tipo" value={getTypeLabel(entry.entry_type)} />
         <Item label="Origem" value={getSourceLabel(entry.source_type)} />
         <Item label="Valor" value={formatAmountCents(entry.amount_cents)} />
+        <Item label="Recebido" value={formatAmountCents(entry.received_cents)} />
+        <Item label="A receber" value={formatAmountCents(entry.remaining_cents)} />
         <Item label="Vencimento" value={formatDisplayDate(entry.due_date)} />
         <Item
           label="Pagamento"
           value={
-            entry.status === "paid"
-              ? `${getPaymentMethodLabel(entry.payment_method)} · ${formatPaidAt(entry.paid_at, timeZone)}`
-              : "—"
+            entry.payments.filter((payment) => payment.cancelled_at == null).length > 0
+              ? `${paymentMethodsLabel(
+                  entry.payments
+                    .filter((payment) => payment.cancelled_at == null)
+                    .map((payment) => payment.payment_method),
+                  PAYMENT_METHOD_LABELS,
+                )} · ${formatPaidAt(
+                  entry.payments.find((payment) => payment.cancelled_at == null)?.paid_at ?? entry.paid_at,
+                  timeZone,
+                )}`
+              : entry.status === "paid"
+                ? `${getPaymentMethodLabel(entry.payment_method)} · ${formatPaidAt(entry.paid_at, timeZone)}`
+                : "—"
           }
         />
         <Item label="Categoria" value={entry.category ?? "—"} />
@@ -81,9 +99,28 @@ export function FinanceDetailActions({ entry, timeZone }: FinanceDetailActionsPr
         </div>
       ) : null}
 
-      {entry.status === "pending" ? <MarkPaidForm entry={entry} /> : null}
+      {entry.status === "pending" || entry.status === "partially_paid" ? (
+        <MarkPaidForm entry={entry} />
+      ) : null}
 
-      {entry.status === "paid" ? (
+      {entry.payments.length > 0 ? (
+        <div className="rounded-xl border p-4">
+          <h3 className="mb-3 font-medium">Pagamentos</h3>
+          <ul className="space-y-2 text-sm">
+            {entry.payments.map((payment) => (
+              <li key={payment.id} className="flex flex-wrap justify-between gap-2">
+                <span>
+                  {getPaymentMethodLabel(payment.payment_method)} · {formatAmountCents(payment.amount_cents)}
+                  {payment.cancelled_at ? " (cancelado)" : ""}
+                </span>
+                <span className="text-muted-foreground">{formatPaidAt(payment.paid_at, timeZone)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {canReopenFinancialEntry(entry.source_type, entry.status) ? (
         <Button
           type="button"
           variant="outline"
@@ -136,7 +173,7 @@ export function FinanceDetailActions({ entry, timeZone }: FinanceDetailActionsPr
         </form>
       ) : null}
 
-      {isManualEntryEditable(entry.source_type) && entry.status !== "cancelled" ? (
+      {canCancelFinancialEntry(entry.source_type, entry.status) ? (
         <Button
           type="button"
           variant="destructive"

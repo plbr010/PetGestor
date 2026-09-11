@@ -1,3 +1,4 @@
+import { receivedCents, remainingCents } from "@/features/finance/ledger";
 import {
   FINANCIAL_ENTRY_STATUS_LABELS,
   FINANCIAL_ENTRY_TYPE_LABELS,
@@ -8,6 +9,7 @@ import type { FinancialEntryListItem, FinancialSummary } from "@/features/financ
 import { formatCentsToBRL, parseBRLToCents } from "@/lib/money";
 import {
   addDaysToDateString,
+  getCivilDateRangeUtcBounds,
   getTodayInTimezone,
   getWeekDates,
   localDateTimeToUtcIso,
@@ -41,8 +43,48 @@ export function mapFinanceError(message: string | undefined): string {
     return "Selecione uma forma de pagamento válida.";
   }
 
+  if (code.includes("payment_exceeds_balance")) {
+    return "O valor informado é maior que o saldo a receber.";
+  }
+
+  if (code.includes("invalid_payment_amount")) {
+    return "Informe um valor de pagamento válido.";
+  }
+
+  if (code.includes("invalid_idempotency_key")) {
+    return "Não foi possível confirmar o pagamento. Atualize a página e tente novamente.";
+  }
+
   if (code.includes("package_price_mismatch")) {
     return "O valor financeiro do pacote está inconsistente com o preço da venda.";
+  }
+
+  if (code.includes("sale_entry_not_payable_via_finance")) {
+    return "Pagamentos de venda do PDV devem ser registrados no caixa.";
+  }
+
+  if (code.includes("service_order_entry_not_reopenable")) {
+    return "Receitas de atendimento não podem ser reabertas. Isso alteraria a origem automática.";
+  }
+
+  if (code.includes("package_entry_not_reopenable")) {
+    return "Receitas de pacote pago não podem ser reabertas. O crédito do pacote permaneceria ativo.";
+  }
+
+  if (code.includes("sale_entry_not_reopenable") || code.includes("automatic_entry_not_reopenable")) {
+    return "Lançamentos automáticos não podem ser reabertos por aqui.";
+  }
+
+  if (code.includes("financial_entry_has_payments_requires_refund")) {
+    return "Há valor recebido neste lançamento. Cancelamento exige política de estorno, ainda não disponível.";
+  }
+
+  if (code.includes("package_entry_not_cancellable")) {
+    return "Receitas de pacote não podem ser canceladas por aqui. Use o cancelamento do pacote.";
+  }
+
+  if (code.includes("sale_entry_not_cancellable")) {
+    return "Receitas de venda do PDV não podem ser canceladas por aqui.";
   }
 
   if (code.includes("invalid_status_transition")) {
@@ -138,6 +180,10 @@ export function resolveFinancialPeriod(
   return { from: month.from, to: month.to, preset: "month" };
 }
 
+export function getFinancialPeriodBounds(from: string, to: string, timeZone: string) {
+  return getCivilDateRangeUtcBounds(from, to, timeZone);
+}
+
 export function computeFinancialSummary(entries: FinancialEntryListItem[]): FinancialSummary {
   let incomePaidCents = 0;
   let incomePendingCents = 0;
@@ -149,16 +195,26 @@ export function computeFinancialSummary(entries: FinancialEntryListItem[]): Fina
       continue;
     }
 
+    const snapshot = {
+      amountCents: entry.amount_cents,
+      status: entry.status,
+      payments: (entry.payments ?? []).map((payment) => ({
+        entryId: entry.id,
+        amountCents: payment.amount_cents,
+        paymentMethod: payment.payment_method,
+        paidAt: payment.paid_at,
+        cancelledAt: payment.cancelled_at,
+      })),
+    };
+    const received = entry.received_cents ?? receivedCents(snapshot);
+    const remaining = entry.remaining_cents ?? remainingCents(snapshot);
+
     if (entry.entry_type === "income") {
-      if (entry.status === "paid") {
-        incomePaidCents += entry.amount_cents;
-      } else {
-        incomePendingCents += entry.amount_cents;
-      }
-    } else if (entry.status === "paid") {
-      expensePaidCents += entry.amount_cents;
+      incomePaidCents += received;
+      incomePendingCents += remaining;
     } else {
-      expensePendingCents += entry.amount_cents;
+      expensePaidCents += received;
+      expensePendingCents += remaining;
     }
   }
 

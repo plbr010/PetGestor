@@ -1,14 +1,19 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
 
+import { receivedCents, remainingCents } from "@/features/finance/ledger";
 import type {
   FinancialEntryStatusFilter,
   FinancialEntryTypeFilter,
   FinancialSourceFilter,
   PaymentMethodFilter,
 } from "@/features/finance/status";
-import type { FinancialEntryDetail, FinancialEntryListItem } from "@/features/finance/types";
-import { computeFinancialSummary } from "@/features/finance/utils";
+import type {
+  FinancialEntryDetail,
+  FinancialEntryListItem,
+  FinancialEntryPayment,
+} from "@/features/finance/types";
+import { computeFinancialSummary, getFinancialPeriodBounds } from "@/features/finance/utils";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   buildPaginatedResult,
@@ -20,7 +25,7 @@ import {
 } from "@/lib/pagination";
 import { isValidUuid } from "@/lib/security/uuid";
 import type { FinancialEntryStatus, FinancialEntryType, PaymentMethod } from "@/types/database.types";
-import { localDateTimeToUtcIso, addDaysToDateString, getTodayInTimezone } from "@/lib/timezone";
+import { getTodayInTimezone, addDaysToDateString } from "@/lib/timezone";
 
 const ENTRY_SELECT = `
   id, entry_type, status, source_type, service_order_id, description, category,
@@ -77,11 +82,25 @@ function unwrapJoin<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
-function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntryListItem {
+function mapFinancialEntryRow(
+  row: FinancialEntryRow,
+  payments: FinancialEntryPayment[] = [],
+): FinancialEntryListItem {
   const serviceOrderRaw = unwrapJoin(row.service_orders);
   const appointmentRaw = serviceOrderRaw ? unwrapJoin(serviceOrderRaw.appointments) : null;
   const pet = appointmentRaw ? unwrapJoin(appointmentRaw.pets) : null;
   const customer = appointmentRaw ? unwrapJoin(appointmentRaw.customers) : null;
+  const snapshot = {
+    amountCents: row.amount_cents,
+    status: row.status,
+    payments: payments.map((payment) => ({
+      entryId: row.id,
+      amountCents: payment.amount_cents,
+      paymentMethod: payment.payment_method,
+      paidAt: payment.paid_at,
+      cancelledAt: payment.cancelled_at,
+    })),
+  };
 
   return {
     id: row.id,
@@ -92,6 +111,8 @@ function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntryListItem {
     description: row.description,
     category: row.category,
     amount_cents: row.amount_cents,
+    received_cents: receivedCents(snapshot),
+    remaining_cents: remainingCents(snapshot),
     due_date: row.due_date,
     paid_at: row.paid_at,
     payment_method: row.payment_method,
@@ -99,6 +120,7 @@ function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntryListItem {
     created_at: row.created_at,
     updated_at: row.updated_at,
     cancelled_at: row.cancelled_at,
+    payments,
     service_order:
       serviceOrderRaw && pet && customer
         ? {
@@ -113,9 +135,83 @@ function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntryListItem {
 }
 
 function getPeriodBounds(from: string, to: string, timeZone: string) {
-  const start = localDateTimeToUtcIso(from, "00:00", timeZone);
-  const end = localDateTimeToUtcIso(addDaysToDateString(to, 1), "00:00", timeZone);
-  return { start, end };
+  const { start, endExclusive } = getFinancialPeriodBounds(from, to, timeZone);
+  return { start, end: endExclusive };
+}
+
+type PaymentRow = {
+  id: string;
+  financial_entry_id: string;
+  amount_cents: number;
+  payment_method: PaymentMethod;
+  paid_at: string;
+  cancelled_at: string | null;
+};
+
+async function fetchPaymentsForEntries(
+  companyId: string,
+  entryIds: string[],
+): Promise<Map<string, FinancialEntryPayment[]>> {
+  const byEntry = new Map<string, FinancialEntryPayment[]>();
+
+  if (entryIds.length === 0 || !isValidUuid(companyId)) {
+    return byEntry;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("financial_payments")
+    .select("id, financial_entry_id, amount_cents, payment_method, paid_at, cancelled_at")
+    .eq("company_id", companyId)
+    .in("financial_entry_id", entryIds);
+
+  if (error) {
+    return byEntry;
+  }
+
+  for (const row of (data as PaymentRow[] | null) ?? []) {
+    const list = byEntry.get(row.financial_entry_id) ?? [];
+    list.push({
+      id: row.id,
+      amount_cents: row.amount_cents,
+      payment_method: row.payment_method,
+      paid_at: row.paid_at,
+      cancelled_at: row.cancelled_at,
+    });
+    byEntry.set(row.financial_entry_id, list);
+  }
+
+  return byEntry;
+}
+
+function mapRowsWithPayments(
+  rows: FinancialEntryRow[] | null,
+  paymentsByEntry: Map<string, FinancialEntryPayment[]>,
+): FinancialEntryListItem[] {
+  return (rows ?? []).map((row) => mapFinancialEntryRow(row, paymentsByEntry.get(row.id) ?? []));
+}
+
+async function resolvePaymentFilterEntryIds(
+  companyId: string,
+  payment: PaymentMethodFilter | undefined,
+): Promise<string[] | null> {
+  if (!payment || payment === "all") {
+    return null;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("financial_payments")
+    .select("financial_entry_id")
+    .eq("company_id", companyId)
+    .eq("payment_method", payment)
+    .is("cancelled_at", null);
+
+  if (error) {
+    return [];
+  }
+
+  return [...new Set((data ?? []).map((row) => row.financial_entry_id))];
 }
 
 type FinancialEntryQueryParams = {
@@ -124,7 +220,9 @@ type FinancialEntryQueryParams = {
   end?: string;
   type?: FinancialEntryTypeFilter;
   status?: FinancialEntryStatusFilter;
+  statuses?: FinancialEntryStatus[];
   payment?: PaymentMethodFilter;
+  paymentEntryIds?: string[];
   source?: FinancialSourceFilter;
   drillCategory?: string;
   search?: string;
@@ -152,7 +250,9 @@ function applyFinancialEntryFilters(
     next = next.eq("entry_type", params.type);
   }
 
-  if (params.status && params.status !== "all") {
+  if (params.statuses && params.statuses.length > 0) {
+    next = next.in("status", params.statuses);
+  } else if (params.status && params.status !== "all") {
     next = next.eq("status", params.status);
   }
 
@@ -165,7 +265,12 @@ function applyFinancialEntryFilters(
   }
 
   if (params.payment && params.payment !== "all") {
-    next = next.eq("payment_method", params.payment);
+    const ids = params.paymentEntryIds ?? [];
+    if (ids.length > 0) {
+      next = next.or(`payment_method.eq.${params.payment},id.in.(${ids.join(",")})`);
+    } else {
+      next = next.eq("payment_method", params.payment);
+    }
   }
 
   if (params.search) {
@@ -255,6 +360,7 @@ export async function getFinancialEntries({
   const { start, end } = getPeriodBounds(from, to, timeZone);
   const search = sanitizeSearchTerm(query);
   const { from: rangeFrom, to: rangeTo } = getPaginationRange(page, pageSize);
+  const paymentEntryIds = await resolvePaymentFilterEntryIds(companyId, payment);
 
   const { data, error, count } = await queryFinancialEntriesWithFallback(
     {
@@ -264,6 +370,7 @@ export async function getFinancialEntries({
       type,
       status,
       payment,
+      paymentEntryIds: paymentEntryIds ?? undefined,
       source,
       drillCategory,
       search,
@@ -278,8 +385,14 @@ export async function getFinancialEntries({
     return buildPaginatedResult([], 0, page, pageSize);
   }
 
+  const rows = (data as FinancialEntryRow[] | null) ?? [];
+  const paymentsByEntry = await fetchPaymentsForEntries(
+    companyId,
+    rows.map((row) => row.id),
+  );
+
   return buildPaginatedResult(
-    (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [],
+    mapRowsWithPayments(rows, paymentsByEntry),
     count ?? 0,
     page,
     pageSize,
@@ -305,7 +418,12 @@ async function fetchEntriesInPeriod(
     return [];
   }
 
-  return (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [];
+  const rows = (data as FinancialEntryRow[] | null) ?? [];
+  const paymentsByEntry = await fetchPaymentsForEntries(
+    companyId,
+    rows.map((row) => row.id),
+  );
+  return mapRowsWithPayments(rows, paymentsByEntry);
 }
 
 export async function getFinancialSummary(
@@ -349,8 +467,8 @@ export async function getPendingReceivables(companyId: string, limit = 10) {
   const { data, error } = await queryFinancialEntriesWithFallback({
     companyId,
     type: "income",
-    status: "pending",
-    limit,
+    statuses: ["pending", "partially_paid"],
+    limit: Math.max(limit * 3, 30),
     orderByDueDateAsc: true,
   });
 
@@ -358,7 +476,17 @@ export async function getPendingReceivables(companyId: string, limit = 10) {
     return [];
   }
 
-  return (data as FinancialEntryRow[] | null)?.map(mapFinancialEntryRow) ?? [];
+  const rows = ((data as FinancialEntryRow[] | null) ?? []).filter(
+    (row) => row.status === "pending" || row.status === "partially_paid",
+  );
+  const paymentsByEntry = await fetchPaymentsForEntries(
+    companyId,
+    rows.map((row) => row.id),
+  );
+
+  return mapRowsWithPayments(rows, paymentsByEntry)
+    .filter((entry) => entry.remaining_cents > 0)
+    .slice(0, limit);
 }
 
 export async function getFinancialEntryById(
@@ -385,7 +513,8 @@ export async function getFinancialEntryById(
     return null;
   }
 
-  return mapFinancialEntryRow(data as FinancialEntryRow);
+  const paymentsByEntry = await fetchPaymentsForEntries(companyId, [entryId]);
+  return mapFinancialEntryRow(data as FinancialEntryRow, paymentsByEntry.get(entryId) ?? []);
 }
 
 export async function requireFinancialEntryById(
@@ -426,7 +555,9 @@ export async function getFinancialEntryByServiceOrderId(
     return null;
   }
 
-  return mapFinancialEntryRow(data as FinancialEntryRow);
+  const row = data as FinancialEntryRow;
+  const paymentsByEntry = await fetchPaymentsForEntries(companyId, [row.id]);
+  return mapFinancialEntryRow(row, paymentsByEntry.get(row.id) ?? []);
 }
 
 export async function getPendingReceivablesTotal(companyId: string): Promise<number> {
@@ -435,17 +566,131 @@ export async function getPendingReceivablesTotal(companyId: string): Promise<num
 
   const { data, error } = await supabase
     .from("financial_entries")
-    .select("amount_cents")
+    .select("id, amount_cents, status")
     .eq("company_id", companyId)
     .eq("entry_type", "income")
-    .eq("status", "pending")
+    .in("status", ["pending", "partially_paid"])
     .is("deleted_at", null);
 
   if (error) {
     return 0;
   }
 
-  return (data ?? []).reduce((sum, row) => sum + row.amount_cents, 0);
+  const rows = (data ?? []) as Array<{
+    id: string;
+    amount_cents: number;
+    status: FinancialEntryStatus;
+  }>;
+  const paymentsByEntry = await fetchPaymentsForEntries(
+    companyId,
+    rows.map((row) => row.id),
+  );
+
+  return rows.reduce((sum, row) => {
+    const snapshot = {
+      amountCents: row.amount_cents,
+      status: row.status,
+      payments: (paymentsByEntry.get(row.id) ?? []).map((payment) => ({
+        entryId: row.id,
+        amountCents: payment.amount_cents,
+        paymentMethod: payment.payment_method,
+        paidAt: payment.paid_at,
+        cancelledAt: payment.cancelled_at,
+      })),
+    };
+    return sum + remainingCents(snapshot);
+  }, 0);
+}
+
+export async function sumReceivedForEntryType(
+  companyId: string,
+  entryType: "income" | "expense",
+  from: string,
+  to: string,
+  timeZone: string,
+): Promise<number> {
+  noStore();
+
+  if (!isValidUuid(companyId)) {
+    return 0;
+  }
+
+  const { start, end } = getPeriodBounds(from, to, timeZone);
+  const supabase = await createSupabaseServerClient();
+
+  const { data: paymentRows, error: paymentsError } = await supabase
+    .from("financial_payments")
+    .select("amount_cents, financial_entry_id")
+    .eq("company_id", companyId)
+    .is("cancelled_at", null)
+    .gte("paid_at", start)
+    .lt("paid_at", end);
+
+  if (paymentsError) {
+    return 0;
+  }
+
+  const paymentEntryIds = [...new Set((paymentRows ?? []).map((row) => row.financial_entry_id))];
+  const typeByEntry = new Map<string, "income" | "expense">();
+
+  if (paymentEntryIds.length > 0) {
+    const { data: typedEntries, error: typedError } = await supabase
+      .from("financial_entries")
+      .select("id, entry_type")
+      .eq("company_id", companyId)
+      .in("id", paymentEntryIds)
+      .is("deleted_at", null)
+      .neq("status", "cancelled");
+
+    if (!typedError) {
+      for (const row of typedEntries ?? []) {
+        typeByEntry.set(row.id, row.entry_type);
+      }
+    }
+  }
+
+  let total = (paymentRows ?? []).reduce((sum, row) => {
+    if (typeByEntry.get(row.financial_entry_id) !== entryType) {
+      return sum;
+    }
+    return sum + (row.amount_cents ?? 0);
+  }, 0);
+
+  const { data: paidEntries, error: paidError } = await supabase
+    .from("financial_entries")
+    .select("id, amount_cents")
+    .eq("company_id", companyId)
+    .eq("entry_type", entryType)
+    .eq("status", "paid")
+    .is("deleted_at", null)
+    .not("paid_at", "is", null)
+    .gte("paid_at", start)
+    .lt("paid_at", end);
+
+  if (paidError || !paidEntries || paidEntries.length === 0) {
+    return total;
+  }
+
+  const paidIds = paidEntries.map((row) => row.id);
+  const { data: existingPayments, error: existingError } = await supabase
+    .from("financial_payments")
+    .select("financial_entry_id")
+    .eq("company_id", companyId)
+    .is("cancelled_at", null)
+    .in("financial_entry_id", paidIds);
+
+  if (existingError) {
+    return total;
+  }
+
+  const withPayments = new Set((existingPayments ?? []).map((row) => row.financial_entry_id));
+  for (const row of paidEntries) {
+    if (!withPayments.has(row.id)) {
+      total += row.amount_cents;
+    }
+  }
+
+  return total;
 }
 
 export async function getDashboardFinanceMetrics(companyId: string, timeZone: string) {
@@ -466,19 +711,40 @@ export async function getDashboardFinanceMetrics(companyId: string, timeZone: st
 
   try {
     const today = getTodayInTimezone(timeZone);
+    const [year, month] = today.split("-");
+    const monthFrom = `${year}-${month}-01`;
+    const nextMonth = Number(month) === 12 ? 1 : Number(month) + 1;
+    const nextYear = Number(month) === 12 ? Number(year) + 1 : Number(year);
+    const monthTo = addDaysToDateString(
+      `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`,
+      -1,
+    );
 
-    const [dailySummary, monthlySummary, pendingReceivablesCents] = await Promise.all([
-      getDailyFinancialSummary(companyId, today, timeZone),
-      getMonthlyFinancialSummary(companyId, today, timeZone),
+    const [
+      incomePaidTodayCents,
+      incomePaidMonthCents,
+      expensePaidMonthCents,
+      pendingReceivablesCents,
+      monthlySummary,
+    ] = await Promise.all([
+      sumReceivedForEntryType(companyId, "income", today, today, timeZone),
+      sumReceivedForEntryType(companyId, "income", monthFrom, monthTo, timeZone),
+      sumReceivedForEntryType(companyId, "expense", monthFrom, monthTo, timeZone),
       getPendingReceivablesTotal(companyId),
+      getMonthlyFinancialSummary(companyId, today, timeZone),
     ]);
 
     return {
-      incomePaidTodayCents: dailySummary.incomePaidCents,
+      incomePaidTodayCents,
       pendingReceivablesCents,
-      expensePaidMonthCents: monthlySummary.expensePaidCents,
-      realizedResultMonthCents: monthlySummary.realizedResultCents,
-      monthlySummary,
+      expensePaidMonthCents,
+      realizedResultMonthCents: incomePaidMonthCents - expensePaidMonthCents,
+      monthlySummary: {
+        ...monthlySummary,
+        incomePaidCents: incomePaidMonthCents,
+        expensePaidCents: expensePaidMonthCents,
+        realizedResultCents: incomePaidMonthCents - expensePaidMonthCents,
+      },
     };
   } catch (error) {
     console.error("[finance:dashboard]", error);

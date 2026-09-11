@@ -304,6 +304,30 @@ export function getCivilDayUtcBounds(
 }
 
 /**
+ * Intervalo half-open [from 00:00, dayAfter(to) 00:00) no fuso da empresa.
+ * Inclui 23:59:59.999 do último dia; exclui 00:00 do dia seguinte.
+ */
+export function getCivilDateRangeUtcBounds(
+  from: string,
+  to: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): { start: string; endExclusive: string } {
+  const start = localDateTimeToUtcIso(from, "00:00", timeZone);
+  const endExclusive = localDateTimeToUtcIso(addDaysToDateString(to, 1), "00:00", timeZone);
+  return { start, endExclusive };
+}
+
+export function isInstantInCivilDateRange(
+  isoUtc: string,
+  from: string,
+  to: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): boolean {
+  const { start, endExclusive } = getCivilDateRangeUtcBounds(from, to, timeZone);
+  return isoUtc >= start && isoUtc < endExclusive;
+}
+
+/**
  * Retorna weekday 0=domingo … 6=sábado no fuso da empresa.
  */
 export function getWeekdayInTimezone(

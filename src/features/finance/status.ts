@@ -47,7 +47,7 @@ export const EXPENSE_CATEGORY_SUGGESTIONS = [
 
 const ALLOWED_TRANSITIONS: Record<FinancialEntryStatus, FinancialEntryStatus[]> = {
   pending: ["paid", "partially_paid", "cancelled"],
-  partially_paid: ["paid", "cancelled"],
+  partially_paid: ["paid", "pending"],
   paid: ["pending"],
   cancelled: [],
 };
@@ -61,6 +61,20 @@ export function canTransitionFinancialStatus(
 
 export function isManualEntryEditable(sourceType: FinancialSourceType): boolean {
   return sourceType === "manual";
+}
+
+export function canReopenFinancialEntry(
+  sourceType: FinancialSourceType,
+  status: FinancialEntryStatus,
+): boolean {
+  return sourceType === "manual" && (status === "paid" || status === "partially_paid");
+}
+
+export function canCancelFinancialEntry(
+  sourceType: FinancialSourceType,
+  status: FinancialEntryStatus,
+): boolean {
+  return sourceType === "manual" && status === "pending";
 }
 
 export function isServiceOrderEntryCancellable(): boolean {

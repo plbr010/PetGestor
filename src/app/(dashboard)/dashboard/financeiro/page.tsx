@@ -79,7 +79,7 @@ export default async function FinanceiroPage({ searchParams }: FinanceiroPagePro
       drillCategory: query.drillCategory,
       query: query.q,
     }),
-    status === "all" || status === "pending"
+    status === "all" || status === "pending" || status === "partially_paid"
       ? getPendingReceivables(context.membership.company.id, 5)
       : Promise.resolve([]),
   ]);

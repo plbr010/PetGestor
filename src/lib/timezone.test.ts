@@ -9,8 +9,10 @@ import {
   formatCivilDateNumeric,
   formatUtcDateInTimezone,
   formatUtcInTimezone,
+  getCivilDateRangeUtcBounds,
   getCivilDayUtcBounds,
   getTodayInTimezone,
+  isInstantInCivilDateRange,
   getWeekDates,
   getWeekdayInTimezone,
   isPastLocalDate,
@@ -132,6 +134,14 @@ describe("limites do dia civil da agenda", () => {
     expect(late >= bounds.start && late < bounds.end).toBe(true);
     expect(nextMidnight >= bounds.end).toBe(true);
   });
+  it("agenda diária usa o dia civil da empresa, não UTC", () => {
+    const bounds = getCivilDayUtcBounds("2026-10-10", "America/Sao_Paulo");
+    const late = localDateTimeToUtcIso("2026-10-10", "23:00", "America/Sao_Paulo");
+    const nextMidnight = localDateTimeToUtcIso("2026-10-11", "00:00", "America/Sao_Paulo");
+
+    expect(late >= bounds.start && late < bounds.end).toBe(true);
+    expect(nextMidnight >= bounds.end).toBe(true);
+  });
 
   it("agenda semanal agrupa no dia civil correto", () => {
     const iso = localDateTimeToUtcIso("2026-10-10", "09:00", "America/Sao_Paulo");
@@ -214,6 +224,48 @@ describe("isPastLocalDateTime", () => {
 
   it("não lança em horário com formato inválido", () => {
     expect(isPastLocalDateTime("2099-12-31", "25:99", "America/Sao_Paulo")).toBe(true);
+  });
+});
+
+describe("período financeiro half-open [from, nextDay)", () => {
+  it("23:59:00, 23:59:59 e 23:59:59.999 pertencem ao dia; 00:00 do dia seguinte não", () => {
+    const timeZone = "America/Sao_Paulo";
+    const { start, endExclusive } = getCivilDateRangeUtcBounds("2026-10-10", "2026-10-10", timeZone);
+    const at2359 = localDateTimeToUtcIso("2026-10-10", "23:59", timeZone);
+    const at235959 = new Date(new Date(at2359).getTime() + 59_000).toISOString();
+    const at235959999 = new Date(new Date(endExclusive).getTime() - 1).toISOString();
+    const nextMidnight = localDateTimeToUtcIso("2026-10-11", "00:00", timeZone);
+
+    expect(at2359 >= start && at2359 < endExclusive).toBe(true);
+    expect(at235959 >= start && at235959 < endExclusive).toBe(true);
+    expect(at235959999 >= start && at235959999 < endExclusive).toBe(true);
+    expect(nextMidnight >= endExclusive).toBe(true);
+    expect(isInstantInCivilDateRange(nextMidnight, "2026-10-10", "2026-10-10", timeZone)).toBe(false);
+    expect(isInstantInCivilDateRange(at235959999, "2026-10-10", "2026-10-10", timeZone)).toBe(true);
+  });
+
+  it("virada de mês e de ano usam o fuso da empresa", () => {
+    const sp = getCivilDateRangeUtcBounds("2026-01-31", "2026-01-31", "America/Sao_Paulo");
+    expect(sp.endExclusive).toBe(localDateTimeToUtcIso("2026-02-01", "00:00", "America/Sao_Paulo"));
+
+    const year = getCivilDateRangeUtcBounds("2026-12-31", "2026-12-31", "UTC");
+    expect(year.endExclusive).toBe("2027-01-01T00:00:00.000Z");
+    expect(isInstantInCivilDateRange("2027-01-01T00:00:00.000Z", "2026-12-31", "2026-12-31", "UTC")).toBe(
+      false,
+    );
+  });
+
+  it("UTC e timezone com DST (America/New_York)", () => {
+    const utc = getCivilDateRangeUtcBounds("2026-10-10", "2026-10-10", "UTC");
+    expect(utc.start).toBe("2026-10-10T00:00:00.000Z");
+    expect(utc.endExclusive).toBe("2026-10-11T00:00:00.000Z");
+
+    const dst = getCivilDateRangeUtcBounds("2026-03-08", "2026-03-08", "America/New_York");
+    const late = new Date(new Date(dst.endExclusive).getTime() - 1).toISOString();
+    expect(isInstantInCivilDateRange(late, "2026-03-08", "2026-03-08", "America/New_York")).toBe(true);
+    expect(
+      isInstantInCivilDateRange(dst.endExclusive, "2026-03-08", "2026-03-08", "America/New_York"),
+    ).toBe(false);
   });
 });
 
