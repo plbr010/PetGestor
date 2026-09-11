@@ -67,6 +67,8 @@ describe("BLOCO 1 — membership revogada no SQL", () => {
 
   it("seed_demo_account remoto é desligado (fail-closed)", () => {
     expect(sql).toContain("CREATE OR REPLACE FUNCTION public.seed_demo_account");
+    expect(sql).toContain("DROP FUNCTION IF EXISTS");
+    expect(sql).toContain("p_reseed boolean");
     expect(sql).toContain("REVOKE ALL ON FUNCTION public.seed_demo_account(boolean)");
   });
 

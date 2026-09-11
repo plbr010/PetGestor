@@ -3738,12 +3738,12 @@ BEGIN
       AND n.nspname IN ('public', 'private')
       AND p.prokind = 'f'
   LOOP
-    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated', r.sig);
+    EXECUTE format('DROP FUNCTION IF EXISTS %s', r.sig);
   END LOOP;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.seed_demo_account(p_force boolean DEFAULT false)
+CREATE OR REPLACE FUNCTION public.seed_demo_account(p_reseed boolean DEFAULT false)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
