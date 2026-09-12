@@ -15,6 +15,8 @@ describe("safe-log", () => {
       magic_link: "https://xxx",
       token_hash: "abc",
       code: "pkce",
+      cookie: "pg_pwd_recovery=secret-value",
+      ticket: "signed.ticket",
       email: "ana@example.com",
       status: 500,
     });
@@ -25,6 +27,8 @@ describe("safe-log", () => {
     expect(redacted.magic_link).toBe("[redacted]");
     expect(redacted.token_hash).toBe("[redacted]");
     expect(redacted.code).toBe("[redacted]");
+    expect(redacted.cookie).toBe("[redacted]");
+    expect(redacted.ticket).toBe("[redacted]");
     expect(redacted.email).toBe("a***@example.com");
     expect(redacted.status).toBe(500);
   });

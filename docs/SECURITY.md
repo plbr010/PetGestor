@@ -140,7 +140,9 @@ Operações mutáveis usam **Server Actions** ou Route Handlers POST/GET apropri
 
 ## Rate limiting
 
-Limites nativos do Supabase Auth **e** rate limit dedicado no Postgres (`private.auth_rate_limit_buckets` + `consume_auth_rate_limit`). Chave hasheada (ação + sujeito + IP). Sem senha e sem e-mail em claro. Atomicidade via advisory lock + UPSERT.
+Limites nativos do Supabase Auth **e** rate limit dedicado no Postgres (`private.auth_rate_limit_buckets` + `consume_auth_rate_limit(p_action, p_bucket_key)`). Chave hasheada (ação + sujeito + IP). Sem senha e sem e-mail em claro. Atomicidade via advisory lock + UPSERT. Limit/janela/relógio **não** vêm do cliente — `private.auth_rate_limit_policy` + `now()`. Em production, RPC ausente ou incompatível falha fechado (não chama Auth). Development/test pode falhar aberto de propósito.
+
+Recuperação de senha exige marcador HttpOnly assinado (`pg_pwd_recovery`), emitido só após `exchangeCodeForSession` + ticket `rt` gerado no servidor. Sessão normal não basta para `/nova-senha`.
 
 ## Variáveis de ambiente
 

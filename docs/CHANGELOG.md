@@ -1,3 +1,17 @@
+## [0.50.1] — 2026-09-12
+
+### Corrigido — hardening residual do BLOCO 8 (rate limit + recovery)
+
+- RPC `consume_auth_rate_limit(p_action, p_bucket_key)`: limit, janela e relógio deixam de vir do caller; política em `private.auth_rate_limit_policy`; `now()` do banco
+- Assinatura antiga `(text, integer, integer, timestamptz)` revogada e removida
+- Production fail-closed se a RPC estiver ausente/incompatível — Auth não é chamado
+- Recovery: ticket HMAC no e-mail + cookie HttpOnly `pg_pwd_recovery` (TTL 15 min); `/nova-senha` e `updateRecoveryPasswordAction` exigem o marcador; sessão normal não basta
+- `?next=/nova-senha` sozinho não emite contexto de recovery
+
+**MIGRATION:** `supabase/migrations/20260912090000_bloco8_rate_limit_policy_server_side.sql`
+
+Não edita `20260911400000`. Não inicia BLOCO 9.
+
 ## [0.50.0] — 2026-09-11
 
 ### Corrigido — Auth, onboarding, convites, uploads e rate limit (BLOCO 8)

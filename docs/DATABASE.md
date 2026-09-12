@@ -52,7 +52,8 @@ Criação via `complete_onboarding` — não via INSERT direto do cliente.
 | Função | Schema | Uso |
 |--------|--------|-----|
 | `complete_onboarding(full_name, company_name, phone)` | public | Onboarding atômico + lock + membership revogada |
-| `consume_auth_rate_limit(bucket_key, limit, window, now)` | public | Rate limit atômico (BLOCO 8) |
+| `consume_auth_rate_limit(p_action, p_bucket_key)` | public | Rate limit atômico; política interna (BLOCO 8 hardening) |
+| `auth_rate_limit_policy(p_action)` | private | Allowlist + limit/window; não executável por anon |
 | `is_company_member(company_id)` | private | Helper RLS |
 | `has_company_role(company_id, roles[])` | private | Helper RLS |
 | `set_updated_at()` | public | Trigger |

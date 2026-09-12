@@ -16,6 +16,14 @@ import {
   resolveAuthLandingPath,
 } from "@/features/employees/access/accept-invite";
 import { getSiteUrl } from "@/lib/auth/get-site-url";
+import {
+  RECOVERY_INVALID_MESSAGE,
+  buildRecoveryCallbackPath,
+  clearRecoveryMarkerCookie,
+  createRecoveryTicket,
+  peekRecoveryMarkerForUser,
+  resolveRecoverySecret,
+} from "@/lib/auth/recovery-marker";
 import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
 import { buildDashboardTrialStartedHref } from "@/lib/analytics/meta-pixel";
 import { AppUrlConfigError } from "@/lib/env/resolve-app-url";
@@ -280,8 +288,9 @@ export async function passwordRecoveryAction(
     const supabase = await createSupabaseServerClient();
     const siteUrl = await getSiteUrl();
 
+    const ticket = createRecoveryTicket(resolveRecoverySecret());
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${siteUrl}/auth/callback?next=/nova-senha`,
+      redirectTo: `${siteUrl}${buildRecoveryCallbackPath(ticket)}`,
     });
 
     if (error) {
@@ -391,6 +400,48 @@ export async function updatePasswordAction(
 
   revalidatePath("/", "layout");
   redirect(getSafeRedirectPath(formData.get("redirectTo")?.toString(), "/entrar?senha-atualizada=1"));
+}
+
+export async function updateRecoveryPasswordAction(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const parsed = newPasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+
+  if (!parsed.success) {
+    return { error: firstIssueMessage(parsed.error.issues) };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+
+  if (claimsError || !claimsData?.claims?.sub) {
+    return { error: RECOVERY_INVALID_MESSAGE };
+  }
+
+  const hasMarker = await peekRecoveryMarkerForUser(claimsData.claims.sub);
+  if (!hasMarker) {
+    return { error: RECOVERY_INVALID_MESSAGE };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+
+  if (error) {
+    logAuthEvent("UpdateRecoveryPassword", {
+      status: error.status ?? null,
+      code: "code" in error ? error.code : null,
+    });
+    return { error: RECOVERY_INVALID_MESSAGE };
+  }
+
+  await clearRecoveryMarkerCookie();
+  revalidatePath("/", "layout");
+  redirect("/entrar?senha-atualizada=1");
 }
 
 export async function completeOnboardingAction(

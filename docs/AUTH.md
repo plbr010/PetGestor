@@ -77,9 +77,20 @@ Layouts protegidos usam `getClaims()` (nunca `getSession()` para autorização).
 
 ## Recuperação de senha
 
-1. `/recuperar-senha` envia e-mail com redirect para `/auth/callback?next=/nova-senha`.
-2. Callback troca `code` por sessão quando necessário (PKCE).
-3. `/nova-senha` exige sessão válida e chama `updateUser`.
+`?next=/nova-senha` **não** prova recovery. O parâmetro é controlável e só passa pela allowlist de redirect.
+
+Prova server-side:
+
+1. `/recuperar-senha` gera um **ticket HMAC** (`typ=recovery_ticket`, TTL 1h) e envia `resetPasswordForEmail` com  
+   `redirectTo = {APP_URL}/auth/callback?flow=recovery&rt={ticket}`.
+2. `/auth/callback` exige `exchangeCodeForSession` **e** ticket `rt` válido **e** `flow=recovery`.  
+   Só então emite o **marcador** HttpOnly `pg_pwd_recovery` (`typ=recovery_marker`, `sub` da sessão, TTL 15 min, `Path=/nova-senha`, `Secure` em production, `SameSite=lax`).
+3. `/nova-senha` usa `requireRecoverySession`: sessão + marcador válido para aquele `sub`. Sessão normal (login) é recusada.
+4. `updateRecoveryPasswordAction` revalida o marcador, chama `updateUser` e **remove** o cookie. Reutilização falha.
+
+Marcador adulterado, expirado ou de outro usuário é recusado. Alterar senha logado em **Configurações** continua em `updatePasswordAction` (sessão da conta, sem marcador).
+
+Segredo: `AUTH_RECOVERY_SECRET` (ou derivação de `SUPABASE_SERVICE_ROLE_KEY` / URL do Supabase). Em production sem segredo o fluxo falha fechado.
 
 Mensagem genérica sempre: “Se houver uma conta associada a esse e-mail…”
 
@@ -110,15 +121,26 @@ Callback sem `code` → `/auth/erro?motivo=callback-invalido`. Troca de código 
 
 ## Rate limiting
 
-Além dos limites nativos do Supabase Auth, ações sensíveis passam por `public.consume_auth_rate_limit`:
+Além dos limites nativos do Supabase Auth, ações sensíveis passam por `public.consume_auth_rate_limit(p_action, p_bucket_key)`:
 
 - tabela `private.auth_rate_limit_buckets` (chave = SHA-256 de ação + e-mail + tenant + IP);
 - UPSERT + `pg_advisory_xact_lock` (atômico sob concorrência);
-- login 8/15min, cadastro 5/15min, recovery 5/15min, reenvio 3/15min, convite/lookup 10/15min.
+- **política só no banco** (`private.auth_rate_limit_policy`): login 8/15min, cadastro 5/15min, recovery 5/15min, reenvio 3/15min, convite/lookup 10/15min;
+- o caller **não** envia `limit`, `window` nem relógio; o relógio é `now()` do Postgres;
+- action fora da allowlist falha (`invalid_rate_limit_action`);
+- a assinatura antiga `(bucket_key, limit, window, now)` foi **revogada e removida**;
+- `EXECUTE` da API nova `(text, text)`: `anon` e `authenticated`. A política privada não é executável por esses papéis.
 
 Ao exceder: “Muitas tentativas. Aguarde alguns minutos e tente novamente.”
 
-**MIGRATION:** `supabase/migrations/20260911400000_bloco8_auth_onboarding_rate_limit.sql`
+Se a RPC estiver ausente/incompatível:
+
+- **production:** fail-closed — não chama o provider de Auth; mensagem genérica “Não foi possível processar sua solicitação agora. Tente novamente em instantes.”
+- **development/test:** fail-open documentado (permite seguir) para não bloquear o fluxo local antes da migration.
+
+**MIGRATIONS:**  
+`20260911400000_bloco8_auth_onboarding_rate_limit.sql` (tabela + API inicial)  
+`20260912090000_bloco8_rate_limit_policy_server_side.sql` (política interna; revoga a API vulnerável)
 
 ## Convite de funcionário (e-mail)
 

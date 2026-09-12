@@ -3,12 +3,17 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 
+import { isProductionRuntime } from "@/lib/env/resolve-app-url";
 import { applyRateLimitHit } from "@/lib/security/rate-limit-window";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const AUTH_RATE_LIMIT_MESSAGE =
   "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
 
+export const RATE_LIMIT_UNAVAILABLE_MESSAGE =
+  "Não foi possível processar sua solicitação agora. Tente novamente em instantes.";
+
+/** Espelho da política persistida em private.auth_rate_limit_policy. O RPC ignora estes valores. */
 export const AUTH_RATE_LIMITS = {
   login: { limit: 8, windowSeconds: 15 * 60 },
   signup: { limit: 5, windowSeconds: 15 * 60 },
@@ -70,32 +75,34 @@ export function buildAuthRateLimitKey(input: {
 }
 
 type ConsumeRateLimitFn = (input: {
+  action: AuthRateLimitAction;
   bucketKey: string;
-  limit: number;
-  windowSeconds: number;
-  now?: Date;
 }) => Promise<{ allowed: boolean; retryAfterSeconds: number } | null>;
 
 let consumeImpl: ConsumeRateLimitFn = consumeAuthRateLimitRpc;
 
-/** Permite injetar relógio/store nos testes sem sleep real. */
+/** Permite injetar store nos testes sem sleep real. */
 export function setAuthRateLimitConsumerForTests(impl: ConsumeRateLimitFn | null): void {
   consumeImpl = impl ?? consumeAuthRateLimitRpc;
 }
 
-async function consumeAuthRateLimitRpc(input: {
-  bucketKey: string;
-  limit: number;
-  windowSeconds: number;
-  now?: Date;
-}): Promise<{ allowed: boolean; retryAfterSeconds: number } | null> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.rpc("consume_auth_rate_limit", {
-    p_bucket_key: input.bucketKey,
-    p_limit: input.limit,
-    p_window_seconds: input.windowSeconds,
-    p_now: (input.now ?? new Date()).toISOString(),
-  });
+type RateLimitRpcResult = {
+  data: unknown;
+  error: { code?: string; message?: string; status?: number } | null;
+};
+
+type RateLimitRpcClient = {
+  rpc: (
+    fn: "consume_auth_rate_limit",
+    args: { p_action: string; p_bucket_key: string },
+  ) => PromiseLike<RateLimitRpcResult>;
+};
+
+function parseRateLimitRpcResult(input: {
+  data: unknown;
+  error: { code?: string; message?: string; status?: number } | null;
+}): { allowed: boolean; retryAfterSeconds: number } | null {
+  const { data, error } = input;
 
   if (error) {
     if (
@@ -103,15 +110,15 @@ async function consumeAuthRateLimitRpc(input: {
       error.code === "42883" ||
       error.message?.includes("consume_auth_rate_limit")
     ) {
-      if (process.env.NODE_ENV === "development") {
-        console.info("[rate-limit] rpc unavailable, skipping");
+      if (!isProductionRuntime() && process.env.NODE_ENV === "development") {
+        console.info("[rate-limit] rpc unavailable, skipping (development only)");
       }
       return null;
     }
 
     console.error("[rate-limit] consume failed", {
       code: error.code ?? null,
-      status: "status" in error ? error.status : null,
+      status: error.status ?? null,
     });
     return { allowed: false, retryAfterSeconds: 60 };
   }
@@ -132,6 +139,25 @@ async function consumeAuthRateLimitRpc(input: {
   };
 }
 
+/** Cliente RPC de teste/produção: envia só action + bucket. Política e relógio ficam no banco. */
+export function createSupabaseRateLimitConsumer(client: RateLimitRpcClient): ConsumeRateLimitFn {
+  return async ({ action, bucketKey }) => {
+    const { data, error } = await client.rpc("consume_auth_rate_limit", {
+      p_action: action,
+      p_bucket_key: bucketKey,
+    });
+    return parseRateLimitRpcResult({ data, error });
+  };
+}
+
+async function consumeAuthRateLimitRpc(input: {
+  action: AuthRateLimitAction;
+  bucketKey: string;
+}): Promise<{ allowed: boolean; retryAfterSeconds: number } | null> {
+  const supabase = await createSupabaseServerClient();
+  return createSupabaseRateLimitConsumer(supabase)(input);
+}
+
 export async function enforceAuthRateLimit(input: {
   action: AuthRateLimitAction;
   email?: string | null;
@@ -140,7 +166,6 @@ export async function enforceAuthRateLimit(input: {
 }): Promise<AuthRateLimitDecision> {
   const headerStore = await headers();
   const ip = readClientIp(headerStore);
-  const config = AUTH_RATE_LIMITS[input.action];
   const bucketKey = buildAuthRateLimitKey({
     action: input.action,
     email: input.email,
@@ -150,12 +175,22 @@ export async function enforceAuthRateLimit(input: {
   });
 
   const consumed = await consumeImpl({
+    action: input.action,
     bucketKey,
-    limit: config.limit,
-    windowSeconds: config.windowSeconds,
   });
 
   if (consumed === null) {
+    // Production: fail-closed — não chama o provider de Auth.
+    // Development/test: fail-open documentado para não travar o fluxo local
+    // quando a migration ainda não foi aplicada.
+    if (isProductionRuntime()) {
+      return {
+        ok: false,
+        error: RATE_LIMIT_UNAVAILABLE_MESSAGE,
+        retryAfterSeconds: 60,
+      };
+    }
+
     return { ok: true };
   }
 
@@ -170,14 +205,21 @@ export async function enforceAuthRateLimit(input: {
   return { ok: true };
 }
 
-/** Store em memória só para testes — não usar em produção/serverless. */
-export function createInMemoryRateLimitConsumer(clock: { nowMs: () => number }): ConsumeRateLimitFn {
+/** Store em memória só para testes — política vem de AUTH_RATE_LIMITS, não do caller. */
+export function createInMemoryRateLimitConsumer(clock?: {
+  nowMs: () => number;
+}): ConsumeRateLimitFn {
   const buckets = new Map<string, { windowStartedAtMs: number; hitCount: number }>();
+  const nowMs = () => clock?.nowMs() ?? Date.now();
 
-  return async ({ bucketKey, limit, windowSeconds }) => {
-    const nowMs = clock.nowMs();
+  return async ({ action, bucketKey }) => {
+    const policy = AUTH_RATE_LIMITS[action];
+    if (!policy) {
+      throw new Error("política de rate limit desconhecida");
+    }
+
     const current = buckets.get(bucketKey) ?? null;
-    const result = applyRateLimitHit(current, nowMs, limit, windowSeconds * 1000);
+    const result = applyRateLimitHit(current, nowMs(), policy.limit, policy.windowSeconds * 1000);
     buckets.set(bucketKey, result.next);
     return {
       allowed: result.allowed,

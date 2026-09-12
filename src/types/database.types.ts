@@ -2584,10 +2584,8 @@ export type Database = {
       };
       consume_auth_rate_limit: {
         Args: {
+          p_action: string;
           p_bucket_key: string;
-          p_limit: number;
-          p_window_seconds: number;
-          p_now?: string;
         };
         Returns: Json;
       };
