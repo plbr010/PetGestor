@@ -6,6 +6,7 @@ import {
   buildServiceOrderAttachmentPaths,
   extensionForMimeType,
   isPathInCompany,
+  pathsToRemoveAfterPhotoPersist,
   sanitizeFileName,
 } from "@/features/attachments/paths";
 import {
@@ -45,11 +46,32 @@ function attachment(partial: Partial<AttachmentView>): AttachmentView {
 }
 
 describe("attachments", () => {
-  it("A) foto principal — path tenant-aware", () => {
-    const paths = buildPetPhotoPaths(COMPANY_A, PET_ID, "webp");
-    expect(paths.filePath).toBe(`${COMPANY_A}/pets/${PET_ID}/photo/main.webp`);
+  it("A) foto principal — path tenant-aware e imprevisível", () => {
+    const paths = buildPetPhotoPaths(COMPANY_A, PET_ID, "webp", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    expect(paths.filePath).toBe(
+      `${COMPANY_A}/pets/${PET_ID}/photo/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.webp`,
+    );
+    expect(paths.filePath).not.toContain("main.webp");
     expect(isPathInCompany(COMPANY_A, paths.filePath)).toBe(true);
     expect(isPathInCompany(COMPANY_B, paths.filePath)).toBe(false);
+  });
+
+  it("A2) mesmo filename do usuário gera paths distintos", () => {
+    const first = buildPetPhotoPaths(COMPANY_A, PET_ID, "jpg", "11111111-1111-4111-8111-111111111111");
+    const second = buildPetPhotoPaths(COMPANY_A, PET_ID, "jpg", "22222222-2222-4222-8222-222222222222");
+    expect(first.filePath).not.toBe(second.filePath);
+  });
+
+  it("A3) path traversal no nome é sanitizado", () => {
+    expect(sanitizeFileName("../../etc/passwd")).toBe("passwd");
+    expect(isPathInCompany(COMPANY_A, `${COMPANY_A}/../${COMPANY_B}/pets/x`)).toBe(false);
+  });
+
+  it("A4) falha de persistência não remove a foto antiga", () => {
+    const oldPath = `${COMPANY_A}/pets/${PET_ID}/photo/old.webp`;
+    const next = `${COMPANY_A}/pets/${PET_ID}/photo/new.webp`;
+    expect(pathsToRemoveAfterPhotoPersist([oldPath], [next])).toEqual([oldPath]);
+    expect(pathsToRemoveAfterPhotoPersist([oldPath], [oldPath])).toEqual([]);
   });
 
   it("B/C) troca e remoção — schema de upload", () => {
@@ -128,7 +150,7 @@ describe("attachments", () => {
   });
 
   it("O) arquivo arquivado — metadados preservados no nome", () => {
-    expect(sanitizeFileName("  carteira/vacinação.pdf  ")).toBe("carteira-vacinação.pdf");
+    expect(sanitizeFileName("  carteira/vacinação.pdf  ")).toBe("vacinação.pdf");
   });
 
   it("P) mobile básico — schema aceita descrição curta", () => {

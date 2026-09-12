@@ -22,7 +22,7 @@ export default function AccessRevokedPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ButtonLink href="/login" variant="outline">
+            <ButtonLink href="/entrar" variant="outline">
               Sair e entrar com outra conta
             </ButtonLink>
           </CardContent>

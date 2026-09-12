@@ -6,6 +6,7 @@ import {
   completeOnboardingAction,
   type AuthActionState,
 } from "@/features/auth/actions";
+import { AUTH_FIELD_LIMITS } from "@/features/auth/schemas";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +49,7 @@ export function OnboardingForm({
       </CardHeader>
       <CardContent>
         <form className="space-y-4" action={formAction} noValidate>
-          {state.error ? <ErrorMessage message={state.error} /> : null}
+          {!isPending && state.error ? <ErrorMessage message={state.error} /> : null}
 
           <div className="space-y-2">
             <Label htmlFor="fullName">Seu nome</Label>
@@ -58,6 +59,7 @@ export function OnboardingForm({
               defaultValue={defaultFullName}
               placeholder="Ex.: Ana Silva"
               autoComplete="name"
+              maxLength={AUTH_FIELD_LIMITS.personName}
               required
             />
           </div>
@@ -70,6 +72,7 @@ export function OnboardingForm({
               defaultValue={defaultCompanyName}
               placeholder="Ex.: Pet Shop Amigo Fiel"
               autoComplete="organization"
+              maxLength={AUTH_FIELD_LIMITS.companyName}
               required
             />
           </div>

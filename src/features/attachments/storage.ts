@@ -8,7 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export async function uploadToCompanyStorage(path: string, body: Blob, contentType: string) {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.storage.from(ATTACHMENTS_BUCKET).upload(path, body, {
-    upsert: true,
+    upsert: false,
     contentType,
   });
 

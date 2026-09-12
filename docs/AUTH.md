@@ -35,11 +35,16 @@ O link do e-mail aponta para:
 
 A rota `/auth/confirm`:
 
-1. Valida `token_hash` e `type`.
+1. Valida `token_hash` e `type` (`email`, `signup`, `invite`).
 2. Chama `verifyOtp`.
-3. Lê metadata do usuário (conveniência).
-4. Executa `complete_onboarding`.
-5. Redireciona para caminho seguro (`next`).
+3. Convite pendente / `signup_mode=staff` → `/convite`.
+4. Owner com metadata válida → `complete_onboarding`.
+5. `next` passa por `getSafeRedirectPath` (allowlist interna). Sem dados de onboarding → `/onboarding`.
+
+Regra de confirmação (baseada na resposta real do Auth, sem presumir o toggle do dashboard):
+
+- `signUp` devolve **sessão** → confirmação desabilitada ou auto-confirmada; segue onboarding/dashboard.
+- `signUp` **sem sessão** → confirmação habilitada; `/verifique-email` até o link. Reenvio é genérico (anti-enumeração).
 
 ## Login
 
@@ -52,12 +57,15 @@ A rota `/auth/confirm`:
 
 Usuários autenticados sem empresa são enviados para `/onboarding`.
 
-A Server Action chama a função PostgreSQL `complete_onboarding(full_name, company_name)` que:
+A Server Action chama a função PostgreSQL `complete_onboarding(full_name, company_name, phone)` que:
 
 - exige `auth.uid()`;
+- serializa o usuário com `pg_advisory_xact_lock`;
 - cria/atualiza `profiles`;
-- cria `companies` + `company_members` (role `owner`) atomicamente;
-- não duplica empresa se já existir membership.
+- se já existe **membership ativa**, devolve a mesma `company_id` (idempotente);
+- se só existe membership **revogada**, falha com `membership_revoked` — não ressuscita acesso e não cria outra empresa;
+- cria `companies` + `company_members` (role `owner`) só na primeira conclusão;
+- o trial vem do trigger canônico em `companies` (duração/plano não mudam neste bloco).
 
 ## Sessão SSR e Proxy
 
@@ -74,6 +82,8 @@ Layouts protegidos usam `getClaims()` (nunca `getSession()` para autorização).
 3. `/nova-senha` exige sessão válida e chama `updateUser`.
 
 Mensagem genérica sempre: “Se houver uma conta associada a esse e-mail…”
+
+Erro real do provider / URL de produção ausente: “Serviço temporariamente indisponível…” — sem revelar se a conta existe.
 
 ## Logout
 
@@ -94,11 +104,21 @@ Server Action `signOutAction`:
 
 ## Open redirect
 
-Helper `getSafeRedirectPath` aceita apenas caminhos internos iniciados por `/`.
+Helper `getSafeRedirectPath` aceita apenas caminhos internos da allowlist (`/dashboard`, `/onboarding`, `/convite`, `/nova-senha`, `/entrar`, etc.). Rejeita `https://`, `//`, `javascript:` e paths fora da lista.
+
+Callback sem `code` → `/auth/erro?motivo=callback-invalido`. Troca de código falhou → `callback-falhou`.
 
 ## Rate limiting
 
-Limites nativos do Supabase Auth em desenvolvimento. Rate limiting adicional será adicionado antes de produção.
+Além dos limites nativos do Supabase Auth, ações sensíveis passam por `public.consume_auth_rate_limit`:
+
+- tabela `private.auth_rate_limit_buckets` (chave = SHA-256 de ação + e-mail + tenant + IP);
+- UPSERT + `pg_advisory_xact_lock` (atômico sob concorrência);
+- login 8/15min, cadastro 5/15min, recovery 5/15min, reenvio 3/15min, convite/lookup 10/15min.
+
+Ao exceder: “Muitas tentativas. Aguarde alguns minutos e tente novamente.”
+
+**MIGRATION:** `supabase/migrations/20260911400000_bloco8_auth_onboarding_rate_limit.sql`
 
 ## Convite de funcionário (e-mail)
 
@@ -110,6 +130,8 @@ Ao conceder acesso em **Funcionários → Acesso ao sistema**, se ainda **não**
 4. O funcionário abre o link → confirma / define senha → cai em `/convite` e aceita o vínculo.
 
 **Importante:** usuários Auth criados pelo convite (ainda sem `email_confirmed_at`) **não** são auto-vinculados. Só contas já confirmadas entram no caminho `linked`.
+
+O pré-cadastro em `/cadastro` → “Sou funcionário” **não** revela se o e-mail tem convite. O vínculo aparece só depois da autenticação em `/convite` (`peek_pending_invite`).
 
 Se a conta Auth já estiver confirmada, o RPC vincula na hora. Alternativa: `/cadastro` → “Sou funcionário”.
 

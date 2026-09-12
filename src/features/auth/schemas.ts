@@ -2,30 +2,38 @@ import { z } from "zod";
 
 import { isValidBrazilianPhone, toE164Brazil } from "@/lib/phone";
 
+export const AUTH_FIELD_LIMITS = {
+  email: 254,
+  password: 128,
+  passwordMin: 8,
+  personName: 120,
+  companyName: 120,
+} as const;
+
 const emailField = z
   .string({ error: "Informe seu e-mail." })
   .trim()
   .toLowerCase()
   .min(1, "Informe seu e-mail.")
-  .max(254, "E-mail muito longo.")
+  .max(AUTH_FIELD_LIMITS.email, "E-mail muito longo.")
   .pipe(z.email("Informe um e-mail válido."));
 
 const passwordField = z
   .string({ error: "Informe sua senha." })
-  .min(8, "A senha deve ter pelo menos 8 caracteres.")
-  .max(128, "Senha muito longa.");
+  .min(AUTH_FIELD_LIMITS.passwordMin, "A senha deve ter pelo menos 8 caracteres.")
+  .max(AUTH_FIELD_LIMITS.password, "Senha muito longa.");
 
 const personNameField = z
   .string({ error: "Informe seu nome." })
   .trim()
   .min(2, "O nome deve ter pelo menos 2 caracteres.")
-  .max(120, "Nome muito longo.");
+  .max(AUTH_FIELD_LIMITS.personName, "Nome muito longo.");
 
 const companyNameField = z
   .string({ error: "Informe o nome do pet shop." })
   .trim()
   .min(2, "O nome do pet shop deve ter pelo menos 2 caracteres.")
-  .max(120, "Nome do pet shop muito longo.");
+  .max(AUTH_FIELD_LIMITS.companyName, "Nome do pet shop muito longo.");
 
 const phoneField = z
   .string({ error: "Informe o telefone / WhatsApp." })
@@ -68,7 +76,7 @@ export const loginSchema = z.object({
   password: z
     .string({ error: "Informe sua senha." })
     .min(1, "Informe sua senha.")
-    .max(128, "Senha muito longa."),
+    .max(AUTH_FIELD_LIMITS.password, "Senha muito longa."),
 });
 
 export const passwordRecoverySchema = z.object({

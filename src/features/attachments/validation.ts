@@ -36,6 +36,14 @@ export function mapAttachmentValidationError(code: string): string {
     return "Arquivo muito grande. Imagens até 8 MB e PDFs até 10 MB.";
   }
 
+  if (code === "invalid_file_content") {
+    return "O arquivo não é uma imagem ou PDF válido. Envie JPG, PNG, WebP ou PDF.";
+  }
+
+  if (code === "invalid_thumbnail") {
+    return "Não foi possível gerar a miniatura. Envie uma imagem válida.";
+  }
+
   if (code === "pet_not_found" || code === "service_order_not_found") {
     return "Não foi possível encontrar o registro solicitado.";
   }

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import { signInAction, type AuthActionState } from "@/features/auth/actions";
+import { AUTH_FIELD_LIMITS } from "@/features/auth/schemas";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ export function LoginForm() {
       </CardHeader>
       <CardContent>
         <form className="space-y-4" action={formAction} noValidate>
-          {state.error ? <ErrorMessage message={state.error} /> : null}
+          {!isPending && state.error ? <ErrorMessage message={state.error} /> : null}
 
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
@@ -42,6 +43,7 @@ export function LoginForm() {
               type="email"
               placeholder="seu@email.com"
               autoComplete="email"
+              maxLength={AUTH_FIELD_LIMITS.email}
               required
             />
           </div>
@@ -62,6 +64,7 @@ export function LoginForm() {
               type="password"
               placeholder="••••••••"
               autoComplete="current-password"
+              maxLength={AUTH_FIELD_LIMITS.password}
               required
             />
           </div>

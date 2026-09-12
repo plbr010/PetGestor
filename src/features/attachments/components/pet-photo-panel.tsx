@@ -8,6 +8,7 @@ import {
   removePetPhotoAction,
   type AttachmentActionState,
 } from "@/features/attachments/actions";
+import { IMAGE_MIME_TYPES, MAX_IMAGE_BYTES } from "@/features/attachments/constants";
 import { prepareImageUpload } from "@/features/attachments/image-client";
 import type { PetPhotoView } from "@/features/attachments/types";
 import { FormFeedback } from "@/components/shared/form-feedback";
@@ -50,8 +51,13 @@ export function PetPhotoPanel({
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
+    if (!IMAGE_MIME_TYPES.includes(file.type as (typeof IMAGE_MIME_TYPES)[number])) {
       setLocalError("Use uma imagem JPG, PNG ou WebP.");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      setLocalError("Arquivo muito grande. Imagens até 8 MB.");
       return;
     }
 

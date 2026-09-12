@@ -1,5 +1,7 @@
 "use client";
 
+import { MAX_IMAGE_BYTES } from "@/features/attachments/constants";
+
 const DEFAULT_MAX_WIDTH = 1024;
 const THUMB_MAX_WIDTH = 256;
 const WEBP_QUALITY = 0.78;
@@ -73,6 +75,10 @@ export async function prepareImageUpload(
   file: File,
   maxWidth = DEFAULT_MAX_WIDTH,
 ): Promise<PreparedImageUpload> {
+  if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) {
+    throw new Error("invalid_file_size");
+  }
+
   const image = await loadImageFromFile(file);
   const [optimized, thumb] = await Promise.all([
     resizeToBlob(image, maxWidth, WEBP_QUALITY),

@@ -18,11 +18,22 @@ import {
 import { getSiteUrl } from "@/lib/auth/get-site-url";
 import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
 import { buildDashboardTrialStartedHref } from "@/lib/analytics/meta-pixel";
+import { AppUrlConfigError } from "@/lib/env/resolve-app-url";
+import { enforceAuthRateLimit } from "@/lib/security/rate-limit";
+import { logAuthEvent } from "@/lib/security/safe-log";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { firstIssueMessage } from "@/lib/validation/first-issue-message";
+import {
+  GENERIC_SIGNUP_MESSAGE,
+  PROVIDER_UNAVAILABLE_MESSAGE,
+  RECOVERY_GENERIC_MESSAGE,
+  RESEND_GENERIC_MESSAGE,
+} from "@/features/auth/messages";
 
 export type AuthActionState = {
   error?: string;
   success?: string;
+  retryAfterSeconds?: number;
 };
 
 const ONBOARDING_ERROR_MESSAGE =
@@ -30,23 +41,17 @@ const ONBOARDING_ERROR_MESSAGE =
 
 const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Entre novamente para continuar.";
 
+const MEMBERSHIP_REVOKED_MESSAGE =
+  "Seu acesso à empresa foi removido. Entre em contato com o administrador.";
+
 function genericAuthError(): AuthActionState {
   return { error: "E-mail ou senha incorretos." };
 }
 
-function mapSignUpError(message: string): AuthActionState {
-  const normalized = message.toLowerCase();
-
-  if (normalized.includes("already registered") || normalized.includes("already exists")) {
-    return {
-      error:
-        "Este e-mail já tem conta no PetGestor. Entre em /entrar (ou use Recuperar senha) e depois abra /convite para aceitar o acesso.",
-    };
-  }
-
-  return {
-    error: "Não foi possível concluir o cadastro. Tente novamente em instantes.",
-  };
+function rateLimitState(
+  result: Extract<Awaited<ReturnType<typeof enforceAuthRateLimit>>, { ok: false }>,
+): AuthActionState {
+  return { error: result.error, retryAfterSeconds: result.retryAfterSeconds };
 }
 
 function logOnboardingStep(
@@ -57,7 +62,10 @@ function logOnboardingStep(
     return;
   }
 
-  console.info(`[onboarding:${step}]`, details);
+  console.info(`[onboarding:${step}]`, {
+    ok: details.ok,
+    code: details.code ?? null,
+  });
 }
 
 export async function signUpAction(
@@ -80,7 +88,15 @@ export async function signUpAction(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues) };
+  }
+
+  const limited = await enforceAuthRateLimit({
+    action: "signup",
+    email: parsed.data.email,
+  });
+  if (!limited.ok) {
+    return rateLimitState(limited);
   }
 
   const supabase = await createSupabaseServerClient();
@@ -101,13 +117,12 @@ export async function signUpAction(
   });
 
   if (error) {
-    console.error("[Auth][SignUp] failed", {
-      message: error.message,
+    logAuthEvent("SignUp", {
       status: error.status ?? null,
       code: "code" in error ? error.code : null,
       name: error.name ?? null,
     });
-    return mapSignUpError(error.message);
+    return { error: GENERIC_SIGNUP_MESSAGE };
   }
 
   if (data.session) {
@@ -147,7 +162,15 @@ async function signUpStaffAction(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues) };
+  }
+
+  const limited = await enforceAuthRateLimit({
+    action: "signup",
+    email: parsed.data.email,
+  });
+  if (!limited.ok) {
+    return rateLimitState(limited);
   }
 
   const supabase = await createSupabaseServerClient();
@@ -166,7 +189,11 @@ async function signUpStaffAction(
   });
 
   if (error) {
-    return mapSignUpError(error.message);
+    logAuthEvent("SignUpStaff", {
+      status: error.status ?? null,
+      code: "code" in error ? error.code : null,
+    });
+    return { error: GENERIC_SIGNUP_MESSAGE };
   }
 
   if (data.session) {
@@ -196,7 +223,15 @@ export async function signInAction(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues) };
+  }
+
+  const limited = await enforceAuthRateLimit({
+    action: "login",
+    email: parsed.data.email,
+  });
+  if (!limited.ok) {
+    return rateLimitState(limited);
   }
 
   const supabase = await createSupabaseServerClient();
@@ -230,20 +265,92 @@ export async function passwordRecoveryAction(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Informe um e-mail válido." };
+    return { error: firstIssueMessage(parsed.error.issues, "Informe um e-mail válido.") };
   }
 
-  const supabase = await createSupabaseServerClient();
-  const siteUrl = await getSiteUrl();
+  const limited = await enforceAuthRateLimit({
+    action: "recovery",
+    email: parsed.data.email,
+  });
+  if (!limited.ok) {
+    return rateLimitState(limited);
+  }
 
-  await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${siteUrl}/auth/callback?next=/nova-senha`,
+  try {
+    const supabase = await createSupabaseServerClient();
+    const siteUrl = await getSiteUrl();
+
+    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+      redirectTo: `${siteUrl}/auth/callback?next=/nova-senha`,
+    });
+
+    if (error) {
+      logAuthEvent("Recovery", {
+        status: error.status ?? null,
+        code: "code" in error ? error.code : null,
+      });
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
+  } catch (error) {
+    if (error instanceof AppUrlConfigError) {
+      logAuthEvent("Recovery", { code: "app_url_unconfigured" });
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
+
+    throw error;
+  }
+
+  return { success: RECOVERY_GENERIC_MESSAGE };
+}
+
+export async function resendConfirmationAction(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const parsed = passwordRecoverySchema.safeParse({
+    email: formData.get("email"),
   });
 
-  return {
-    success:
-      "Se houver uma conta associada a esse e-mail, enviaremos as instruções.",
-  };
+  if (!parsed.success) {
+    return { error: firstIssueMessage(parsed.error.issues, "Informe um e-mail válido.") };
+  }
+
+  const limited = await enforceAuthRateLimit({
+    action: "resend_confirmation",
+    email: parsed.data.email,
+  });
+  if (!limited.ok) {
+    return rateLimitState(limited);
+  }
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const siteUrl = await getSiteUrl();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: parsed.data.email,
+      options: {
+        emailRedirectTo: `${siteUrl}/auth/confirm?next=/dashboard`,
+      },
+    });
+
+    if (error) {
+      logAuthEvent("ResendConfirmation", {
+        status: error.status ?? null,
+        code: "code" in error ? error.code : null,
+      });
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
+  } catch (error) {
+    if (error instanceof AppUrlConfigError) {
+      logAuthEvent("ResendConfirmation", { code: "app_url_unconfigured" });
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
+
+    throw error;
+  }
+
+  return { success: RESEND_GENERIC_MESSAGE };
 }
 
 export async function updatePasswordAction(
@@ -256,15 +363,27 @@ export async function updatePasswordAction(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues) };
   }
 
   const supabase = await createSupabaseServerClient();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+
+  if (claimsError || !claimsData?.claims?.sub) {
+    return {
+      error: "Sua sessão expirou. Solicite um novo link de recuperação ou entre novamente.",
+    };
+  }
+
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
   });
 
   if (error) {
+    logAuthEvent("UpdatePassword", {
+      status: error.status ?? null,
+      code: "code" in error ? error.code : null,
+    });
     return {
       error: "Não foi possível atualizar a senha. Tente solicitar um novo link.",
     };
@@ -285,7 +404,7 @@ export async function completeOnboardingAction(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues) };
   }
 
   const onboardingResult = await runCompleteOnboarding(
@@ -341,6 +460,9 @@ export async function runCompleteOnboarding(
   });
 
   if (error) {
+    if (error.message?.includes("membership_revoked")) {
+      return { ok: false, error: MEMBERSHIP_REVOKED_MESSAGE };
+    }
     return { ok: false, error: ONBOARDING_ERROR_MESSAGE };
   }
 
@@ -352,7 +474,8 @@ export async function runCompleteOnboarding(
     .from("company_members")
     .select("company_id")
     .eq("user_id", claimsData.claims.sub)
-    .limit(1)
+    .eq("company_id", companyId)
+    .is("access_revoked_at", null)
     .maybeSingle();
 
   logOnboardingStep("membership_verify", {

@@ -22,6 +22,16 @@ describe("getSafeRedirectPath", () => {
   it("bloqueia caminho com barra invertida", () => {
     expect(getSafeRedirectPath("/path\\evil")).toBe("/dashboard");
   });
+
+  it("bloqueia javascript e encoded protocol-relative", () => {
+    expect(getSafeRedirectPath("javascript:alert(1)")).toBe("/dashboard");
+    expect(getSafeRedirectPath("/javascript:alert(1)")).toBe("/dashboard");
+    expect(getSafeRedirectPath("/%2F%2Fevil.com")).toBe("/dashboard");
+  });
+
+  it("bloqueia caminho fora da allowlist", () => {
+    expect(getSafeRedirectPath("/admin-secreto")).toBe("/dashboard");
+  });
 });
 
 describe("isSafeRedirectPath", () => {

@@ -2,16 +2,22 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 
-import { buildPetPhotoPaths, extensionForMimeType } from "@/features/attachments/paths";
+import {
+  inspectOptionalImageThumb,
+  inspectUploadFile,
+} from "@/features/attachments/file-signature";
+import {
+  buildPetPhotoPaths,
+  extensionForMimeType,
+  pathsToRemoveAfterPhotoPersist,
+} from "@/features/attachments/paths";
 import { petPhotoUploadSchema } from "@/features/attachments/schemas";
 import { removeFromCompanyStorage, uploadToCompanyStorage } from "@/features/attachments/storage";
-import {
-  mapAttachmentValidationError,
-  validateAttachmentMeta,
-} from "@/features/attachments/validation";
+import { mapAttachmentValidationError } from "@/features/attachments/validation";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { firstIssueMessage } from "@/lib/validation/first-issue-message";
 
 export type PetPhotoUploadResult = {
   error?: string;
@@ -48,7 +54,7 @@ export async function uploadPetPhoto(
   const parsed = petPhotoUploadSchema.safeParse({ petId });
 
   if (!parsed.success) {
-    return { error: "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues, "Dados inválidos.") };
   }
 
   const file = readUploadFile(formData, "file");
@@ -58,13 +64,18 @@ export async function uploadPetPhoto(
     return { error: "Selecione uma foto para enviar." };
   }
 
-  const validation = validateAttachmentMeta(file.type, file.size);
+  const validation = await inspectUploadFile(file);
   if (!validation.ok || validation.mimeType === "application/pdf") {
     return {
       error: mapAttachmentValidationError(
         validation.ok ? "invalid_mime_type" : validation.error,
       ),
     };
+  }
+
+  const thumbInspection = await inspectOptionalImageThumb(thumbFile);
+  if (!thumbInspection.ok) {
+    return { error: mapAttachmentValidationError("invalid_thumbnail") };
   }
 
   const context = await requirePermission("pets.edit");
@@ -127,7 +138,10 @@ export async function uploadPetPhoto(
     }
   }
 
-  const oldPaths = [pet.photo_storage_path, pet.photo_thumb_path].filter(Boolean) as string[];
+  const oldPaths = pathsToRemoveAfterPhotoPersist(
+    [pet.photo_storage_path, pet.photo_thumb_path],
+    [paths.filePath, thumbPath ?? ""],
+  );
   const { error } = await supabase
     .from("pets")
     .update({
@@ -139,6 +153,7 @@ export async function uploadPetPhoto(
     .eq("id", petId);
 
   if (error) {
+    // Best-effort: remove only the NEW orphan. Never delete the old photo here.
     await removeFromCompanyStorage([paths.filePath, paths.thumbPath]);
     if (error.code === "42703" || error.message?.includes("photo_storage_path")) {
       return { error: mapAttachmentValidationError("attachments_migration_required") };
@@ -147,7 +162,10 @@ export async function uploadPetPhoto(
   }
 
   if (oldPaths.length > 0) {
-    await removeFromCompanyStorage(oldPaths);
+    const cleanup = await removeFromCompanyStorage(oldPaths);
+    if (cleanup.error && process.env.NODE_ENV === "development") {
+      console.info("[pet-photo] old file cleanup failed after persist");
+    }
   }
 
   revalidatePetPaths(petId);

@@ -1,3 +1,23 @@
+## [0.50.0] — 2026-09-11
+
+### Corrigido — Auth, onboarding, convites, uploads e rate limit (BLOCO 8)
+
+- `complete_onboarding` serializa por `auth.uid()` (`pg_advisory_xact_lock`); retry/duplo clique devolvem a mesma `company_id`
+- Membership **revogada** não conclui onboarding nem ressuscita acesso; tenant ativo não é escolhido por `created_at LIMIT 1`
+- Confirmação de e-mail segue a sessão real do signup; reenvio genérico; callback rejeita `next` externo e `code` ausente
+- Recovery: anti-enumeração preservada; erro real do provider vira indisponibilidade temporária
+- Lookup público de convite não revela existência/empresa; mensagens de cadastro deixam de enumerar e-mail
+- Rate limit persistente (`private.auth_rate_limit_buckets`) para login, cadastro, recovery, reenvio e convites
+- Foto do pet: path UUID, magic bytes, thumbnail inválida falha controlada; substituição só apaga a antiga após o UPDATE
+- Tutorial/checklist: estado persistido da empresa prevalece sobre `localStorage` antigo
+- Validações do escopo em pt-BR; limites UI = Zod; forms não mostram feedback stale durante nova tentativa
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260911400000_bloco8_auth_onboarding_rate_limit.sql`
+
+Diagnóstico de legado: `docs/sql/diagnose-bloco-8-auth-onboarding.sql`
+
+Não reaplica BLOCOs 1–7. Não inicia BLOCO 9 (assinatura/Mercado Pago/trial comercial).
+
 ## [0.49.0] — 2026-09-11
 
 ### Corrigido — Relatórios, KPIs, ocupação, estoque analítico, pacotes e CSV (BLOCO 7)

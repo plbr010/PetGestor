@@ -16,9 +16,11 @@ import {
   permissionsToJson,
 } from "@/lib/auth/permissions";
 import { requirePermission, assertPermissionForAction } from "@/lib/auth/require-permission";
+import { enforceAuthRateLimit } from "@/lib/security/rate-limit";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { firstIssueMessage } from "@/lib/validation/first-issue-message";
 
 export type EmployeeAccessActionState = {
   error?: string;
@@ -53,7 +55,18 @@ export async function grantEmployeeAccessAction(
   const parsed = parseEmployeeAccessForm(formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues) };
+  }
+
+  const limited = await enforceAuthRateLimit({
+    action: "invite",
+    email: parsed.data.email,
+    companyId: context.membership.company.id,
+    userId: context.user.id,
+  });
+
+  if (!limited.ok) {
+    return { error: limited.error };
   }
 
   const permissions = buildPermissionsPayload(
@@ -139,7 +152,7 @@ export async function updateEmployeeAccessAction(
   const parsed = parseEmployeeAccessUpdateForm(formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues) };
   }
 
   const permissions = buildPermissionsPayload(

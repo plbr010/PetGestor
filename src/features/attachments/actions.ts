@@ -15,14 +15,16 @@ import {
 } from "@/features/attachments/schemas";
 import { removeFromCompanyStorage, uploadToCompanyStorage } from "@/features/attachments/storage";
 import {
-  mapAttachmentValidationError,
-  validateAttachmentMeta,
-} from "@/features/attachments/validation";
+  inspectOptionalImageThumb,
+  inspectUploadFile,
+} from "@/features/attachments/file-signature";
+import { mapAttachmentValidationError } from "@/features/attachments/validation";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { rethrowNavigationErrors } from "@/lib/server-action-errors";
 import { GENERIC_NOT_FOUND_MESSAGE } from "@/lib/security/tenant-access";
 import { isValidUuid } from "@/lib/security/uuid";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { firstIssueMessage } from "@/lib/validation/first-issue-message";
 import { getServiceOrderById } from "@/features/service-orders/queries";
 
 export type AttachmentActionState = {
@@ -151,7 +153,7 @@ export async function uploadPetAttachmentAction(
   const parsed = parsePetAttachmentUploadForm(formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues) };
   }
 
   const file = await readUploadFile(formData, "file");
@@ -161,9 +163,16 @@ export async function uploadPetAttachmentAction(
     return { error: "Selecione um arquivo para enviar." };
   }
 
-  const validation = validateAttachmentMeta(file.type, file.size);
+  const validation = await inspectUploadFile(file);
   if (!validation.ok) {
     return { error: mapAttachmentValidationError(validation.error) };
+  }
+
+  const thumbInspection = await inspectOptionalImageThumb(
+    validation.mimeType === "application/pdf" ? null : thumbFile,
+  );
+  if (!thumbInspection.ok) {
+    return { error: mapAttachmentValidationError("invalid_thumbnail") };
   }
 
   const companyId = context.membership.company.id;
@@ -264,7 +273,7 @@ export async function uploadServiceOrderAttachmentAction(
   const parsed = parseServiceOrderAttachmentUploadForm(formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: firstIssueMessage(parsed.error.issues) };
   }
 
   const file = await readUploadFile(formData, "file");
@@ -274,9 +283,16 @@ export async function uploadServiceOrderAttachmentAction(
     return { error: "Selecione um arquivo para enviar." };
   }
 
-  const validation = validateAttachmentMeta(file.type, file.size);
+  const validation = await inspectUploadFile(file);
   if (!validation.ok) {
     return { error: mapAttachmentValidationError(validation.error) };
+  }
+
+  const thumbInspection = await inspectOptionalImageThumb(
+    validation.mimeType === "application/pdf" ? null : thumbFile,
+  );
+  if (!thumbInspection.ok) {
+    return { error: mapAttachmentValidationError("invalid_thumbnail") };
   }
 
   const companyId = context.membership.company.id;

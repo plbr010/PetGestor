@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import { updatePasswordAction, type AuthActionState } from "@/features/auth/actions";
+import { AUTH_FIELD_LIMITS } from "@/features/auth/schemas";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +42,7 @@ function PasswordFields({
     <>
       <form className="space-y-4" action={formAction} noValidate>
         {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
-        {state.error ? <ErrorMessage message={state.error} /> : null}
+        {!isPending && state.error ? <ErrorMessage message={state.error} /> : null}
 
         <div className="space-y-2">
           <Label htmlFor="password">Nova senha</Label>
@@ -51,6 +52,8 @@ function PasswordFields({
             type="password"
             placeholder="Mínimo 8 caracteres"
             autoComplete="new-password"
+            minLength={AUTH_FIELD_LIMITS.passwordMin}
+            maxLength={AUTH_FIELD_LIMITS.password}
             required
           />
         </div>
@@ -63,6 +66,8 @@ function PasswordFields({
             type="password"
             placeholder="Repita a nova senha"
             autoComplete="new-password"
+            minLength={AUTH_FIELD_LIMITS.passwordMin}
+            maxLength={AUTH_FIELD_LIMITS.password}
             required
           />
         </div>
