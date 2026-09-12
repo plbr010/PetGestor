@@ -1,5 +1,5 @@
 const SENSITIVE_KEY =
-  /(password|passwd|secret|token|authorization|refresh|access_token|id_token|magic.?link|token_hash|recovery|otp|code)$/i;
+  /(password|passwd|secret|token|authorization|refresh|access_token|id_token|magic.?link|token_hash|recovery|otp|code|cookie|ticket|marker|rt)$/i;
 
 export function maskEmail(email: string): string {
   const trimmed = email.trim();

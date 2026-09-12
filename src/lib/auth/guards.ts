@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentCompanyMembership } from "@/features/companies/queries";
 import { peekPendingInvite } from "@/features/employees/access/accept-invite";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
+import { peekRecoveryMarkerForUser } from "@/lib/auth/recovery-marker";
 
 export async function redirectIfAuthenticated(options?: {
   allowWithoutCompany?: boolean;
@@ -72,6 +73,11 @@ export async function requireRecoverySession() {
   const user = await getCurrentUser();
 
   if (!user) {
+    redirect("/recuperar-senha");
+  }
+
+  const hasMarker = await peekRecoveryMarkerForUser(user.id);
+  if (!hasMarker) {
     redirect("/recuperar-senha");
   }
 

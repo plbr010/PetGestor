@@ -3,7 +3,11 @@
 import { useActionState } from "react";
 import Link from "next/link";
 
-import { updatePasswordAction, type AuthActionState } from "@/features/auth/actions";
+import {
+  updatePasswordAction,
+  updateRecoveryPasswordAction,
+  type AuthActionState,
+} from "@/features/auth/actions";
 import { AUTH_FIELD_LIMITS } from "@/features/auth/schemas";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Button } from "@/components/ui/button";
@@ -23,6 +27,7 @@ const initialState: AuthActionState = {};
 type NewPasswordFormProps = {
   redirectTo?: string;
   embedded?: boolean;
+  purpose?: "recovery" | "account";
 };
 
 function PasswordFields({
@@ -91,8 +96,13 @@ function PasswordFields({
   );
 }
 
-export function NewPasswordForm({ redirectTo, embedded = false }: NewPasswordFormProps) {
-  const [state, formAction, isPending] = useActionState(updatePasswordAction, initialState);
+export function NewPasswordForm({
+  redirectTo,
+  embedded = false,
+  purpose = "recovery",
+}: NewPasswordFormProps) {
+  const action = purpose === "account" ? updatePasswordAction : updateRecoveryPasswordAction;
+  const [state, formAction, isPending] = useActionState(action, initialState);
 
   if (embedded) {
     return (

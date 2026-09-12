@@ -71,6 +71,7 @@ export function ProfileSettingsContent({
         <CardContent>
           <NewPasswordForm
             embedded
+            purpose="account"
             redirectTo="/dashboard/configuracoes?senha-atualizada=1"
           />
         </CardContent>
