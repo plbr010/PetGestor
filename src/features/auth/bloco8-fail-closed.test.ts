@@ -18,6 +18,11 @@ vi.mock("@/lib/supabase/server", () => ({
       signInWithPassword: signInMock,
       resetPasswordForEmail: resetPasswordMock,
     },
+  })),
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createSupabaseAdminClient: vi.fn(() => ({
     rpc: rpcMock,
   })),
 }));
@@ -49,6 +54,7 @@ describe("K — RPC ausente em production bloqueia antes do provider", () => {
     signInMock.mockReset();
     getClaimsMock.mockReset();
     resetPasswordMock.mockReset();
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key-not-real");
     rpcMock.mockResolvedValue({
       data: null,
       error: { code: "PGRST202", message: "Could not find the function public.consume_auth_rate_limit" },

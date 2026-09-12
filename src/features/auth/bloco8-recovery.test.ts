@@ -41,22 +41,29 @@ vi.mock("next/navigation", () => ({
 import {
   RECOVERY_COOKIE_NAME,
   RECOVERY_INVALID_MESSAGE,
-  RECOVERY_MARKER_TTL_SECONDS,
   createMemoryRecoveryCookieAdapter,
-  createRecoveryMarker,
+  createMemoryRecoveryMarkerStore,
+  createOpaqueRecoveryToken,
+  hashRecoveryMarkerToken,
+  issueRecoveryMarkerCookie,
   recoveryCookieOptions,
   resolveRecoverySecret,
   setRecoveryCookieAdapterForTests,
+  setRecoveryMarkerStoreForTests,
   verifyRecoveryTicket,
 } from "@/lib/auth/recovery-marker";
+import { PROVIDER_UNAVAILABLE_MESSAGE } from "@/features/auth/messages";
 import { logAuthEvent } from "@/lib/security/safe-log";
 
-describe("BLOCO 8 recovery — marcador server-side", () => {
+describe("BLOCO 8 recovery — marker one-time", () => {
   let adapter: ReturnType<typeof createMemoryRecoveryCookieAdapter>;
+  let store: ReturnType<typeof createMemoryRecoveryMarkerStore>;
 
   beforeEach(() => {
     adapter = createMemoryRecoveryCookieAdapter();
+    store = createMemoryRecoveryMarkerStore();
     setRecoveryCookieAdapterForTests(adapter);
+    setRecoveryMarkerStoreForTests(store);
     rpcMock.mockReset();
     getClaimsMock.mockReset();
     fromMock.mockReset();
@@ -68,6 +75,7 @@ describe("BLOCO 8 recovery — marcador server-side", () => {
 
   afterEach(() => {
     setRecoveryCookieAdapterForTests(null);
+    setRecoveryMarkerStoreForTests(null);
     vi.unstubAllEnvs();
   });
 
@@ -92,12 +100,7 @@ describe("BLOCO 8 recovery — marcador server-side", () => {
     expect(ticket).toBeTruthy();
     expect(verifyRecoveryTicket(ticket!, resolveRecoverySecret())).not.toBeNull();
 
-    const secret = resolveRecoverySecret();
-    adapter.set(
-      RECOVERY_COOKIE_NAME,
-      createRecoveryMarker("u1", secret),
-      recoveryCookieOptions(),
-    );
+    await issueRecoveryMarkerCookie("u1");
     getClaimsMock.mockResolvedValue({ data: { claims: { sub: "u1" } }, error: null });
     updateUserMock.mockResolvedValue({ error: null });
 
@@ -123,12 +126,13 @@ describe("BLOCO 8 recovery — marcador server-side", () => {
   });
 
   it("4 — marcador expirado é recusado", async () => {
-    const expired = createRecoveryMarker(
-      "u1",
-      resolveRecoverySecret(),
-      Date.now() - (RECOVERY_MARKER_TTL_SECONDS + 30) * 1000,
-    );
-    adapter.set(RECOVERY_COOKIE_NAME, expired, recoveryCookieOptions());
+    const token = createOpaqueRecoveryToken();
+    await store.issue({
+      userId: "u1",
+      tokenHash: hashRecoveryMarkerToken(token),
+      expiresAtMs: Date.now() - 1_000,
+    });
+    adapter.set(RECOVERY_COOKIE_NAME, token, recoveryCookieOptions());
     getClaimsMock.mockResolvedValue({ data: { claims: { sub: "u1" } }, error: null });
 
     const { updateRecoveryPasswordAction } = await import("@/features/auth/actions");
@@ -141,8 +145,8 @@ describe("BLOCO 8 recovery — marcador server-side", () => {
   });
 
   it("5 — marcador adulterado é recusado", async () => {
-    const valid = createRecoveryMarker("u1", resolveRecoverySecret());
-    adapter.set(RECOVERY_COOKIE_NAME, `${valid.slice(0, -3)}zzz`, recoveryCookieOptions());
+    await issueRecoveryMarkerCookie("u1");
+    adapter.set(RECOVERY_COOKIE_NAME, "adulterado", recoveryCookieOptions());
     getClaimsMock.mockResolvedValue({ data: { claims: { sub: "u1" } }, error: null });
 
     const { updateRecoveryPasswordAction } = await import("@/features/auth/actions");
@@ -155,11 +159,7 @@ describe("BLOCO 8 recovery — marcador server-side", () => {
   });
 
   it("6 — marcador de outro usuário é recusado", async () => {
-    adapter.set(
-      RECOVERY_COOKIE_NAME,
-      createRecoveryMarker("owner", resolveRecoverySecret()),
-      recoveryCookieOptions(),
-    );
+    await issueRecoveryMarkerCookie("owner");
     getClaimsMock.mockResolvedValue({ data: { claims: { sub: "intruder" } }, error: null });
 
     const { updateRecoveryPasswordAction } = await import("@/features/auth/actions");
@@ -171,12 +171,9 @@ describe("BLOCO 8 recovery — marcador server-side", () => {
     expect(updateUserMock).not.toHaveBeenCalled();
   });
 
-  it("7/8 — após sucesso o marcador some e reutilização é recusada", async () => {
-    adapter.set(
-      RECOVERY_COOKIE_NAME,
-      createRecoveryMarker("u1", resolveRecoverySecret()),
-      recoveryCookieOptions(),
-    );
+  it("7/8 — replay: cópia do cookie após consumo é recusada", async () => {
+    await issueRecoveryMarkerCookie("u1");
+    const copy = adapter.get(RECOVERY_COOKIE_NAME);
     getClaimsMock.mockResolvedValue({ data: { claims: { sub: "u1" } }, error: null });
     updateUserMock.mockResolvedValue({ error: null });
 
@@ -189,16 +186,67 @@ describe("BLOCO 8 recovery — marcador server-side", () => {
     );
     expect(adapter.get(RECOVERY_COOKIE_NAME)).toBeUndefined();
 
+    adapter.set(RECOVERY_COOKIE_NAME, copy!, recoveryCookieOptions());
     const reuse = await updateRecoveryPasswordAction({}, form);
     expect(reuse.error).toBe(RECOVERY_INVALID_MESSAGE);
     expect(updateUserMock).toHaveBeenCalledTimes(1);
   });
 
-  it("9 — token/cookie nunca aparece em log", () => {
+  it("senha inválida NÃO consome o marker", async () => {
+    await issueRecoveryMarkerCookie("u1");
+    getClaimsMock.mockResolvedValue({ data: { claims: { sub: "u1" } }, error: null });
+
+    const { updateRecoveryPasswordAction } = await import("@/features/auth/actions");
+    const form = new FormData();
+    form.set("password", "123");
+    form.set("confirmPassword", "123");
+    const result = await updateRecoveryPasswordAction({}, form);
+    expect(result.error).toBeTruthy();
+    expect(updateUserMock).not.toHaveBeenCalled();
+
+    const { peekRecoveryMarkerForUser } = await import("@/lib/auth/recovery-marker");
+    expect(await peekRecoveryMarkerForUser("u1")).toBe(true);
+  });
+
+  it("provider falha após consumo: marker não é reativado", async () => {
+    await issueRecoveryMarkerCookie("u1");
+    const copy = adapter.get(RECOVERY_COOKIE_NAME)!;
+    getClaimsMock.mockResolvedValue({ data: { claims: { sub: "u1" } }, error: null });
+    updateUserMock.mockResolvedValue({ error: { message: "weak", status: 400 } });
+
+    const { updateRecoveryPasswordAction } = await import("@/features/auth/actions");
+    const form = new FormData();
+    form.set("password", "novasenha1");
+    form.set("confirmPassword", "novasenha1");
+    const result = await updateRecoveryPasswordAction({}, form);
+    expect(result.error).toBe(RECOVERY_INVALID_MESSAGE);
+
+    adapter.set(RECOVERY_COOKIE_NAME, copy, recoveryCookieOptions());
+    updateUserMock.mockResolvedValue({ error: null });
+    const retry = await updateRecoveryPasswordAction({}, form);
+    expect(retry.error).toBe(RECOVERY_INVALID_MESSAGE);
+    expect(updateUserMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("production sem AUTH_RECOVERY_SECRET falha fechado antes do provider", async () => {
+    vi.stubEnv("AUTH_RECOVERY_SECRET", "");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    const { passwordRecoveryAction } = await import("@/features/auth/actions");
+    const form = new FormData();
+    form.set("email", "ana@example.com");
+    const result = await passwordRecoveryAction({}, form);
+    expect(result.error).toBe(PROVIDER_UNAVAILABLE_MESSAGE);
+    expect(result.error).not.toMatch(/AUTH_RECOVERY_SECRET|service.?role|HMAC|migration/i);
+    expect(resetPasswordMock).not.toHaveBeenCalled();
+  });
+
+  it("9 — token/cookie/secret nunca aparece em log", () => {
     const details = {
-      token: createRecoveryMarker("u1", resolveRecoverySecret()),
+      token: createOpaqueRecoveryToken(),
       cookie: "pg_pwd_recovery=abc",
       ticket: "signed.ticket",
+      secret: VALID_LOOKING_SECRET,
       status: 500,
     };
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -207,8 +255,10 @@ describe("BLOCO 8 recovery — marcador server-side", () => {
     expect(printed).not.toContain(details.token);
     expect(printed).not.toContain("pg_pwd_recovery=abc");
     expect(printed).not.toContain("signed.ticket");
+    expect(printed).not.toContain(VALID_LOOKING_SECRET);
     expect(printed).toContain("[redacted]");
     errorSpy.mockRestore();
   });
 });
 
+const VALID_LOOKING_SECRET = "petgestor-test-recovery-secret-32b!";

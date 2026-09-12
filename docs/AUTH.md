@@ -84,13 +84,13 @@ Prova server-side:
 1. `/recuperar-senha` gera um **ticket HMAC** (`typ=recovery_ticket`, TTL 1h) e envia `resetPasswordForEmail` com  
    `redirectTo = {APP_URL}/auth/callback?flow=recovery&rt={ticket}`.
 2. `/auth/callback` exige `exchangeCodeForSession` **e** ticket `rt` válido **e** `flow=recovery`.  
-   Só então emite o **marcador** HttpOnly `pg_pwd_recovery` (`typ=recovery_marker`, `sub` da sessão, TTL 15 min, `Path=/nova-senha`, `Secure` em production, `SameSite=lax`).
-3. `/nova-senha` usa `requireRecoverySession`: sessão + marcador válido para aquele `sub`. Sessão normal (login) é recusada.
-4. `updateRecoveryPasswordAction` revalida o marcador, chama `updateUser` e **remove** o cookie. Reutilização falha.
+   Só então gera um **token opaco** (32 bytes) e grava **somente o SHA-256** em `private.password_recovery_markers` (`user_id`, `expires_at`, `consumed_at`). O cookie HttpOnly `pg_pwd_recovery` recebe só o token (TTL 15 min, `Path=/nova-senha`, `Secure` em production, `SameSite=lax`).
+3. `/nova-senha` usa `requireRecoverySession`: sessão + peek do hash (não consumido, não expirado, mesmo `user_id`). Sessão normal (login) é recusada.
+4. `updateRecoveryPasswordAction` valida a senha **antes** de consumir. O consumo é `UPDATE … WHERE consumed_at IS NULL AND expires_at > now() RETURNING`. Depois chama `updateUser` e apaga o cookie. Replay da cópia do cookie falha. Se o provider falhar após o consumo, o marker **não** é reativado.
 
 Marcador adulterado, expirado ou de outro usuário é recusado. Alterar senha logado em **Configurações** continua em `updatePasswordAction` (sessão da conta, sem marcador).
 
-Segredo: `AUTH_RECOVERY_SECRET` (ou derivação de `SUPABASE_SERVICE_ROLE_KEY` / URL do Supabase). Em production sem segredo o fluxo falha fechado.
+Segredo: **somente** `AUTH_RECOVERY_SECRET` (≥ 32 bytes aleatórios). Sem esse valor o recovery falha fechado (mensagem genérica) **antes** de assinar/enviar ticket. Não há fallback para `NEXT_PUBLIC_*` nem `SUPABASE_SERVICE_ROLE_KEY`.
 
 Mensagem genérica sempre: “Se houver uma conta associada a esse e-mail…”
 
@@ -129,7 +129,9 @@ Além dos limites nativos do Supabase Auth, ações sensíveis passam por `publi
 - o caller **não** envia `limit`, `window` nem relógio; o relógio é `now()` do Postgres;
 - action fora da allowlist falha (`invalid_rate_limit_action`);
 - a assinatura antiga `(bucket_key, limit, window, now)` foi **revogada e removida**;
-- `EXECUTE` da API nova `(text, text)`: `anon` e `authenticated`. A política privada não é executável por esses papéis.
+- `EXECUTE` da primitive `(text, text)`: **somente `service_role`**. `anon` e `authenticated` não executam;
+- o app consome via `createSupabaseAdminClient()` no módulo server-only `rate-limit.ts`;
+- buckets expirados são limpos de forma oportunística (`updated_at` há mais de 2h — fora de qualquer janela ativa).
 
 Ao exceder: “Muitas tentativas. Aguarde alguns minutos e tente novamente.”
 

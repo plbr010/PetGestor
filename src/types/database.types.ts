@@ -2589,6 +2589,28 @@ export type Database = {
         };
         Returns: Json;
       };
+      issue_password_recovery_marker: {
+        Args: {
+          p_user_id: string;
+          p_token_hash: string;
+          p_expires_at: string;
+        };
+        Returns: undefined;
+      };
+      peek_password_recovery_marker: {
+        Args: {
+          p_user_id: string;
+          p_token_hash: string;
+        };
+        Returns: boolean;
+      };
+      consume_password_recovery_marker: {
+        Args: {
+          p_user_id: string;
+          p_token_hash: string;
+        };
+        Returns: boolean;
+      };
       complete_onboarding_tutorial: {
         Args: Record<string, never>;
         Returns: undefined;

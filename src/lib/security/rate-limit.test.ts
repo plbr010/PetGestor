@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/headers", () => ({
@@ -6,8 +8,8 @@ vi.mock("next/headers", () => ({
   })),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: vi.fn(),
+vi.mock("@/lib/supabase/admin", () => ({
+  createSupabaseAdminClient: vi.fn(),
 }));
 
 import {
@@ -22,7 +24,7 @@ import {
   readClientIp,
   setAuthRateLimitConsumerForTests,
 } from "@/lib/security/rate-limit";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 describe("rate limit keys", () => {
   it("não usa e-mail em claro", () => {
@@ -165,6 +167,16 @@ describe("createInMemoryRateLimitConsumer — política no servidor", () => {
   });
 });
 
+describe("rate limit server-only", () => {
+  it("consome via admin client; não usa o client anon/authenticated", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/lib/security/rate-limit.ts"), "utf8");
+    expect(source).toContain("createSupabaseAdminClient");
+    expect(source).toContain("isSupabaseServiceRoleConfigured");
+    expect(source).not.toContain("createSupabaseServerClient");
+    expect(source).not.toContain("@/lib/supabase/server");
+  });
+});
+
 describe("createSupabaseRateLimitConsumer", () => {
   it("A/B/C/J — envia apenas action e bucket; nunca limit, window ou now", async () => {
     const rpc = vi.fn().mockResolvedValue({
@@ -195,7 +207,7 @@ describe("enforceAuthRateLimit", () => {
   afterEach(() => {
     setAuthRateLimitConsumerForTests(null);
     vi.unstubAllEnvs();
-    vi.mocked(createSupabaseServerClient).mockReset();
+    vi.mocked(createSupabaseAdminClient).mockReset();
   });
 
   it("permite abaixo do limite e bloqueia acima, sem sleep", async () => {
@@ -244,7 +256,9 @@ describe("enforceAuthRateLimit", () => {
 
   it("K — em production, RPC inexistente falha fechado", async () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.mocked(createSupabaseServerClient).mockResolvedValue({
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key-not-real");
+    vi.mocked(createSupabaseAdminClient).mockReturnValue({
       rpc: vi.fn().mockResolvedValue({
         data: null,
         error: { code: "PGRST202", message: "Could not find the function" },
@@ -259,9 +273,24 @@ describe("enforceAuthRateLimit", () => {
     });
   });
 
+  it("em production, service-role ausente falha fechado sem chamar Auth", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
+
+    const result = await enforceAuthRateLimit({ action: "login", email: "ana@pet.com" });
+    expect(result).toEqual({
+      ok: false,
+      retryAfterSeconds: 60,
+      error: RATE_LIMIT_UNAVAILABLE_MESSAGE,
+    });
+    expect(createSupabaseAdminClient).not.toHaveBeenCalled();
+  });
+
   it("em development/test, RPC ausente ainda permite (fail-open documentado)", async () => {
     vi.stubEnv("NODE_ENV", "test");
-    vi.mocked(createSupabaseServerClient).mockResolvedValue({
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key-not-real");
+    vi.mocked(createSupabaseAdminClient).mockReturnValue({
       rpc: vi.fn().mockResolvedValue({
         data: null,
         error: { code: "PGRST202", message: "Could not find the function" },
