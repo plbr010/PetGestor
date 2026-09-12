@@ -3,9 +3,10 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 
+import { isSupabaseServiceRoleConfigured } from "@/lib/env/server-env";
 import { isProductionRuntime } from "@/lib/env/resolve-app-url";
 import { applyRateLimitHit } from "@/lib/security/rate-limit-window";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const AUTH_RATE_LIMIT_MESSAGE =
   "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
@@ -154,8 +155,16 @@ async function consumeAuthRateLimitRpc(input: {
   action: AuthRateLimitAction;
   bucketKey: string;
 }): Promise<{ allowed: boolean; retryAfterSeconds: number } | null> {
-  const supabase = await createSupabaseServerClient();
-  return createSupabaseRateLimitConsumer(supabase)(input);
+  try {
+    if (!isSupabaseServiceRoleConfigured()) {
+      return null;
+    }
+
+    const admin = createSupabaseAdminClient();
+    return await createSupabaseRateLimitConsumer(admin)(input);
+  } catch {
+    return null;
+  }
 }
 
 export async function enforceAuthRateLimit(input: {

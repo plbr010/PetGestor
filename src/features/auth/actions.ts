@@ -18,10 +18,11 @@ import {
 import { getSiteUrl } from "@/lib/auth/get-site-url";
 import {
   RECOVERY_INVALID_MESSAGE,
+  RecoverySecretConfigError,
   buildRecoveryCallbackPath,
   clearRecoveryMarkerCookie,
+  consumeRecoveryMarkerForUser,
   createRecoveryTicket,
-  peekRecoveryMarkerForUser,
   resolveRecoverySecret,
 } from "@/lib/auth/recovery-marker";
 import { getSafeRedirectPath } from "@/lib/auth/safe-redirect";
@@ -285,10 +286,11 @@ export async function passwordRecoveryAction(
   }
 
   try {
+    const secret = resolveRecoverySecret();
     const supabase = await createSupabaseServerClient();
     const siteUrl = await getSiteUrl();
 
-    const ticket = createRecoveryTicket(resolveRecoverySecret());
+    const ticket = createRecoveryTicket(secret);
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo: `${siteUrl}${buildRecoveryCallbackPath(ticket)}`,
     });
@@ -301,6 +303,11 @@ export async function passwordRecoveryAction(
       return { error: PROVIDER_UNAVAILABLE_MESSAGE };
     }
   } catch (error) {
+    if (error instanceof RecoverySecretConfigError) {
+      logAuthEvent("Recovery", { code: "recovery_secret_unconfigured" });
+      return { error: PROVIDER_UNAVAILABLE_MESSAGE };
+    }
+
     if (error instanceof AppUrlConfigError) {
       logAuthEvent("Recovery", { code: "app_url_unconfigured" });
       return { error: PROVIDER_UNAVAILABLE_MESSAGE };
@@ -422,8 +429,8 @@ export async function updateRecoveryPasswordAction(
     return { error: RECOVERY_INVALID_MESSAGE };
   }
 
-  const hasMarker = await peekRecoveryMarkerForUser(claimsData.claims.sub);
-  if (!hasMarker) {
+  const consumed = await consumeRecoveryMarkerForUser(claimsData.claims.sub);
+  if (!consumed) {
     return { error: RECOVERY_INVALID_MESSAGE };
   }
 

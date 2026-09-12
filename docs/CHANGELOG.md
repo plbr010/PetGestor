@@ -1,3 +1,16 @@
+## [0.50.2] — 2026-09-12
+
+### Corrigido — hardening final do BLOCO 8 (segredo, marker one-time, RPC server-only)
+
+- `AUTH_RECOVERY_SECRET` é o único HMAC de recovery (≥ 32 bytes). Sem fallback para URL pública ou service role; ausência falha fechado
+- Marker one-time: cookie opaco + SHA-256 em `private.password_recovery_markers`; `UPDATE … consumed_at IS NULL` atômico; replay recusado
+- `consume_auth_rate_limit` deixa de ter `EXECUTE` para `anon`/`authenticated`; o app consome com admin client server-only
+- Limpeza oportunística de buckets com `updated_at` há mais de 2 horas
+
+**MIGRATION:** `supabase/migrations/20260912120000_bloco8_recovery_onetime_rate_limit_service_role.sql`
+
+Não edita `20260911400000` nem `20260912090000`. Não inicia BLOCO 9.
+
 ## [0.50.1] — 2026-09-12
 
 ### Corrigido — hardening residual do BLOCO 8 (rate limit + recovery)
