@@ -90,6 +90,17 @@ describe("BLOCO 8.1 — Server Action deixa de ser split", () => {
     expect(createFn.match(/\.rpc\(/g)).toHaveLength(1);
   });
 
+  it("UPDATE chama uma única RPC com preços e ficha", () => {
+    const updateFn = actions.slice(
+      actions.indexOf("export async function updateServiceAction"),
+      actions.indexOf("export async function archiveServiceAction"),
+    );
+    expect(updateFn).toContain('rpc("update_service_with_prices"');
+    expect(updateFn).toContain("p_items:");
+    expect(updateFn).not.toContain("replace_service_product_recipes");
+    expect(updateFn.match(/\.rpc\(/g)).toHaveLength(1);
+  });
+
   it("formulário envia ficha e chave de idempotência", () => {
     const form = readFileSync(
       join(process.cwd(), "src/features/services/components/service-form.tsx"),
@@ -97,5 +108,43 @@ describe("BLOCO 8.1 — Server Action deixa de ser split", () => {
     );
     expect(form).toContain("ServiceRecipeEditor");
     expect(form).toContain('name="idempotency_key"');
+  });
+});
+
+describe("BLOCO 8.1 hardening — identidade do UPDATE", () => {
+  const hardening = readFileSync(
+    join(process.cwd(), "supabase/migrations/20260914174351_bloco81_idempotency_target_hardening.sql"),
+    "utf8",
+  );
+  const original = readFileSync(
+    join(process.cwd(), "supabase/migrations/20260914172942_bloco81_service_prices_recipe_atomic.sql"),
+    "utf8",
+  );
+
+  it("não edita a migration mergeada do PR #72", () => {
+    expect(hardening).not.toMatch(/^\s*DROP TABLE/m);
+    expect(hardening).not.toMatch(/^\s*CREATE TABLE/m);
+    expect(original).toContain("PRIMARY KEY (company_id, operation, idempotency_key)");
+  });
+
+  it("UPDATE exige service_id da tentativa igual ao alvo", () => {
+    expect(hardening).toContain("p_expected_service_id");
+    expect(hardening).toContain("v_existing.service_id IS DISTINCT FROM p_expected_service_id");
+    expect(hardening).toContain("v_existing.service_id IS DISTINCT FROM p_service_id");
+    expect(hardening).toContain("peek_service_mutation_attempt(");
+    expect(hardening).toContain("p_service_id");
+  });
+
+  it("UPDATE serializa a key e o serviço até o commit", () => {
+    expect(hardening).toContain(":service:update-key:");
+    expect(hardening).toContain(":service:update:");
+    expect(hardening).toContain("FOR UPDATE");
+    expect(hardening).toContain("pg_advisory_xact_lock");
+  });
+
+  it("não desabilita RLS nem inicia BLOCO 10", () => {
+    expect(hardening).not.toContain("DISABLE ROW LEVEL SECURITY");
+    expect(hardening).not.toContain("mapPreapprovalStatusToLocal");
+    expect(hardening).not.toContain("GRANT ALL");
   });
 });

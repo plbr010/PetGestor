@@ -1,0 +1,76 @@
+-- Reprodutor MANUAL de concorrência — BLOCO 8.1 hardening.
+-- NÃO é executado pelo Vitest. Este ambiente não tem PostgreSQL/Supabase local.
+--
+-- Pré-requisito: as duas migrations, NESTA ORDEM:
+--   1. 20260914172942_bloco81_service_prices_recipe_atomic.sql
+--   2. 20260914174351_bloco81_idempotency_target_hardening.sql
+--
+-- Duas sessões psql autenticadas (mesmo company_id, services.manage).
+-- Substitua os UUIDs.
+--
+-- Objetivo 1: dois UPDATEs simultâneos no MESMO service_id, payloads A e B.
+-- Estado final deve ser integralmente A OU integralmente B.
+-- Nunca core de A + preço de B + ficha misturada.
+--
+-- Objetivo 2: duas sessões com a MESMA idempotency key no mesmo serviço
+-- e o mesmo payload → uma execução lógica, a outra replay.
+
+-- =============================================================================
+-- SESSÃO 1 — payload A (segure o lock com pg_sleep)
+-- =============================================================================
+-- BEGIN;
+-- SELECT public.update_service_with_prices(
+--   '<service_id>'::uuid,
+--   'Payload A',
+--   NULL,
+--   'fixed',
+--   1111,
+--   30,
+--   true,
+--   NULL,
+--   '[]'::jsonb,
+--   'concurrent-key-session-1',
+--   '<company_id>'::uuid
+-- );
+-- SELECT pg_sleep(8);
+-- COMMIT;
+
+-- =============================================================================
+-- SESSÃO 2 — inicie DURANTE o sleep da sessão 1
+-- Payload B, outra idempotency key, MESMO service_id
+-- =============================================================================
+-- BEGIN;
+-- SELECT public.update_service_with_prices(
+--   '<service_id>'::uuid,
+--   'Payload B',
+--   NULL,
+--   'fixed',
+--   2222,
+--   45,
+--   true,
+--   NULL,
+--   '[]'::jsonb,
+--   'concurrent-key-session-2',
+--   '<company_id>'::uuid
+-- );
+-- COMMIT;
+
+-- Conferência (terceira sessão, após os COMMITs):
+-- SELECT name, price_cents, duration_minutes
+-- FROM public.services
+-- WHERE id = '<service_id>';
+-- -- Esperado: ('Payload A', 1111, 30) OU ('Payload B', 2222, 45). Nunca misturado.
+--
+-- SELECT count(*) FROM public.service_size_prices WHERE service_id = '<service_id>';
+-- -- fixed → 0 faixas.
+--
+-- SELECT product_id, quantity
+-- FROM public.service_product_recipes
+-- WHERE service_id = '<service_id>';
+
+-- =============================================================================
+-- Mesma idempotency key, mesmo serviço, mesmo payload — duas sessões
+-- =============================================================================
+-- Ambas chamam update_service_with_prices com a MESMA key e o MESMO payload.
+-- Uma deve persistir; a outra deve retornar o mesmo service_id (replay).
+-- Não deve haver segunda alteração lógica nem idempotency_key_conflict.

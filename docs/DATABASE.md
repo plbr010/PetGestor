@@ -180,7 +180,7 @@ UNIQUE `(service_id, size)`.
 - SELECT/INSERT/UPDATE/DELETE membros em `service_size_prices` (DELETE controlado via RPC/update)
 - Trigger `prevent_company_change` em ambas
 
-Ver `docs/SERVICES.md`. **Migration BLOCO 8.1 pendente de aplicação remota:** `20260914172942_bloco81_service_prices_recipe_atomic.sql`.
+Ver `docs/SERVICES.md`. Migrations BLOCO 8.1 (ordem): `20260914172942_bloco81_service_prices_recipe_atomic.sql` depois `20260914174351_bloco81_idempotency_target_hardening.sql`.
 
 ## Etapa 6 — Funcionários
 
