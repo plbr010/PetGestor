@@ -17,6 +17,8 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | URL pública do projeto |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Chave publicável (browser-safe) |
 | `NEXT_PUBLIC_APP_URL` | URL base da app (opcional, redirects) |
+| `NEXT_PUBLIC_META_PIXEL_ID` | ID numérico do Meta Pixel (opcional) |
+| `NEXT_PUBLIC_META_PIXEL_DEBUG` | Libera o Pixel em development (`true`) |
 
 ## Variáveis NÃO utilizadas
 
@@ -191,8 +193,25 @@ Substituição de foto do pet:
 
 Se o update no banco falhar, o arquivo **novo** é limpo (best-effort) e a foto antiga permanece. Falha ao apagar a antiga após persistir a nova não esconde o sucesso — fica órfão residual, sem perda da referência válida.
 
+## Headers HTTP
+
+Aplicados em `next.config.ts` via `src/lib/security/http-headers.ts`:
+
+| Header | Valor | Quando |
+|--------|--------|--------|
+| `X-Content-Type-Options` | `nosniff` | sempre |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | sempre |
+| `X-Frame-Options` | `DENY` | sempre |
+| `Content-Security-Policy` | `frame-ancestors 'none'` | sempre (só clickjacking) |
+| `Permissions-Policy` | camera/microfone/geolocation/payment/usb/topics vazios | sempre |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains` | só `VERCEL_ENV=production` |
+
+CSP completa (`script-src`, `connect-src`, etc.) **não** está habilitada: Next.js, Meta Pixel, Supabase Auth, Mercado Pago e imagens exigiriam allowlist testada em produção. Uma política genérica quebraria o app.
+
+Clickjacking: o app autenticado não pode ser embutido em iframe externo (`frame-ancestors 'none'` + `X-Frame-Options: DENY`).
+
 ## Próximas implementações
 
 - SMTP próprio para e-mail transacional
-- Revisão de headers e CSP no deploy
+- CSP completa (script/connect/img) após allowlist testada em produção
 - Auditoria de ações sensíveis

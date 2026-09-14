@@ -1,14 +1,15 @@
 import {
+  BarChart3,
   CalendarDays,
   ClipboardList,
-  LineChart,
+  Package,
+  UserCog,
   Users,
   type LucideIcon,
 } from "lucide-react";
 
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -19,23 +20,25 @@ const benefitIcons: LucideIcon[] = [
   CalendarDays,
   Users,
   ClipboardList,
-  LineChart,
+  UserCog,
+  Package,
+  BarChart3,
 ];
 
 export function BenefitsSection() {
   return (
-    <section id="recursos" className="border-y bg-muted/30 py-20">
+    <section id="recursos" className="scroll-mt-24 border-y bg-muted/30 py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <h2 className="text-3xl font-bold sm:text-4xl">
-            Tudo que seu pet shop precisa para operar melhor
+            {marketingContent.benefitsIntroTitle}
           </h2>
           <p className="mt-3 text-lg text-muted-foreground">
-            Recursos essenciais para organizar o dia a dia e ganhar visibilidade do negócio.
+            {marketingContent.benefitsIntroSubtitle}
           </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {marketingContent.benefits.map((benefit, index) => {
             const Icon = benefitIcons[index] ?? CalendarDays;
 
@@ -48,16 +51,13 @@ export function BenefitsSection() {
                   <div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Icon className="size-5" aria-hidden="true" />
                   </div>
-                  <CardTitle className="text-lg">{benefit.title}</CardTitle>
+                  <CardTitle className="text-lg">
+                    <h3 className="text-lg font-semibold">{benefit.title}</h3>
+                  </CardTitle>
                   <CardDescription className="leading-relaxed">
                     {benefit.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">
-                    Disponível nas próximas fases do produto.
-                  </p>
-                </CardContent>
               </Card>
             );
           })}

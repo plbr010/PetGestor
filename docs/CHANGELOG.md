@@ -1,3 +1,20 @@
+## [0.52.0] — 2026-09-14
+
+### Corrigido — BLOCO 10 (landing, conversão, acessibilidade e security headers)
+
+- CTA “Ver demonstração” deixa de apontar para `/dashboard` (área protegida) e vai para a prévia pública `/#demonstracao`
+- Claims da landing alinhadas ao produto real (agenda, tutores/pets, atendimentos/pacotes, equipe, financeiro/estoque/PDV, relatórios). Removido “próximas fases”
+- Preço, trial e economia continuam na fonte canônica `src/config/subscription.ts`
+- Âncoras `#recursos`, `#como-funciona`, `#precos` e `#demonstracao` com folga para o header sticky
+- Menu mobile, skip link, headings, alvos de toque e textos em pt-BR (inclui “Fechar” do sheet)
+- Metadata, Open Graph, robots, sitemap e favicon. Sem domínio inventado
+- Headers: `nosniff`, Referrer-Policy, Permissions-Policy, `X-Frame-Options: DENY`, CSP só `frame-ancestors 'none'`. HSTS apenas em produção Vercel
+- CSP completa **não** implementada neste PR (risco de quebrar Next/Pixel/Supabase/MP)
+
+**Migration nova: NÃO.**
+
+Não reaplica BLOCOs 1–9 / 8.1. Não inicia o reteste ponta a ponta.
+
 ## [0.51.3] — 2026-09-14
 
 ### Corrigido — hardening BLOCO 8.1 (idempotência de UPDATE por serviço)

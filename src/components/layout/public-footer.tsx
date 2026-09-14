@@ -3,9 +3,17 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { brand } from "@/config/brand";
 import { marketingContent } from "@/config/marketing";
+import { buildWhatsAppUrl } from "@/lib/phone";
+
+const footerLinkClass =
+  "rounded-sm transition-colors hover:text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
 
 export function PublicFooter() {
   const year = new Date().getFullYear();
+  const supportHref = buildWhatsAppUrl(
+    brand.supportWhatsApp.phoneLocal,
+    brand.supportWhatsApp.prefillMessage,
+  );
 
   return (
     <footer className="border-t bg-card">
@@ -23,9 +31,9 @@ export function PublicFooter() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               {marketingContent.navLinks.map((link) => (
                 <li key={link.href}>
-                  <a href={link.href} className="transition-colors hover:text-foreground">
+                  <Link href={link.href} className={footerLinkClass}>
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -35,20 +43,32 @@ export function PublicFooter() {
             <h2 className="mb-3 text-sm font-semibold">Acesso</h2>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/entrar" className="transition-colors hover:text-foreground">
-                  Entrar
+                <Link href={marketingContent.loginHref} className={footerLinkClass}>
+                  {marketingContent.loginCtaLabel}
                 </Link>
               </li>
               <li>
-                <Link href="/cadastro" className="transition-colors hover:text-foreground">
-                  Testar grátis
+                <Link href={marketingContent.signupHref} className={footerLinkClass}>
+                  {marketingContent.signupShortCtaLabel}
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="transition-colors hover:text-foreground">
-                  Ver demonstração
+                <Link href={marketingContent.demoHref} className={footerLinkClass}>
+                  {marketingContent.demoCtaLabel}
                 </Link>
               </li>
+              {supportHref ? (
+                <li>
+                  <a
+                    href={supportHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={footerLinkClass}
+                  >
+                    {marketingContent.supportCtaLabel}
+                  </a>
+                </li>
+              ) : null}
             </ul>
           </div>
         </div>

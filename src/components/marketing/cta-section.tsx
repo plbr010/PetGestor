@@ -13,16 +13,20 @@ export function CtaSection() {
             {cta.description}
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <ButtonLink href="/cadastro" size="lg" className="h-11 min-w-[220px] px-6">
+            <ButtonLink
+              href={marketingContent.signupHref}
+              size="lg"
+              className="h-11 min-h-11 min-w-[220px] px-6"
+            >
               {marketingContent.trialCtaLabel}
             </ButtonLink>
             <ButtonLink
-              href="/entrar"
+              href={marketingContent.loginHref}
               variant="outline"
               size="lg"
-              className="h-11 min-w-[220px] px-6"
+              className="h-11 min-h-11 min-w-[220px] px-6"
             >
-              Já tenho conta
+              {marketingContent.alreadyHaveAccountCtaLabel}
             </ButtonLink>
           </div>
         </div>

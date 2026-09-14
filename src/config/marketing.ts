@@ -1,3 +1,4 @@
+import { publicPaths } from "@/config/public-routes";
 import {
   formatTrialCtaLabel,
   formatTrialNote,
@@ -5,6 +6,7 @@ import {
   PLAN_ANNUAL_PRICE_LABEL,
   PLAN_ANNUAL_SAVINGS_LABEL,
   PLAN_MONTHLY_PRICE_LABEL,
+  PLAN_OPERATIONAL_ACCESS_LABEL,
   TRIAL_DURATION_DAYS,
 } from "@/config/subscription";
 
@@ -12,42 +14,64 @@ export const marketingContent = {
   heroBadge: "Gestão simples para pet shops",
   heroTitle: "Organize seu pet shop com clareza e confiança",
   heroSubtitle:
-    "Centralize agenda, tutores, pets e atendimentos em uma plataforma pensada para o dia a dia do seu negócio — sem planilhas, sem confusão.",
+    "Centralize agenda, tutores, pets, atendimentos, financeiro e estoque em uma plataforma pensada para o dia a dia do seu negócio — sem planilhas, sem confusão.",
   trialCtaLabel: formatTrialCtaLabel(),
   trialNote: formatTrialNote(),
   trialDurationDays: TRIAL_DURATION_DAYS,
+  loginCtaLabel: "Entrar",
+  loginHref: publicPaths.login,
+  signupShortCtaLabel: "Testar grátis",
+  signupHref: publicPaths.signup,
+  demoCtaLabel: "Ver demonstração",
+  demoHref: publicPaths.demo,
+  alreadyHaveAccountCtaLabel: "Já tenho conta",
+  pricingCtaLabel: "Começar teste gratuito",
+  supportCtaLabel: "Falar no WhatsApp",
   navLinks: [
-    { label: "Recursos", href: "#recursos" },
-    { label: "Como funciona", href: "#como-funciona" },
-    { label: "Preços", href: "#precos" },
+    { label: "Recursos", href: publicPaths.features },
+    { label: "Como funciona", href: publicPaths.howItWorks },
+    { label: "Preços", href: publicPaths.pricing },
   ],
+  benefitsIntroTitle: "O que você já encontra no PetGestor",
+  benefitsIntroSubtitle:
+    "Módulos operacionais para organizar o dia a dia e acompanhar o movimento do pet shop.",
   benefits: [
     {
       title: "Agenda organizada",
       description:
-        "Visualize horários, serviços e profissionais em um calendário claro e fácil de usar.",
+        "Visualize horários, serviços e profissionais em um calendário por dia ou semana, com conflitos e status claros.",
     },
     {
       title: "Tutores e pets",
       description:
-        "Cadastre clientes e animais com histórico, preferências e informações sempre à mão.",
+        "Cadastre clientes e animais com histórico de atendimentos e informações sempre à mão.",
     },
     {
-      title: "Atendimentos acompanhados",
+      title: "Atendimentos e pacotes",
       description:
-        "Registre ordens de serviço e acompanhe cada etapa do atendimento com transparência.",
+        "Registre ordens de serviço, acompanhe cada etapa e venda pacotes com controle de uso.",
     },
     {
-      title: "Visão do negócio",
+      title: "Equipe operacional",
       description:
-        "Tenha indicadores básicos para entender o movimento do pet shop e tomar decisões.",
+        "Cadastre profissionais, horários de trabalho e os serviços que cada um realiza.",
+    },
+    {
+      title: "Financeiro, estoque e PDV",
+      description:
+        "Contas a receber, produtos em estoque e vendas no balcão no mesmo sistema — sem planilha paralela.",
+    },
+    {
+      title: "Relatórios do negócio",
+      description:
+        "Acompanhe movimento, atendimentos, estoque e desempenho da equipe para decidir com dados reais.",
     },
   ],
   steps: [
     {
       step: "1",
       title: "Cadastre o pet shop",
-      description: "Configure sua empresa e convide sua equipe quando estiver pronto.",
+      description: "Crie sua conta, configure a empresa e convide a equipe quando estiver pronto.",
     },
     {
       step: "2",
@@ -56,17 +80,18 @@ export const marketingContent = {
     },
     {
       step: "3",
-      title: "Acompanhe os atendimentos",
-      description: "Registre serviços, status e tenha visão clara das operações.",
+      title: "Acompanhe operação e financeiro",
+      description:
+        "Registre atendimentos, vendas no PDV e tenha visão clara do estoque e das contas.",
     },
   ],
   pricing: {
-    intro: `Teste grátis por ${TRIAL_DURATION_DAYS} dias com acesso completo. Sem cartão durante o teste. Depois escolha o plano.`,
+    intro: `Teste grátis por ${TRIAL_DURATION_DAYS} dias com acesso aos módulos operacionais. Sem cartão durante o teste. Depois escolha o plano mensal ou anual.`,
     monthly: {
       title: "Mensal",
       price: PLAN_MONTHLY_PRICE_LABEL,
       period: "por mês",
-      bullets: ["Cobrança mensal", "Acesso completo ao PetGestor"],
+      bullets: ["Cobrança mensal", PLAN_OPERATIONAL_ACCESS_LABEL],
     },
     annual: {
       title: "Anual",
@@ -85,7 +110,7 @@ export const marketingContent = {
   /** @deprecated Prefer `pricing` — mantido para compatibilidade de imports. */
   pricingTeaser: {
     title: "Planos PetGestor",
-    description: `Teste grátis por ${TRIAL_DURATION_DAYS} dias com acesso completo. Sem cartão durante o teste.`,
+    description: `Teste grátis por ${TRIAL_DURATION_DAYS} dias com acesso aos módulos operacionais. Sem cartão durante o teste.`,
     price: PLAN_MONTHLY_PRICE_LABEL,
     period: "por mês após o teste",
   },

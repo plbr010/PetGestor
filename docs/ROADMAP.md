@@ -15,14 +15,15 @@
 11. **Mercado Pago e assinatura real** — checkout pós-trial, webhooks, recorrência MP
 12. **Lembretes transacionais no WhatsApp** — fila existente + Cloud API oficial da Meta (aguardando conta/templates/credenciais)
 13. **Estoque** — produtos, categorias, fornecedores, lotes, validade, custo médio e movimentações (`register_stock_movement`)
+14. **PDV** — venda de produtos no balcão, caixa e baixa de estoque
+15. **Relatórios e pacotes** — relatórios operacionais e pacotes de serviços
+16. **Landing, conversão, acessibilidade e security headers** — BLOCO 10 (CSP completa ainda não)
 
 ## Próximas fases
 
-14. **Segurança, deploy e monitoramento** — produção, SMTP, rate limit, observabilidade
-15. **PDV / venda de produtos** — integrar baixa de estoque às vendas (após o módulo de estoque)
+17. **Deploy e monitoramento** — SMTP próprio, observabilidade, CSP completa testada em produção
 
 ## Futuro multi-tenant
 
-- Convites de funcionários
 - Múltiplas empresas por usuário na UI
 - Mudança de papéis pela interface
