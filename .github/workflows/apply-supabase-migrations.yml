@@ -1,0 +1,66 @@
+name: Apply Supabase migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check SUPABASE_DB_URL
+        id: secret
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Falta o secret SUPABASE_DB_URL."
+            echo "No celular: https://github.com/plbr010/PetGestor/settings/secrets/actions"
+            echo "Name: SUPABASE_DB_URL"
+            echo "Value: URI Direct connection do Supabase (porta 5432)."
+            if [ "${{ github.event_name }}" = "push" ]; then
+              exit 1
+            fi
+            exit 0
+          fi
+          echo "present=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install psql
+        if: steps.secret.outputs.present == 'true'
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: List new migration files
+        if: steps.secret.outputs.present == 'true'
+        id: files
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Run manual não reaplica o histórico. A automação vale para push em main com .sql novo."
+            echo "files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          FILES=$(git diff --name-only --diff-filter=A "$BEFORE" "${{ github.sha }}" -- 'supabase/migrations/*.sql' | tr '\n' ' ')
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+          echo "$FILES"
+
+      - name: Apply new SQL files
+        if: steps.secret.outputs.present == 'true' && steps.files.outputs.files != ''
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          chmod +x scripts/apply-new-supabase-migrations.sh
+          # shellcheck disable=SC2086
+          ./scripts/apply-new-supabase-migrations.sh ${{ steps.files.outputs.files }}

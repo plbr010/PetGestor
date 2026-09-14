@@ -79,7 +79,9 @@ No SQL Editor do Supabase, nesta ordem:
    `docs/sql/APPLY-annual-subscription-plan.sql`  
    (ou `supabase/migrations/20260824200000_annual_subscription_plan.sql`)
 3. **BLOCO 9 (payments únicos + provider_updated_at):**  
-   `supabase/migrations/20260914150000_bloco9_billing_payments_webhook.sql`
+   `supabase/migrations/20260914150000_bloco9_billing_payments_webhook.sql` (já aplicada no SQL Editor)
+
+Próximas migrations: configure o secret `SUPABASE_DB_URL` e o GitHub aplica no push para `main`. Ver `docs/SUPABASE_MIGRATIONS.md`.
 
 Sem essa migration, trocar para o anual / gravar `billing_interval` pode falhar no checkout.
 

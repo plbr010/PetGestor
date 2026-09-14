@@ -42,7 +42,7 @@ Não há cobrança automática ao fim do trial. Sem meio de pagamento cadastrado
 
 `billing_payments`: UNIQUE `(provider, provider_payment_id)`. Sem policies para `authenticated`.
 
-Migrations: trial + Mercado Pago billing + anual + `20260914150000_bloco9_billing_payments_webhook.sql` (**aplicar no Supabase**).
+Migrations: trial + Mercado Pago billing + anual + `20260914150000_bloco9_billing_payments_webhook.sql` (**aplicada no remoto em 2026-09-14**).
 
 ## Planos
 

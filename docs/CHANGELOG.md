@@ -12,7 +12,9 @@
 - `BILLING_DEV_BYPASS` continua ignorado em `NODE_ENV=production` mesmo se `true`
 - Fail-closed se billing estiver indisponível; `/assinatura` mostra erro recuperável sem loop
 
-**MIGRATION PENDENTE:** `supabase/migrations/20260914150000_bloco9_billing_payments_webhook.sql`
+**MIGRATION:** `supabase/migrations/20260914150000_bloco9_billing_payments_webhook.sql` — aplicada no remoto via SQL Editor (2026-09-14).
+
+Automação das próximas: `.github/workflows/apply-supabase-migrations.yml` (secret `SUPABASE_DB_URL`). Ver `docs/SUPABASE_MIGRATIONS.md`.
 
 Diagnóstico de legado: `docs/sql/diagnose-bloco-9-billing.sql`
 

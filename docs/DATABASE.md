@@ -291,7 +291,7 @@ BLOCO 9: `supabase/migrations/20260914150000_bloco9_billing_payments_webhook.sql
 - `company_subscriptions.provider_updated_at`, `checkout_idempotency_key`
 - `billing_payments` UNIQUE `(provider, provider_payment_id)`, RLS sem policy para `authenticated`
 
-Diagnóstico: `docs/sql/diagnose-bloco-9-billing.sql`. **Migration pendente de aplicação remota.**
+Diagnóstico: `docs/sql/diagnose-bloco-9-billing.sql`. **Aplicada no remoto via SQL Editor (2026-09-14).** Próximas: `docs/SUPABASE_MIGRATIONS.md`.
 
 ## Etapa 10A — Trial e assinaturas
 
