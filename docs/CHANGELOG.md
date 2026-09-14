@@ -1,3 +1,13 @@
+## [0.52.2] — 2026-09-14
+
+### Relatório — reteste ponta a ponta pós-merge (#71–#75)
+
+- Relatório único em `docs/RETEST_POS_MERGE_71_75.md`
+- Ambiente: produção `pet-gestor-sepia.vercel.app` @ `962f48c`
+- Sem migration e sem correção de código neste marco
+- Resultado: **73/100**. Não GA. Paginação `?page=` inválida crasha listagens; recovery não completou; OS/pacote/financeiro profundo e login staff ficaram sem prova ao vivo
+- Isolamento Empresa A × B, landing/SEO/headers, cadastro+trial 7 dias e CRUD básico de agenda/tutores/pets/serviços **confirmados**
+
 ## [0.52.1] — 2026-09-14
 
 ### Corrigido — BLOCO 10 hardening final (SEO e metadataBase)
