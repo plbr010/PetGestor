@@ -14,6 +14,11 @@
 --
 -- Objetivo 2: duas sessões com a MESMA idempotency key no mesmo serviço
 -- e o mesmo payload → uma execução lógica, a outra replay.
+--
+-- Como executar:
+--   psql "$DATABASE_URL" -f session1.sql   (ou dois clientes psql no mesmo banco)
+-- A sessão 1 usa BEGIN + pg_sleep(8) DEPOIS da RPC, na MESMA transação,
+-- para manter os advisory locks / FOR UPDATE até o COMMIT.
 
 -- =============================================================================
 -- SESSÃO 1 — payload A (segure o lock com pg_sleep)
@@ -28,7 +33,7 @@
 --   30,
 --   true,
 --   NULL,
---   '[]'::jsonb,
+--   '[{"product_id":"<product_a>","quantity":1}]'::jsonb,
 --   'concurrent-key-session-1',
 --   '<company_id>'::uuid
 -- );
@@ -49,7 +54,7 @@
 --   45,
 --   true,
 --   NULL,
---   '[]'::jsonb,
+--   '[{"product_id":"<product_b>","quantity":2}]'::jsonb,
 --   'concurrent-key-session-2',
 --   '<company_id>'::uuid
 -- );
@@ -67,6 +72,7 @@
 -- SELECT product_id, quantity
 -- FROM public.service_product_recipes
 -- WHERE service_id = '<service_id>';
+-- -- Esperado: só product_a/1 OU só product_b/2. Nunca as duas linhas.
 
 -- =============================================================================
 -- Mesma idempotency key, mesmo serviço, mesmo payload — duas sessões
