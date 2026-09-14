@@ -1,3 +1,19 @@
+## [0.51.3] — 2026-09-14
+
+### Corrigido — hardening BLOCO 8.1 (idempotência de UPDATE por serviço)
+
+- Replay de UPDATE só é válido se a tentativa existente for do **mesmo** `service_id`
+- Reusar a mesma idempotency key em outro serviço, mesmo com payload idêntico, vira `idempotency_key_conflict`
+- UPDATE serializa a key e o serviço (`advisory lock` + `FOR UPDATE`) até o commit
+- Fingerprint do payload permanece sem `service_id` para não invalidar attempts já gravadas
+- Vitest não simula concorrência PostgreSQL; reprodutor manual em `docs/sql/repro-bloco81-update-concurrency.sql`
+
+**MIGRATION:** `supabase/migrations/20260914174351_bloco81_idempotency_target_hardening.sql`
+
+Aplicar depois de `20260914172942_bloco81_service_prices_recipe_atomic.sql`. Não edita a migration do PR #72.
+
+Não inicia BLOCO 10.
+
 ## [0.51.2] — 2026-09-14
 
 ### Corrigido — BLOCO 8.1 (atomicidade serviço + preços + ficha)

@@ -199,6 +199,13 @@ function runMutation(
       if (existingAttempt.fingerprint !== fingerprint) {
         return { ok: false, error: "idempotency_key_conflict" };
       }
+      if (
+        operation === "update" &&
+        input.serviceId != null &&
+        existingAttempt.serviceId !== input.serviceId
+      ) {
+        return { ok: false, error: "idempotency_key_conflict" };
+      }
       return { ok: true, serviceId: existingAttempt.serviceId, replayed: true };
     }
 
@@ -282,7 +289,11 @@ export function updateServiceAtomic(
   return runMutation(store, actor, "update", input);
 }
 
-export function applyConcurrentUpdates(
+/**
+ * Aplica updates em série. Não é concorrência real de PostgreSQL.
+ * Para duas sessões simultâneas, ver docs/sql/repro-bloco81-update-concurrency.sql.
+ */
+export function applySequentialUpdates(
   store: ServiceMutationStore,
   actor: ServiceMutationActor,
   inputs: ServiceMutationInput[],

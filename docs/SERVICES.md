@@ -89,18 +89,33 @@ Permissão real: `services.manage`. Tenant via `p_company_id` + `private.activat
 
 Chave no formulário (`idempotency_key`), escopada por `(company_id, operation, key)`.
 
+CREATE:
+
 - Mesma chave + mesmo payload canônico → replay (mesmo `service_id`)
 - Mesma chave + payload diferente → `idempotency_key_conflict`
+
+UPDATE (hardening BLOCO 8.1):
+
+- Mesma chave + mesmo `service_id` + mesmo payload → replay
+- Mesma chave + **outro** `service_id` (mesmo payload) → `idempotency_key_conflict`
+- Mesma chave + mesmo `service_id` + payload diferente → `idempotency_key_conflict`
+
+O fingerprint do payload **não** inclui `service_id` (compatível com attempts já gravadas). A identidade do alvo é a coluna `service_id` da tentativa, conferida em `peek` / `remember`.
 
 Fingerprint ignora a ordem da ficha e das faixas de porte.
 
 ### Concorrência
 
-UPDATE: `pg_advisory_xact_lock` por empresa+serviço + `SELECT … FOR UPDATE` na linha do serviço. Não mistura core de A com ficha de B.
+UPDATE: `pg_advisory_xact_lock` na **key** e no **serviço**, mais `SELECT … FOR UPDATE` na linha. Cobre core + `service_size_prices` + `service_product_recipes` até o COMMIT.
+
+O Vitest **não** prova concorrência PostgreSQL (não há Postgres neste CI). Reprodutor manual de duas sessões: `docs/sql/repro-bloco81-update-concurrency.sql`.
 
 Diagnóstico somente leitura: `docs/sql/diagnose-service-recipe-atomicity.sql`
 
-Migration: `supabase/migrations/20260914172942_bloco81_service_prices_recipe_atomic.sql`
+Migrations (aplicar nesta ordem):
+
+1. `supabase/migrations/20260914172942_bloco81_service_prices_recipe_atomic.sql`
+2. `supabase/migrations/20260914174351_bloco81_idempotency_target_hardening.sql`
 
 ## Segurança
 
@@ -134,6 +149,7 @@ Assim, alterações futuras de preço não alteram registros antigos.
 ## Migration
 
 - `supabase/migrations/20260805210000_services.sql`
-- `supabase/migrations/20260914172942_bloco81_service_prices_recipe_atomic.sql` (**PENDENTE** no remoto — aplicar no SQL Editor ou via workflow de migrations)
+- `supabase/migrations/20260914172942_bloco81_service_prices_recipe_atomic.sql`
+- `supabase/migrations/20260914174351_bloco81_idempotency_target_hardening.sql`
 
-Não edita migrations já aplicadas.
+Aplicar as duas do BLOCO 8.1 **nesta ordem**. Não edita migrations já aplicadas.

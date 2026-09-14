@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  applyConcurrentUpdates,
+  applySequentialUpdates,
   createEmptyServiceMutationStore,
   createServiceAtomic,
   parseRecipesJson,
@@ -365,13 +365,13 @@ describe("BLOCO 8.1 — contrato transacional serviço/preços/ficha", () => {
     expect(store.services[0]?.name).toBe("Banho");
   });
 
-  it("20) duas requests concorrentes no mesmo serviço não intercalam core/preço/ficha", () => {
+  it("20) updates sequenciais no mesmo serviço terminam integralmente no último payload", () => {
     const store = createEmptyServiceMutationStore(products);
     const created = createServiceAtomic(store, owner, fixedInput());
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const results = applyConcurrentUpdates(store, owner, [
+    const results = applySequentialUpdates(store, owner, [
       fixedInput({
         serviceId: created.serviceId,
         name: "Request A",
@@ -472,5 +472,177 @@ describe("fingerprint canônico", () => {
       ],
     });
     expect(a).toBe(b);
+  });
+});
+
+describe("BLOCO 8.1 hardening — UPDATE idempotente por serviço", () => {
+  const payloadP = {
+    name: "Payload P",
+    priceCents: 5500,
+    recipes: [{ productId: PRODUCT_A1, quantity: 1 }],
+  };
+
+  it("A) retry UPDATE no mesmo serviço com a mesma key e o mesmo payload → replay", () => {
+    const store = createEmptyServiceMutationStore(products);
+    const created = createServiceAtomic(store, owner, fixedInput());
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const first = updateServiceAtomic(
+      store,
+      owner,
+      fixedInput({
+        ...payloadP,
+        serviceId: created.serviceId,
+        idempotencyKey: KEY_2,
+      }),
+    );
+    const snapshot = structuredClone(store.services[0]);
+    const retry = updateServiceAtomic(
+      store,
+      owner,
+      fixedInput({
+        ...payloadP,
+        serviceId: created.serviceId,
+        idempotencyKey: KEY_2,
+      }),
+    );
+
+    expect(first.ok && retry.ok).toBe(true);
+    if (!first.ok || !retry.ok) return;
+    expect(retry.replayed).toBe(true);
+    expect(retry.serviceId).toBe(created.serviceId);
+    expect(retry.serviceId).toBe(first.serviceId);
+    expect(store.services).toHaveLength(1);
+    expect(store.services[0]).toEqual(snapshot);
+  });
+
+  it("B) mesma UPDATE key + mesmo payload em OUTRO serviço → conflito", () => {
+    const store = createEmptyServiceMutationStore(products);
+    const serviceA = createServiceAtomic(store, owner, fixedInput({ idempotencyKey: "create-svc-a-0001" }));
+    const serviceB = createServiceAtomic(store, owner, fixedInput({ name: "Outro", idempotencyKey: "create-svc-b-0001" }));
+    expect(serviceA.ok && serviceB.ok).toBe(true);
+    if (!serviceA.ok || !serviceB.ok) return;
+
+    const updateA = updateServiceAtomic(
+      store,
+      owner,
+      fixedInput({
+        ...payloadP,
+        serviceId: serviceA.serviceId,
+        idempotencyKey: KEY_2,
+      }),
+    );
+    expect(updateA.ok).toBe(true);
+
+    const updateB = updateServiceAtomic(
+      store,
+      owner,
+      fixedInput({
+        ...payloadP,
+        serviceId: serviceB.serviceId,
+        idempotencyKey: KEY_2,
+      }),
+    );
+
+    expect(updateB).toEqual({ ok: false, error: "idempotency_key_conflict" });
+    expect(store.services.find((row) => row.id === serviceA.serviceId)?.name).toBe("Payload P");
+    expect(store.services.find((row) => row.id === serviceB.serviceId)?.name).toBe("Outro");
+    expect(updateB.ok === false || updateB.serviceId !== serviceA.serviceId).toBe(true);
+  });
+
+  it("C) mesma UPDATE key + mesmo serviço + payload diferente → conflito", () => {
+    const store = createEmptyServiceMutationStore(products);
+    const created = createServiceAtomic(store, owner, fixedInput());
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    updateServiceAtomic(
+      store,
+      owner,
+      fixedInput({
+        ...payloadP,
+        serviceId: created.serviceId,
+        idempotencyKey: KEY_2,
+      }),
+    );
+
+    const conflict = updateServiceAtomic(
+      store,
+      owner,
+      fixedInput({
+        serviceId: created.serviceId,
+        name: "Payload Q",
+        priceCents: 8800,
+        idempotencyKey: KEY_2,
+      }),
+    );
+
+    expect(conflict).toEqual({ ok: false, error: "idempotency_key_conflict" });
+    expect(store.services[0]?.name).toBe("Payload P");
+    expect(store.services[0]?.priceCents).toBe(5500);
+  });
+
+  it("D) duas empresas podem usar a mesma key sem colisão", () => {
+    const store = createEmptyServiceMutationStore(products);
+    const actorB: ServiceMutationActor = {
+      companyId: COMPANY_B,
+      hasServicesManage: true,
+      accessRevokedAt: null,
+    };
+
+    const createdA = createServiceAtomic(store, owner, fixedInput({ idempotencyKey: KEY_1 }));
+    const createdB = createServiceAtomic(
+      store,
+      actorB,
+      fixedInput({
+        companyId: COMPANY_B,
+        name: "Banho B",
+        idempotencyKey: KEY_1,
+      }),
+    );
+
+    expect(createdA.ok && createdB.ok).toBe(true);
+    if (!createdA.ok || !createdB.ok) return;
+    expect(createdA.serviceId).not.toBe(createdB.serviceId);
+    expect(store.services).toHaveLength(2);
+
+    const updateA = updateServiceAtomic(
+      store,
+      owner,
+      fixedInput({
+        ...payloadP,
+        serviceId: createdA.serviceId,
+        idempotencyKey: KEY_2,
+      }),
+    );
+    const updateB = updateServiceAtomic(
+      store,
+      actorB,
+      fixedInput({
+        companyId: COMPANY_B,
+        name: "Payload P empresa B",
+        priceCents: 5500,
+        recipes: [],
+        serviceId: createdB.serviceId,
+        idempotencyKey: KEY_2,
+      }),
+    );
+
+    expect(updateA.ok && updateB.ok).toBe(true);
+    expect(store.services.find((row) => row.id === createdA.serviceId)?.name).toBe("Payload P");
+    expect(store.services.find((row) => row.id === createdB.serviceId)?.name).toBe(
+      "Payload P empresa B",
+    );
+  });
+
+  it("E) CREATE continua com retry da mesma key", () => {
+    const store = createEmptyServiceMutationStore(products);
+    const first = createServiceAtomic(store, owner, fixedInput());
+    const second = createServiceAtomic(store, owner, fixedInput());
+    expect(first.ok && second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+    expect(second.replayed).toBe(true);
+    expect(store.services).toHaveLength(1);
   });
 });
