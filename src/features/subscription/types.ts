@@ -1,12 +1,15 @@
 import type { BillingInterval } from "@/config/subscription";
 import type { SubscriptionStatus } from "@/types/database.types";
 
+/** Fonte canônica de acesso SaaS — nunca decidir só pelo status persistido. */
 export type EntitlementState =
   | "trialing"
   | "trial_expired"
   | "active"
   | "past_due"
-  | "cancelled";
+  | "cancelled"
+  | "expired"
+  | "unavailable";
 
 export type CompanySubscriptionRecord = {
   companyId: string;
@@ -29,6 +32,8 @@ export type CompanySubscriptionRecord = {
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  providerUpdatedAt?: string | null;
+  checkoutIdempotencyKey?: string | null;
 };
 
 export type SubscriptionPageState =
@@ -37,17 +42,22 @@ export type SubscriptionPageState =
   | "checkout_pending"
   | "active"
   | "past_due"
-  | "cancelled";
+  | "cancelled"
+  | "expired"
+  | "unavailable";
 
 export type CompanyEntitlement = {
   state: EntitlementState;
   hasOperationalAccess: boolean;
   subscription: CompanySubscriptionRecord | null;
   serverNowIso: string;
+  billingUnavailable?: boolean;
 };
 
 export type EntitlementOptions = {
   devBypass?: boolean;
   /** Empresa isenta (conta admin da plataforma) — acesso permanente. */
   billingExempt?: boolean;
+  /** Falha ao carregar billing: fail-closed operacional; UI de regularização mostra erro recuperável. */
+  billingUnavailable?: boolean;
 };

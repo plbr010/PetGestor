@@ -286,7 +286,12 @@ Migration: `supabase/migrations/20260806084500_mercado_pago_billing.sql`
 
 Campos adicionais em `company_subscriptions` + tabela `billing_webhook_events` (idempotência).
 
-Ver `docs/MERCADO_PAGO_SETUP.md`. **Migration pendente de aplicação remota.**
+BLOCO 9: `supabase/migrations/20260914150000_bloco9_billing_payments_webhook.sql`
+
+- `company_subscriptions.provider_updated_at`, `checkout_idempotency_key`
+- `billing_payments` UNIQUE `(provider, provider_payment_id)`, RLS sem policy para `authenticated`
+
+Diagnóstico: `docs/sql/diagnose-bloco-9-billing.sql`. **Migration pendente de aplicação remota.**
 
 ## Etapa 10A — Trial e assinaturas
 

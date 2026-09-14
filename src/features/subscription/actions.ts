@@ -21,6 +21,7 @@ import {
   createPendingSubscription,
   getSubscription,
   cancelSubscription as cancelMercadoPagoSubscription,
+  MercadoPagoApiError,
 } from "@/features/subscription/providers/mercado-pago";
 import { getCompanySubscription, requireCompanySubscription } from "@/features/subscription/queries";
 import { syncSubscriptionFromProvider } from "@/features/subscription/sync";
@@ -34,6 +35,15 @@ import {
   parseBillingInterval,
   type BillingInterval,
 } from "@/config/subscription";
+import {
+  buildCheckoutIdempotencyKey,
+  parseCheckoutFormData,
+  shouldReuseCheckoutIdempotencyKey,
+} from "@/features/subscription/checkout-policy";
+import {
+  classifyProviderError,
+  userMessageForProviderError,
+} from "@/features/subscription/provider-errors";
 import {
   assertMercadoPagoSandboxPayerEmail,
   BillingConfigError,
@@ -145,7 +155,20 @@ function getCheckoutFailureStage(error: unknown): string {
 
 function mapCheckoutError(error: unknown): string {
   if (error instanceof BillingConfigError) {
-    return "Mercado Pago ainda não está configurado neste ambiente.";
+    return userMessageForProviderError("not_configured");
+  }
+
+  const providerKind = classifyProviderError(error);
+  if (error instanceof MercadoPagoApiError || providerKind !== "unknown") {
+    if (
+      providerKind === "timeout" ||
+      providerKind === "rate_limited" ||
+      providerKind === "server_error" ||
+      providerKind === "invalid_credentials" ||
+      providerKind === "not_configured"
+    ) {
+      return userMessageForProviderError(providerKind);
+    }
   }
 
   if (error instanceof Error) {
@@ -264,7 +287,7 @@ export async function createSubscriptionCheckoutAction(
     stage = "trial_validated";
     logSubscriptionDevStage(stage);
 
-    const changeKind = resolvePlanChangeKind(subscription, billingInterval);
+    const changeKind = resolvePlanChangeKind(subscription, billingInterval, serverNow);
 
     if (changeKind === "same_plan") {
       stage = "redirecting";
@@ -435,8 +458,25 @@ export async function createSubscriptionCheckoutAction(
     }
 
     let preapproval;
+    const replacingProviderSubscriptionId =
+      subscription.providerSubscriptionId &&
+      isReusablePendingCheckout(subscription.providerStatus) &&
+      !pendingMatchesPlan
+        ? subscription.providerSubscriptionId
+        : null;
+    const idempotencyKey = shouldReuseCheckoutIdempotencyKey(
+      subscription.checkoutIdempotencyKey,
+      pendingMatchesPlan && isReusablePendingCheckout(subscription.providerStatus),
+    )
+      ? subscription.checkoutIdempotencyKey
+      : buildCheckoutIdempotencyKey({
+          companyId,
+          billingInterval,
+          replacingProviderSubscriptionId,
+        });
+
     try {
-      preapproval = await createPendingSubscription(payload);
+      preapproval = await createPendingSubscription(payload, { idempotencyKey });
     } catch (error) {
       annotateCheckoutErrorStage(error, "before_mercado_pago");
       if (error instanceof BillingConfigError) {
@@ -469,6 +509,7 @@ export async function createSubscriptionCheckoutAction(
       provider_status: preapproval.status,
       provider_checkout_url: preapproval.init_point,
       checkout_started_at: new Date().toISOString(),
+      checkout_idempotency_key: idempotencyKey,
       cancel_at_period_end: changeKind === "upgrade_to_annual" ? true : false,
     });
 
@@ -543,14 +584,12 @@ export async function createSubscriptionCheckoutFormAction(
   formData: FormData,
 ): Promise<SubscriptionActionState> {
   try {
-    let billingInterval: BillingInterval = "monthly";
-    try {
-      billingInterval = parseBillingInterval(formData.get("plan") ?? "monthly");
-    } catch {
+    const parsed = parseCheckoutFormData(formData);
+    if (!parsed.ok) {
       return { error: "Plano inválido. Escolha mensal ou anual." };
     }
 
-    await createSubscriptionCheckoutAction(billingInterval);
+    await createSubscriptionCheckoutAction(parsed.value.billingInterval);
     return {};
   } catch (error) {
     unstable_rethrow(error);

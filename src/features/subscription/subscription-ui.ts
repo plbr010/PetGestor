@@ -1,4 +1,5 @@
 import type { BillingInterval } from "@/config/subscription";
+import { computeEntitlement } from "@/features/subscription/entitlement";
 import type { CompanyEntitlement, CompanySubscriptionRecord } from "@/features/subscription/types";
 import {
   isActiveProviderSubscription,
@@ -9,7 +10,19 @@ import {
 export function resolveSubscriptionPageState(
   subscription: CompanySubscriptionRecord,
   entitlement: CompanyEntitlement,
-): "trial_active" | "trial_expired" | "checkout_pending" | "active" | "past_due" | "cancelled" {
+):
+  | "trial_active"
+  | "trial_expired"
+  | "checkout_pending"
+  | "active"
+  | "past_due"
+  | "cancelled"
+  | "expired"
+  | "unavailable" {
+  if (entitlement.billingUnavailable || entitlement.state === "unavailable") {
+    return "unavailable";
+  }
+
   if (entitlement.state === "trialing") {
     return "trial_active";
   }
@@ -22,17 +35,24 @@ export function resolveSubscriptionPageState(
     return "checkout_pending";
   }
 
-  if (subscription.status === "active" || entitlement.state === "active") {
+  if (entitlement.state === "active") {
     return "active";
   }
 
-  if (subscription.status === "past_due" || entitlement.state === "past_due") {
+  if (entitlement.state === "past_due") {
     return "past_due";
+  }
+
+  if (entitlement.state === "cancelled") {
+    return "cancelled";
+  }
+
+  if (entitlement.state === "expired") {
+    return "expired";
   }
 
   if (
     subscription.status === "cancelled" ||
-    entitlement.state === "cancelled" ||
     isCancelledProviderSubscription(subscription.providerStatus)
   ) {
     return "cancelled";
@@ -45,18 +65,25 @@ export function isTrialStillActiveServerSide(
   subscription: CompanySubscriptionRecord,
   serverNow: Date,
 ): boolean {
-  return serverNow.getTime() < new Date(subscription.trialEndsAt).getTime();
+  return computeEntitlement(subscription, serverNow).state === "trialing";
 }
 
 export function canStartMercadoPagoCheckout(
   subscription: CompanySubscriptionRecord,
   serverNow: Date,
 ): boolean {
-  if (isTrialStillActiveServerSide(subscription, serverNow)) {
+  const entitlement = computeEntitlement(subscription, serverNow);
+
+  if (entitlement.state === "trialing") {
     return false;
   }
 
-  if (subscription.status === "active" || isActiveProviderSubscription(subscription.providerStatus)) {
+  // Assinatura paga vigente (não residual de cancelamento) não inicia novo checkout de subscribe.
+  if (entitlement.state === "active") {
+    return false;
+  }
+
+  if (isActiveProviderSubscription(subscription.providerStatus) && entitlement.hasOperationalAccess) {
     return false;
   }
 
@@ -74,9 +101,10 @@ export type PlanChangeKind = "subscribe" | "upgrade_to_annual" | "same_plan" | "
 export function resolvePlanChangeKind(
   subscription: CompanySubscriptionRecord,
   target: BillingInterval,
+  serverNow: Date = new Date(),
 ): PlanChangeKind {
-  const isLive =
-    subscription.status === "active" || isActiveProviderSubscription(subscription.providerStatus);
+  const entitlement = computeEntitlement(subscription, serverNow);
+  const isLive = entitlement.state === "active";
 
   if (!isLive) {
     return "subscribe";
@@ -101,6 +129,7 @@ export function canShowPlanPicker(
     pageState === "cancelled" ||
     pageState === "past_due" ||
     pageState === "active" ||
-    pageState === "checkout_pending"
+    pageState === "checkout_pending" ||
+    pageState === "expired"
   );
 }

@@ -32,4 +32,15 @@ describe("verifyMercadoPagoWebhookSignature", () => {
       }),
     ).toBe(true);
   });
+
+  it("rejeita assinatura ausente", () => {
+    expect(
+      verifyMercadoPagoWebhookSignature({
+        xSignature: null,
+        xRequestId: "req-1",
+        dataId: "abc123",
+        secret: "webhook-secret",
+      }),
+    ).toBe(false);
+  });
 });

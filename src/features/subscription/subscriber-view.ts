@@ -4,7 +4,9 @@ export type SubscriberPageState =
   | "checkout_pending"
   | "active"
   | "past_due"
-  | "cancelled";
+  | "cancelled"
+  | "expired"
+  | "unavailable";
 
 export type SubscriberBadge =
   | "TRIAL"
@@ -30,13 +32,15 @@ export function resolveSubscriberBadge(pageState: SubscriberPageState): Subscrib
       return "INADIMPLENTE";
     case "cancelled":
       return "CANCELADO";
+    case "unavailable":
+      return "EXPIRADO";
     default:
       return "EXPIRADO";
   }
 }
 
 export function shouldShowRegularizeCta(pageState: SubscriberPageState): boolean {
-  return pageState === "past_due";
+  return pageState === "past_due" || pageState === "expired" || pageState === "trial_expired";
 }
 
 export function shouldShowCancelCta(pageState: SubscriberPageState): boolean {

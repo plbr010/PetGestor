@@ -70,9 +70,15 @@ describe("plan change rules", () => {
       billingInterval: "monthly",
       providerStatus: "authorized",
       providerSubscriptionId: "pre-1",
+      currentPeriodStart: "2026-08-10T00:00:00.000Z",
+      currentPeriodEnd: "2026-09-10T00:00:00.000Z",
     });
-    expect(resolvePlanChangeKind(subscription, "annual")).toBe("upgrade_to_annual");
-    expect(resolvePlanChangeKind(subscription, "monthly")).toBe("same_plan");
+    expect(resolvePlanChangeKind(subscription, "annual", new Date("2026-08-20T00:00:00.000Z"))).toBe(
+      "upgrade_to_annual",
+    );
+    expect(resolvePlanChangeKind(subscription, "monthly", new Date("2026-08-20T00:00:00.000Z"))).toBe(
+      "same_plan",
+    );
   });
 
   it("anual ativo não muda para mensal imediatamente", () => {
@@ -82,8 +88,12 @@ describe("plan change rules", () => {
       planCode: "petgestor_annual",
       providerStatus: "authorized",
       providerSubscriptionId: "pre-2",
+      currentPeriodStart: "2026-08-10T00:00:00.000Z",
+      currentPeriodEnd: "2027-08-10T00:00:00.000Z",
     });
-    expect(resolvePlanChangeKind(subscription, "monthly")).toBe("annual_to_monthly_blocked");
+    expect(resolvePlanChangeKind(subscription, "monthly", new Date("2026-09-01T00:00:00.000Z"))).toBe(
+      "annual_to_monthly_blocked",
+    );
   });
 
   it("checkout pendente tem prioridade mesmo com período pago restante", () => {

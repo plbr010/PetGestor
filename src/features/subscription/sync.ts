@@ -2,25 +2,29 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 
-import {
-  computePaidPeriodEnd,
-  type BillingInterval,
-} from "@/config/subscription";
+import { type BillingInterval } from "@/config/subscription";
 import {
   getCompanySubscriptionByProviderId,
+  recordBillingPayment,
   updateCompanySubscriptionBilling,
 } from "@/features/subscription/billing-repository";
-import { mapPreapprovalStatusToLocal, mapPaymentStatusToLocal } from "@/features/subscription/provider-status";
+import { mapPaymentStatusToLocal, mapPreapprovalStatusToLocal } from "@/features/subscription/provider-status";
 import {
   getAuthorizedPayment,
   getPayment,
   getSubscription,
 } from "@/features/subscription/providers/mercado-pago";
 import {
-  assertExpectedCheckoutAmount,
+  assertActivationMatchesPlan,
   MERCADO_PAGO_PROVIDER,
   parseExternalReference,
 } from "@/features/subscription/providers/mercado-pago-types";
+import { amountToCents, resolvePaidPeriodOnApprovedPayment } from "@/features/subscription/sync-policy";
+import {
+  resolveWebhookTenant,
+  shouldApplyLocalStatusTransition,
+  shouldApplyProviderSnapshot,
+} from "@/features/subscription/webhook-policy";
 import { getCompanySubscription } from "@/features/subscription/queries";
 import { isValidUuid } from "@/lib/security/uuid";
 
@@ -30,22 +34,6 @@ export type SyncSubscriptionResult = {
   localStatus: string;
   synced: boolean;
 };
-
-function resolveCompanyIdFromPreapproval(
-  externalReference: string | undefined,
-  expectedCompanyId?: string,
-): string | null {
-  const companyId = parseExternalReference(externalReference ?? null);
-  if (!companyId || !isValidUuid(companyId)) {
-    return null;
-  }
-
-  if (expectedCompanyId && expectedCompanyId !== companyId) {
-    return null;
-  }
-
-  return companyId;
-}
 
 function resolveBillingInterval(row: {
   billing_interval?: string | null;
@@ -57,105 +45,12 @@ function resolveBillingInterval(row: {
   return "monthly";
 }
 
-function periodCoversAnnualCycle(
-  startIso: string | null | undefined,
-  endIso: string | null | undefined,
-): boolean {
-  if (!startIso || !endIso) {
-    return false;
+function providerTimestamp(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
   }
-
-  const start = new Date(startIso).getTime();
-  const end = new Date(endIso).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end)) {
-    return false;
-  }
-
-  return end - start >= 300 * 24 * 60 * 60 * 1000;
-}
-
-/**
- * Define período pago na primeira ativação (ou no upgrade mensal→anual).
- * Idempotente: não alonga de novo se o período anual já estiver definido.
- */
-function buildPeriodUpdateOnFirstActivation(params: {
-  alreadySubscribed: boolean;
-  hasPeriodStart: boolean;
-  currentPeriodStart: string | null | undefined;
-  currentPeriodEnd: string | null | undefined;
-  billingInterval: BillingInterval;
-  now: Date;
-  nextPaymentAt: string | null | undefined;
-}): {
-  subscribed_at?: string;
-  current_period_start?: string;
-  current_period_end?: string;
-  cancel_at_period_end?: boolean;
-} {
-  const existingCoversAnnual =
-    params.billingInterval === "annual" &&
-    periodCoversAnnualCycle(params.currentPeriodStart, params.currentPeriodEnd);
-
-  const skipPeriodReset =
-    params.hasPeriodStart &&
-    (params.billingInterval === "monthly" || existingCoversAnnual);
-
-  if (params.alreadySubscribed && skipPeriodReset) {
-    return {};
-  }
-
-  const start = params.now;
-  const periodEnd =
-    params.billingInterval === "annual"
-      ? computePaidPeriodEnd(start, "annual")
-      : params.nextPaymentAt
-        ? new Date(params.nextPaymentAt)
-        : computePaidPeriodEnd(start, "monthly");
-
-  const update: {
-    subscribed_at?: string;
-    current_period_start?: string;
-    current_period_end?: string;
-    cancel_at_period_end?: boolean;
-  } = {};
-
-  if (!params.alreadySubscribed) {
-    update.subscribed_at = start.toISOString();
-  }
-
-  if (!skipPeriodReset) {
-    update.current_period_start = start.toISOString();
-    update.current_period_end = periodEnd.toISOString();
-    update.cancel_at_period_end = false;
-  }
-
-  return update;
-}
-
-/**
- * Em renovação, avança current_period_end só se next_payment_date for mais tarde
- * (idempotente em webhooks duplicados com a mesma data).
- */
-function buildPeriodEndRefresh(params: {
-  hasPeriodStart: boolean;
-  currentPeriodEnd: string | null | undefined;
-  nextPaymentAt: string | null | undefined;
-}): { current_period_end?: string } {
-  if (!params.hasPeriodStart || !params.nextPaymentAt) {
-    return {};
-  }
-
-  const next = new Date(params.nextPaymentAt);
-  if (Number.isNaN(next.getTime())) {
-    return {};
-  }
-
-  const existingEnd = params.currentPeriodEnd ? new Date(params.currentPeriodEnd) : null;
-  if (existingEnd && next.getTime() <= existingEnd.getTime()) {
-    return {};
-  }
-
-  return { current_period_end: next.toISOString() };
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 export async function syncSubscriptionFromProvider(params: {
@@ -175,29 +70,57 @@ export async function syncSubscriptionFromProvider(params: {
   }
 
   const preapproval = await getSubscription(providerSubscriptionId);
-  const resolvedCompanyId =
-    companyId ?? resolveCompanyIdFromPreapproval(preapproval.external_reference);
-
-  if (!resolvedCompanyId) {
-    throw new Error("billing_external_reference_mismatch");
-  }
-
-  if (companyId && companyId !== resolvedCompanyId) {
-    throw new Error("billing_company_mismatch");
-  }
-
   const existing = await getCompanySubscriptionByProviderId(providerSubscriptionId);
-  if (existing && existing.company_id !== resolvedCompanyId) {
-    throw new Error("billing_cross_tenant_blocked");
+  const externalReferenceCompanyId = parseExternalReference(preapproval.external_reference ?? null);
+  const tenant = resolveWebhookTenant({
+    localCompanyIdByProviderId: existing?.company_id ?? null,
+    externalReferenceCompanyId:
+      externalReferenceCompanyId && isValidUuid(externalReferenceCompanyId)
+        ? externalReferenceCompanyId
+        : null,
+    claimedCompanyId: companyId ?? null,
+  });
+
+  if (!tenant.ok) {
+    throw new Error(
+      tenant.reason === "cross_tenant"
+        ? "billing_cross_tenant_blocked"
+        : "billing_local_record_required",
+    );
   }
 
+  const resolvedCompanyId = tenant.companyId;
   const mapping = mapPreapprovalStatusToLocal(preapproval.status);
   const now = new Date();
   const billingInterval = resolveBillingInterval(existing ?? {});
+  const incomingUpdatedAt =
+    providerTimestamp(preapproval.last_modified) ?? providerTimestamp(preapproval.date_created);
+  const snapshotIsNewerOrEqual = shouldApplyProviderSnapshot({
+    localProviderUpdatedAt: existing?.provider_updated_at ?? null,
+    incomingProviderUpdatedAt: incomingUpdatedAt,
+  });
 
-  const mpAmount = preapproval.auto_recurring?.transaction_amount;
-  if (typeof mpAmount === "number" && mapping.localStatus === "active") {
-    assertExpectedCheckoutAmount(billingInterval, mpAmount);
+  if (mapping.localStatus === "active") {
+    assertActivationMatchesPlan({
+      billingInterval,
+      amount: preapproval.auto_recurring?.transaction_amount,
+      currency: preapproval.auto_recurring?.currency_id ?? "BRL",
+    });
+  }
+
+  const applyStatus = shouldApplyLocalStatusTransition({
+    currentLocalStatus: existing?.status ?? null,
+    incomingLocalStatus: mapping.localStatus,
+    snapshotIsNewerOrEqual,
+  });
+
+  if (!snapshotIsNewerOrEqual && !applyStatus) {
+    return {
+      companyId: resolvedCompanyId,
+      providerStatus: preapproval.status,
+      localStatus: existing?.status ?? "trialing",
+      synced: false,
+    };
   }
 
   const update: Parameters<typeof updateCompanySubscriptionBilling>[1] = {
@@ -208,44 +131,31 @@ export async function syncSubscriptionFromProvider(params: {
     next_payment_at: preapproval.next_payment_date ?? null,
   };
 
-  if (mapping.localStatus) {
+  if (incomingUpdatedAt && snapshotIsNewerOrEqual) {
+    update.provider_updated_at = incomingUpdatedAt;
+  }
+
+  if (applyStatus && mapping.localStatus) {
     update.status = mapping.localStatus;
   }
 
-  if (mapping.localStatus === "active") {
+  if (applyStatus && mapping.localStatus === "active") {
     Object.assign(
       update,
-      buildPeriodUpdateOnFirstActivation({
+      resolvePaidPeriodOnApprovedPayment({
         alreadySubscribed: Boolean(existing?.subscribed_at),
-        hasPeriodStart: Boolean(existing?.current_period_start),
         currentPeriodStart: existing?.current_period_start,
         currentPeriodEnd: existing?.current_period_end,
         billingInterval,
         now,
         nextPaymentAt: preapproval.next_payment_date,
       }),
-      buildPeriodEndRefresh({
-        hasPeriodStart: Boolean(existing?.current_period_start),
-        currentPeriodEnd: existing?.current_period_end,
-        nextPaymentAt: preapproval.next_payment_date,
-      }),
     );
   }
 
-  if (mapping.localStatus === "cancelled") {
+  if (applyStatus && mapping.localStatus === "cancelled") {
     update.cancelled_at = existing?.cancelled_at ?? now.toISOString();
     update.cancel_at_period_end = true;
-
-    // Garante período já pago para não cortar acesso anual/mensal no meio do ciclo.
-    if (!existing?.current_period_end) {
-      const startIso = existing?.subscribed_at ?? existing?.current_period_start ?? now.toISOString();
-      const start = new Date(startIso);
-      const endFromNext = preapproval.next_payment_date
-        ? new Date(preapproval.next_payment_date)
-        : computePaidPeriodEnd(start, billingInterval);
-      update.current_period_start = existing?.current_period_start ?? start.toISOString();
-      update.current_period_end = endFromNext.toISOString();
-    }
   }
 
   const row = await updateCompanySubscriptionBilling(resolvedCompanyId, update);
@@ -274,17 +184,28 @@ export async function syncAuthorizedPaymentFromProvider(authorizedPaymentId: str
 
   const local = await getCompanySubscriptionByProviderId(preapprovalId);
   if (!local) {
-    return null;
+    throw new Error("billing_local_record_required");
   }
 
   let paymentStatus: string | undefined;
   let paymentApprovedAt: string | null = null;
+  let paymentAmount: number | null = null;
+  let paymentCurrency: string | null = null;
+  let paymentUpdatedAt: string | null = null;
+  let providerPaymentId: string | null = null;
 
   const paymentId = authorizedPayment.payment?.id;
   if (paymentId) {
     const payment = await getPayment(String(paymentId));
     paymentStatus = payment.status;
     paymentApprovedAt = payment.date_approved ?? null;
+    paymentAmount = payment.transaction_amount ?? null;
+    paymentCurrency = payment.currency_id ?? null;
+    paymentUpdatedAt =
+      providerTimestamp(payment.date_last_updated) ??
+      providerTimestamp(payment.date_approved) ??
+      providerTimestamp(payment.date_created);
+    providerPaymentId = String(payment.id);
   } else if (authorizedPayment.payment?.status) {
     paymentStatus = authorizedPayment.payment.status;
   } else if (authorizedPayment.status) {
@@ -296,33 +217,68 @@ export async function syncAuthorizedPaymentFromProvider(authorizedPaymentId: str
   }
 
   const paymentMapping = mapPaymentStatusToLocal(paymentStatus);
+  const snapshotIsNewerOrEqual = shouldApplyProviderSnapshot({
+    localProviderUpdatedAt: local.provider_updated_at ?? null,
+    incomingProviderUpdatedAt: paymentUpdatedAt,
+  });
+  const applyStatus = shouldApplyLocalStatusTransition({
+    currentLocalStatus: local.status,
+    incomingLocalStatus: paymentMapping.localStatus,
+    snapshotIsNewerOrEqual,
+  });
+
+  if (providerPaymentId) {
+    const recorded = await recordBillingPayment({
+      company_id: local.company_id,
+      provider: MERCADO_PAGO_PROVIDER,
+      provider_payment_id: providerPaymentId,
+      provider_subscription_id: preapprovalId,
+      status: paymentStatus,
+      amount_cents: typeof paymentAmount === "number" ? amountToCents(paymentAmount) : null,
+      currency: paymentCurrency,
+      provider_updated_at: paymentUpdatedAt,
+      paid_at: paymentApprovedAt,
+    });
+
+    if (recorded.duplicate) {
+      return { companyId: local.company_id, paymentStatus, duplicate: true };
+    }
+  }
+
+  if (paymentMapping.localStatus === "active") {
+    assertActivationMatchesPlan({
+      billingInterval: resolveBillingInterval(local),
+      amount: paymentAmount,
+      currency: paymentCurrency ?? "BRL",
+    });
+  }
+
   const update: Parameters<typeof updateCompanySubscriptionBilling>[1] = {
     last_payment_status: paymentStatus,
     last_payment_at: paymentApprovedAt ?? new Date().toISOString(),
   };
 
-  if (paymentMapping.localStatus) {
+  if (applyStatus && paymentMapping.localStatus) {
     update.status = paymentMapping.localStatus;
   }
 
-  // Pagamento aprovado: define/renova período (inclui upgrade mensal→anual).
-  if (paymentMapping.localStatus === "active") {
-    const interval = resolveBillingInterval(local);
-    const start = paymentApprovedAt ? new Date(paymentApprovedAt) : new Date();
-    const coversAnnual = periodCoversAnnualCycle(
-      local.current_period_start,
-      local.current_period_end,
+  if (applyStatus && paymentMapping.localStatus === "active") {
+    Object.assign(
+      update,
+      resolvePaidPeriodOnApprovedPayment({
+        billingInterval: resolveBillingInterval(local),
+        now: paymentApprovedAt ? new Date(paymentApprovedAt) : new Date(),
+        paymentApprovedAt: paymentApprovedAt ? new Date(paymentApprovedAt) : null,
+        currentPeriodStart: local.current_period_start,
+        currentPeriodEnd: local.current_period_end,
+        nextPaymentAt: local.next_payment_at,
+        alreadySubscribed: Boolean(local.subscribed_at),
+      }),
     );
+  }
 
-    if (!local.current_period_start || (interval === "annual" && !coversAnnual)) {
-      update.current_period_start = start.toISOString();
-      update.current_period_end = computePaidPeriodEnd(start, interval).toISOString();
-      update.cancel_at_period_end = false;
-    }
-
-    if (!local.subscribed_at) {
-      update.subscribed_at = start.toISOString();
-    }
+  if (paymentUpdatedAt && snapshotIsNewerOrEqual) {
+    update.provider_updated_at = paymentUpdatedAt;
   }
 
   await updateCompanySubscriptionBilling(local.company_id, update);
@@ -337,7 +293,7 @@ export async function syncPaymentFromProvider(paymentId: string) {
   const payment = await getPayment(paymentId);
   const paymentMapping = mapPaymentStatusToLocal(payment.status);
 
-  // Payment webhooks alone cannot activate without linked preapproval context.
+  // Payment avulso não ativa: precisa do preapproval local. Evita ativar tenant via external_reference.
   return {
     paymentId: payment.id,
     paymentStatus: payment.status,

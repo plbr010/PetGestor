@@ -38,12 +38,16 @@ export function mapPaymentStatusToLocal(
   switch (normalized) {
     case "approved":
       return { localStatus: "active", grantsAccess: true };
+    case "authorized":
     case "pending":
     case "in_process":
     case "in_mediation":
       return { localStatus: null, grantsAccess: false };
     case "rejected":
+      return { localStatus: "past_due", grantsAccess: false };
     case "cancelled":
+    case "canceled":
+      return { localStatus: "past_due", grantsAccess: false };
     case "refunded":
     case "charged_back":
       return { localStatus: "past_due", grantsAccess: false };

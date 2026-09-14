@@ -1270,6 +1270,8 @@ export type Database = {
           current_period_start: string | null;
           current_period_end: string | null;
           cancel_at_period_end: boolean;
+          provider_updated_at: string | null;
+          checkout_idempotency_key: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1294,6 +1296,8 @@ export type Database = {
           current_period_start?: string | null;
           current_period_end?: string | null;
           cancel_at_period_end?: boolean;
+          provider_updated_at?: string | null;
+          checkout_idempotency_key?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1318,6 +1322,8 @@ export type Database = {
           current_period_start?: string | null;
           current_period_end?: string | null;
           cancel_at_period_end?: boolean;
+          provider_updated_at?: string | null;
+          checkout_idempotency_key?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1369,6 +1375,59 @@ export type Database = {
           error_message?: string | null;
         };
         Relationships: [];
+      };
+      billing_payments: {
+        Row: {
+          id: string;
+          company_id: string;
+          provider: string;
+          provider_payment_id: string;
+          provider_subscription_id: string | null;
+          status: string;
+          amount_cents: number | null;
+          currency: string | null;
+          provider_updated_at: string | null;
+          paid_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          provider?: string;
+          provider_payment_id: string;
+          provider_subscription_id?: string | null;
+          status: string;
+          amount_cents?: number | null;
+          currency?: string | null;
+          provider_updated_at?: string | null;
+          paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          provider?: string;
+          provider_payment_id?: string;
+          provider_subscription_id?: string | null;
+          status?: string;
+          amount_cents?: number | null;
+          currency?: string | null;
+          provider_updated_at?: string | null;
+          paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "billing_payments_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       platform_admins: {
         Row: {
@@ -3032,6 +3091,7 @@ export type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 export type ServiceOrder = Database["public"]["Tables"]["service_orders"]["Row"];
 export type CompanySubscription = Database["public"]["Tables"]["company_subscriptions"]["Row"];
 export type BillingWebhookEvent = Database["public"]["Tables"]["billing_webhook_events"]["Row"];
+export type BillingPayment = Database["public"]["Tables"]["billing_payments"]["Row"];
 export type PlatformAdmin = Database["public"]["Tables"]["platform_admins"]["Row"];
 export type FinancialEntry = Database["public"]["Tables"]["financial_entries"]["Row"];
 export type ServicePackage = Database["public"]["Tables"]["service_packages"]["Row"];

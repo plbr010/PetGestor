@@ -3,6 +3,7 @@ import "server-only";
 import { PLAN_MONTHLY_PRICE_CENTS, priceCentsForInterval } from "@/config/subscription";
 import type {
   AdminAccountStatusFilter,
+  AdminBillingPaymentSummary,
   AdminCompanyDetail,
   AdminCompanyListItem,
   AdminDashboardSummary,
@@ -14,6 +15,7 @@ import {
   mapEntitlementToAdminStatus,
   matchesAdminFilters,
 } from "@/features/admin/utils";
+import { listBillingPaymentsForCompany } from "@/features/subscription/billing-repository";
 import { computeEntitlement, mapSubscriptionRow } from "@/features/subscription/entitlement";
 import type { CompanySubscriptionRecord } from "@/features/subscription/types";
 import { isValidUuid } from "@/lib/security/uuid";
@@ -351,6 +353,7 @@ export async function getAdminCompanyDetail(
   const webhookEvents = await listWebhookEventsForSubscription(
     item.providerSubscriptionId,
   );
+  const billingPayments = await listBillingPaymentsForCompany(companyId);
 
   return {
     ...item,
@@ -363,5 +366,14 @@ export async function getAdminCompanyDetail(
     cancelledAt: subscription?.cancelledAt ?? null,
     checkoutStartedAt: subscription?.checkoutStartedAt ?? null,
     webhookEvents,
+    billingPayments: billingPayments.map((payment) => ({
+      id: payment.id,
+      providerPaymentId: payment.provider_payment_id,
+      status: payment.status,
+      amountCents: payment.amount_cents,
+      currency: payment.currency,
+      paidAt: payment.paid_at,
+      providerUpdatedAt: payment.provider_updated_at,
+    }) satisfies AdminBillingPaymentSummary),
   };
 }

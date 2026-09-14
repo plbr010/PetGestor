@@ -20,6 +20,9 @@ export function mapEntitlementToAdminStatus(
       return "cancelled";
     case "trial_expired":
       return "blocked";
+    case "expired":
+    case "unavailable":
+      return "blocked";
     default:
       return "blocked";
   }

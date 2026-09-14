@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertExpectedCheckoutAmount,
+  assertExpectedCheckoutCurrency,
   buildCreatePendingPreapprovalPayload,
   buildExternalReference,
   getMercadoPagoTransactionAmount,
@@ -60,5 +61,10 @@ describe("Mercado Pago payload", () => {
     expect(() => assertExpectedCheckoutAmount("monthly", 1)).toThrow("billing_amount_mismatch");
     expect(() => assertExpectedCheckoutAmount("annual", 89.9)).toThrow("billing_amount_mismatch");
     expect(() => assertExpectedCheckoutAmount("annual", 799)).not.toThrow();
+  });
+
+  it("rejeita moeda diferente de BRL", () => {
+    expect(() => assertExpectedCheckoutCurrency("USD")).toThrow("billing_currency_mismatch");
+    expect(() => assertExpectedCheckoutCurrency("BRL")).not.toThrow();
   });
 });

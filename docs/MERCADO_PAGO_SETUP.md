@@ -54,6 +54,8 @@ Em **produção** (`MERCADO_PAGO_ENVIRONMENT=production`), essa variável é **i
 MERCADO_PAGO_WEBHOOK_SECRET=SEU_SECRET
 ```
 
+O endpoint rejeita pedido sem HMAC `x-signature` válido (`id` + `request-id` + `ts`). Depois consulta GET no Mercado Pago; o `external_reference` **não** autentica outro tenant.
+
 ## 4. Service role Supabase (somente backend)
 
 O webhook precisa atualizar assinatura sem sessão do usuário.
@@ -76,6 +78,8 @@ No SQL Editor do Supabase, nesta ordem:
 2. **Plano anual (obrigatório para mudar para R$ 799):**  
    `docs/sql/APPLY-annual-subscription-plan.sql`  
    (ou `supabase/migrations/20260824200000_annual_subscription_plan.sql`)
+3. **BLOCO 9 (payments únicos + provider_updated_at):**  
+   `supabase/migrations/20260914150000_bloco9_billing_payments_webhook.sql`
 
 Sem essa migration, trocar para o anual / gravar `billing_interval` pode falhar no checkout.
 
