@@ -67,12 +67,40 @@ Operação **atômica** via RPC `update_service_with_prices`:
 
 ## Criação/atualização transacional
 
-RPCs SECURITY DEFINER (grants mínimos, `auth.uid()` validado):
+Uma RPC, uma transação PostgreSQL:
 
-- `create_service_with_prices(...)`
-- `update_service_with_prices(...)`
+- `create_service_with_prices(..., p_items, p_idempotency_key, p_company_id)`
+- `update_service_with_prices(..., p_items, p_idempotency_key, p_company_id)`
 
-Evitam estado parcial (serviço criado sem faixas).
+Dentro da mesma transação: core do serviço + preços (`fixed` / `by_size`) + ficha `service_product_recipes`.
+
+Se a ficha falhar (produto inexistente, arquivado, de outro tenant, quantidade ≤ 0, duplicata), **rollback de tudo**.
+
+Permissão real: `services.manage`. Tenant via `p_company_id` + `private.activate_company_context`.
+
+### Ficha de produtos
+
+- Lista vazia `[]` é válida (serviço sem insumos). No UPDATE, `[]` **limpa** a ficha antiga.
+- Produto repetido é **rejeitado** (`duplicate_recipe_product`) — a UI também impede repetir.
+- Quantidade > 0 na unidade do produto. Sem conversão ml↔litro.
+- Produto precisa existir, pertencer à mesma empresa e **não** estar arquivado (`archived_at IS NULL`). `track_stock` e `active` **não** bloqueiam a ficha (mesmo contrato da RPC antiga).
+
+### Idempotência
+
+Chave no formulário (`idempotency_key`), escopada por `(company_id, operation, key)`.
+
+- Mesma chave + mesmo payload canônico → replay (mesmo `service_id`)
+- Mesma chave + payload diferente → `idempotency_key_conflict`
+
+Fingerprint ignora a ordem da ficha e das faixas de porte.
+
+### Concorrência
+
+UPDATE: `pg_advisory_xact_lock` por empresa+serviço + `SELECT … FOR UPDATE` na linha do serviço. Não mistura core de A com ficha de B.
+
+Diagnóstico somente leitura: `docs/sql/diagnose-service-recipe-atomicity.sql`
+
+Migration: `supabase/migrations/20260914172942_bloco81_service_prices_recipe_atomic.sql`
 
 ## Segurança
 
@@ -105,6 +133,7 @@ Assim, alterações futuras de preço não alteram registros antigos.
 
 ## Migration
 
-`supabase/migrations/20260805210000_services.sql`
+- `supabase/migrations/20260805210000_services.sql`
+- `supabase/migrations/20260914172942_bloco81_service_prices_recipe_atomic.sql` (**PENDENTE** no remoto — aplicar no SQL Editor ou via workflow de migrations)
 
-**MIGRATION PENDENTE** — aplicar manualmente no Supabase.
+Não edita migrations já aplicadas.

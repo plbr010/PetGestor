@@ -1,3 +1,19 @@
+## [0.51.2] — 2026-09-14
+
+### Corrigido — BLOCO 8.1 (atomicidade serviço + preços + ficha)
+
+- CREATE/UPDATE de serviço passam a gravar core, preços e `service_product_recipes` na **mesma transação**
+- Falha na ficha (produto inexistente, arquivado, cross-tenant, quantidade ≤ 0, duplicata) faz rollback de serviço e preços
+- Idempotência por `(company_id, operation, idempotency_key)` + fingerprint canônico (ordem da ficha irrelevante)
+- UPDATE usa `FOR UPDATE` + `pg_advisory_xact_lock` no serviço
+- Permissão real: `services.manage`. Não reabre BLOCO 9 / Mercado Pago
+
+**MIGRATION:** `supabase/migrations/20260914172942_bloco81_service_prices_recipe_atomic.sql`
+
+Diagnóstico somente leitura: `docs/sql/diagnose-service-recipe-atomicity.sql`
+
+Não inicia BLOCO 10.
+
 ## [0.51.1] — 2026-09-14
 
 ### Corrigido — hardening BLOCO 9 (preapproval authorized ≠ acesso pago)

@@ -55,6 +55,7 @@ export function ServiceForm({
   const [pricingMode, setPricingMode] = useState<ServicePricingMode>(
     service?.pricing_mode ?? "fixed",
   );
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [state, formAction, isPending] = useActionState(
     action ?? createServiceAction,
     initialState,
@@ -62,6 +63,7 @@ export function ServiceForm({
 
   return (
     <form action={formAction} className="space-y-6" noValidate>
+      <input type="hidden" name="idempotency_key" value={idempotencyKey} />
       {state.error ? <FormFeedback message={state.error} variant="error" /> : null}
 
       <div className="space-y-2">

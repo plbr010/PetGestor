@@ -2706,6 +2706,8 @@ export type Database = {
           p_duration_minutes: number;
           p_active?: boolean;
           p_size_prices?: Json | null;
+          p_items?: Json;
+          p_idempotency_key?: string | null;
           p_company_id: string;
         };
         Returns: string;
@@ -2720,6 +2722,8 @@ export type Database = {
           p_duration_minutes: number;
           p_active: boolean;
           p_size_prices?: Json | null;
+          p_items?: Json;
+          p_idempotency_key?: string | null;
           p_company_id: string;
         };
         Returns: string;
