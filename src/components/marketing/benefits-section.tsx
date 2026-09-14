@@ -27,10 +27,10 @@ const benefitIcons: LucideIcon[] = [
 
 export function BenefitsSection() {
   return (
-    <section id="recursos" className="scroll-mt-24 border-y bg-muted/30 py-20">
+    <section className="border-y bg-muted/30 py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold sm:text-4xl">
+          <h2 id="recursos" className="scroll-mt-28 text-3xl font-bold sm:text-4xl">
             {marketingContent.benefitsIntroTitle}
           </h2>
           <p className="mt-3 text-lg text-muted-foreground">

@@ -15,7 +15,7 @@ import {
 
 export function DashboardPreview() {
   return (
-    <div id="demonstracao" className="relative mx-auto w-full min-w-0 max-w-xl scroll-mt-24 lg:max-w-none">
+    <div id="demonstracao" className="relative mx-auto w-full min-w-0 max-w-xl scroll-mt-28 lg:max-w-none">
       <div
         className="absolute -inset-4 rounded-[2rem] bg-primary/10 blur-2xl"
         aria-hidden="true"

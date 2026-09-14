@@ -99,12 +99,15 @@ describe("landing conversion CTAs", () => {
   });
 
   it("âncoras da landing têm folga para o header sticky", () => {
-    expect(read("src/components/marketing/benefits-section.tsx")).toContain('id="recursos"');
-    expect(read("src/components/marketing/benefits-section.tsx")).toContain("scroll-mt-24");
-    expect(read("src/components/marketing/how-it-works-section.tsx")).toContain(
-      'id="como-funciona"',
+    expect(read("src/components/marketing/benefits-section.tsx")).toMatch(
+      /<h2 id="recursos"/,
     );
-    expect(read("src/components/marketing/pricing-section.tsx")).toContain('id="precos"');
+    expect(read("src/components/marketing/how-it-works-section.tsx")).toMatch(
+      /<h2 id="como-funciona"/,
+    );
+    expect(read("src/components/marketing/pricing-section.tsx")).toMatch(
+      /<h2 id="precos"/,
+    );
     expect(read("src/components/marketing/dashboard-preview.tsx")).toContain(
       'id="demonstracao"',
     );

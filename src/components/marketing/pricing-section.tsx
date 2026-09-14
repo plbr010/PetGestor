@@ -16,10 +16,12 @@ export function PricingSection() {
   const { pricing } = marketingContent;
 
   return (
-    <section id="precos" className="scroll-mt-24 border-y bg-muted/30 py-20">
+    <section className="border-y bg-muted/30 py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto mb-10 max-w-2xl text-center">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Preços</h2>
+          <h2 id="precos" className="scroll-mt-28 text-2xl font-semibold tracking-tight sm:text-3xl">
+            Preços
+          </h2>
           <p className="mt-3 text-sm text-muted-foreground sm:text-base">{pricing.intro}</p>
         </div>
 
