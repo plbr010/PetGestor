@@ -103,6 +103,10 @@ export function formatTrialNote(): string {
   return `Teste grátis por ${TRIAL_DURATION_DAYS} dias. Sem cartão.`;
 }
 
+/** Mensagem comercial compartilhada (landing, cadastro e checkout). */
+export const PLAN_OPERATIONAL_ACCESS_LABEL =
+  "Acesso aos módulos operacionais do PetGestor" as const;
+
 export function isBillingDevBypassEnabled(): boolean {
   if (process.env.NODE_ENV === "production") {
     return false;

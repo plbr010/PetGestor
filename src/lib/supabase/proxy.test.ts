@@ -25,4 +25,10 @@ describe("supabase proxy pathname forwarding", () => {
     expect(source).toContain("supabaseResponse = nextWithPathname(request)");
     expect(source).not.toMatch(/supabaseResponse\.headers\.set\(PATHNAME_HEADER[\s\S]*return supabaseResponse;\s*$/);
   });
+
+  it("não quebra rotas públicas se a env do Supabase estiver ausente", () => {
+    const source = readFileSync(join(process.cwd(), "src/lib/supabase/proxy.ts"), "utf8");
+    expect(source).toContain("hasPublicEnv");
+    expect(source).toContain("if (!hasPublicEnv())");
+  });
 });

@@ -5,6 +5,7 @@ import {
   PLAN_ANNUAL_PRICE_LABEL,
   PLAN_ANNUAL_SAVINGS_LABEL,
   PLAN_MONTHLY_PRICE_LABEL,
+  PLAN_OPERATIONAL_ACCESS_LABEL,
   type BillingInterval,
 } from "@/config/subscription";
 import { trackMetaInitiateCheckout } from "@/lib/analytics/meta-pixel";
@@ -35,7 +36,7 @@ export function SubscriptionPlanPicker({
         title="Mensal"
         price={PLAN_MONTHLY_PRICE_LABEL}
         period="por mês"
-        bullets={["Cobrança mensal", "Acesso completo ao PetGestor"]}
+        bullets={["Cobrança mensal", PLAN_OPERATIONAL_ACCESS_LABEL]}
         cta={
           currentInterval === "monthly"
             ? "Plano atual"

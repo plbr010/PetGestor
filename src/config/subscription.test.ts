@@ -14,6 +14,7 @@ import {
   PLAN_CODE,
   PLAN_CODES,
   PLAN_MONTHLY_PRICE_CENTS,
+  PLAN_OPERATIONAL_ACCESS_LABEL,
   priceCentsForInterval,
   TRIAL_DURATION_DAYS,
   TRIAL_DURATION_HOURS,
@@ -38,6 +39,7 @@ describe("subscription config", () => {
     expect(priceCentsForInterval("monthly")).toBe(8990);
     expect(priceCentsForInterval("annual")).toBe(79900);
     expect(ANNUAL_OFFER_CODE_LAUNCH).toBe("annual_launch_799");
+    expect(PLAN_OPERATIONAL_ACCESS_LABEL).toContain("módulos operacionais");
   });
 
   it("parseia billing interval sem aceitar preço do cliente", () => {

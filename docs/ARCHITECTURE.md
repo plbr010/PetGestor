@@ -75,12 +75,13 @@ O Proxy **não substitui** proteção server-side em layouts.
 ## Decisões
 
 1. **Server Components por padrão** — interatividade apenas onde necessário.
-2. **Marca centralizada** em `src/config/brand.ts`.
-3. **Dados demo** permanecem parcialmente no dashboard (badge demonstrativo); módulos operacionais usam dados reais.
+2. **Marca centralizada** em `src/config/brand.ts`. Rotas públicas em `src/config/public-routes.ts`. Copy de landing em `src/config/marketing.ts` (preços/trial só via `src/config/subscription.ts`).
+3. **Prévia pública** da landing (`/#demonstracao`) é ilustrativa; o dashboard autenticado não é demo anônima.
 4. **Trial 7 dias** — `computeEntitlement` é a fonte canônica de acesso SaaS (layout, guards, `/assinatura`, admin).
-4. **Rotas agrupadas** por contexto: `(public)`, `(auth)`, `(dashboard)`.
-5. **Service role** — apenas rotas privilegiadas (billing, cron WhatsApp, webhook Meta, painel `/admin`). Operações do pet shop continuam no client autenticado + RLS.
-6. **user_metadata** só para pré-preenchimento — nunca para autorização.
+5. **Rotas agrupadas** por contexto: `(public)`, `(auth)`, `(dashboard)`.
+6. **Service role** — apenas rotas privilegiadas (billing, cron WhatsApp, webhook Meta, painel `/admin`). Operações do pet shop continuam no client autenticado + RLS.
+7. **user_metadata** só para pré-preenchimento — nunca para autorização.
+8. **Security headers** — `src/lib/security/http-headers.ts` (clickjacking + headers seguros). CSP completa ainda não.
 
 ## WhatsApp Cloud API
 

@@ -2,9 +2,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
-import { BrandLogo } from "@/components/shared/brand-logo";
-import { PublicHeader } from "@/components/layout/public-header";
 import { PublicFooter } from "@/components/layout/public-footer";
+import { PublicHeader } from "@/components/layout/public-header";
+import { BrandLogo } from "@/components/shared/brand-logo";
+import { MAIN_CONTENT_ID, publicPaths } from "@/config/public-routes";
 
 type AuthShellProps = {
   children: ReactNode;
@@ -16,7 +17,10 @@ export function AuthShell({ children, showLogout = false }: AuthShellProps) {
   return (
     <>
       <PublicHeader />
-      <main className="relative flex min-h-[calc(100vh-4rem)] flex-col">
+      <main
+        id={MAIN_CONTENT_ID}
+        className="relative flex min-h-[calc(100vh-4rem)] flex-col"
+      >
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.94_0.04_175),transparent_50%)]"
           aria-hidden="true"
@@ -24,7 +28,7 @@ export function AuthShell({ children, showLogout = false }: AuthShellProps) {
         <div className="relative mx-auto flex w-full max-w-md flex-1 items-center px-4 py-10 sm:px-6">
           <div className="w-full space-y-6">
             <Link
-              href="/"
+              href={publicPaths.home}
               className="mx-auto flex w-fit rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <BrandLogo size="md" className="justify-center" />

@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getPublicEnv } from "@/lib/env/public-env";
+import { getPublicEnv, hasPublicEnv } from "@/lib/env/public-env";
 import type { Database } from "@/types/database.types";
 
 export const PATHNAME_HEADER = "x-pathname";
@@ -25,6 +25,10 @@ function nextWithPathname(request: NextRequest): NextResponse {
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = nextWithPathname(request);
+
+  if (!hasPublicEnv()) {
+    return supabaseResponse;
+  }
 
   const env = getPublicEnv();
 

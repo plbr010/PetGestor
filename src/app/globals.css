@@ -133,6 +133,12 @@
   }
   html {
     @apply font-sans scroll-smooth;
+    scroll-padding-top: 7rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
   h1,
   h2,
@@ -151,6 +157,12 @@
   }
   .text-gradient-primary {
     @apply bg-gradient-to-r from-primary to-[oklch(0.58_0.12_190)] bg-clip-text text-transparent;
+  }
+  .skip-link {
+    @apply sr-only;
+  }
+  .skip-link:focus-visible {
+    @apply not-sr-only fixed left-4 top-4 z-50 m-0 h-auto w-auto overflow-visible rounded-md bg-background px-4 py-2 text-sm font-medium text-foreground shadow-lg ring-3 ring-ring/50;
   }
 }
 

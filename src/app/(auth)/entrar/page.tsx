@@ -1,6 +1,13 @@
 import { redirectIfAuthenticated } from "@/lib/auth/guards";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { LoginForm } from "@/components/auth/login-form";
+import { brand } from "@/config/brand";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Entrar",
+  description: `Acesse sua conta do ${brand.name} para gerenciar agenda, tutores, pets e o dia a dia do pet shop.`,
+};
 
 type LoginPageProps = {
   searchParams: Promise<{

@@ -2,10 +2,12 @@ import { marketingContent } from "@/config/marketing";
 
 export function HowItWorksSection() {
   return (
-    <section id="como-funciona" className="py-20">
+    <section className="py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold sm:text-4xl">Como funciona</h2>
+          <h2 id="como-funciona" className="scroll-mt-28 text-3xl font-bold sm:text-4xl">
+            Como funciona
+          </h2>
           <p className="mt-3 text-lg text-muted-foreground">
             Três passos simples para começar a organizar seu pet shop.
           </p>

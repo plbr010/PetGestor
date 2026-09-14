@@ -15,7 +15,7 @@ import {
 
 export function DashboardPreview() {
   return (
-    <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
+    <div id="demonstracao" className="relative mx-auto w-full min-w-0 max-w-xl scroll-mt-28 lg:max-w-none">
       <div
         className="absolute -inset-4 rounded-[2rem] bg-primary/10 blur-2xl"
         aria-hidden="true"
@@ -49,7 +49,7 @@ export function DashboardPreview() {
               <div className="flex items-center justify-between gap-2">
                 <CardTitle className="text-sm">Próximos atendimentos</CardTitle>
                 <Badge variant="outline" className="text-[10px]">
-                  Demo
+                  Prévia
                 </Badge>
               </div>
             </CardHeader>

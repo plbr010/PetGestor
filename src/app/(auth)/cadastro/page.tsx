@@ -1,6 +1,14 @@
 import { redirectIfAuthenticated } from "@/lib/auth/guards";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { SignUpWizard } from "@/components/auth/sign-up-wizard";
+import { brand } from "@/config/brand";
+import { formatTrialCtaLabel, formatTrialNote } from "@/config/subscription";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Criar conta",
+  description: `${formatTrialCtaLabel()} no ${brand.name}. ${formatTrialNote()}`,
+};
 
 type SignUpPageProps = {
   searchParams: Promise<{ modo?: string; email?: string }>;

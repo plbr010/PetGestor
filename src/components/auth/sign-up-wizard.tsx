@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatTrialNote } from "@/config/subscription";
 import { formatPhoneInput } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +92,7 @@ export function SignUpWizard({
               Sou dono ou gestor
             </span>
             <span className="text-sm text-muted-foreground">
-              Quero administrar meu pet shop
+              Quero administrar meu pet shop. {formatTrialNote()}
             </span>
           </button>
 
@@ -286,7 +287,7 @@ export function SignUpWizard({
         </button>
         <CardTitle className="text-2xl">Comece seu teste gratuito</CardTitle>
         <CardDescription>
-          Crie sua conta e configure seu pet shop em poucos minutos.
+          {formatTrialNote()} Crie sua conta e configure seu pet shop em poucos minutos.
         </CardDescription>
       </CardHeader>
       <CardContent>

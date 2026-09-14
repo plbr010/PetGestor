@@ -24,7 +24,7 @@ export function HeroSection() {
           </Badge>
 
           <div className="space-y-4">
-            <h1 className="text-4xl font-bold leading-[1.1] sm:text-5xl lg:text-[3.25rem]">
+            <h1 className="text-3xl font-bold leading-[1.1] sm:text-4xl lg:text-[3.25rem]">
               {marketingContent.heroTitle}
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
@@ -33,12 +33,17 @@ export function HeroSection() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <ButtonLink href="/cadastro" size="lg" className="h-11 px-6">
+            <ButtonLink href={marketingContent.signupHref} size="lg" className="h-11 min-h-11 px-6">
               {marketingContent.trialCtaLabel}
               <ArrowRight className="size-4" aria-hidden="true" />
             </ButtonLink>
-            <ButtonLink href="/dashboard" variant="outline" size="lg" className="h-11 px-6">
-              Ver demonstração
+            <ButtonLink
+              href={marketingContent.demoHref}
+              variant="outline"
+              size="lg"
+              className="h-11 min-h-11 px-6"
+            >
+              {marketingContent.demoCtaLabel}
             </ButtonLink>
           </div>
 
