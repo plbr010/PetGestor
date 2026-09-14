@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { SpeciesFilterForm } from "@/features/pets/components/species-filter-form";
@@ -10,7 +11,7 @@ import {
   formatDateDisplay,
   SPECIES_LABELS,
 } from "@/lib/pet-display";
-import { parsePageParam } from "@/lib/pagination";
+import { outOfRangeListHref, parsePageParam } from "@/lib/pagination";
 import { PetAvatar } from "@/components/shared/pet-avatar";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
@@ -59,6 +60,14 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
     query,
     species,
   });
+
+  const outOfRangeHref = outOfRangeListHref(page, result.totalPages, "/dashboard/pets", {
+    q: query || undefined,
+    species: species !== "all" ? species : undefined,
+  });
+  if (outOfRangeHref) {
+    redirect(outOfRangeHref);
+  }
 
   return (
     <>

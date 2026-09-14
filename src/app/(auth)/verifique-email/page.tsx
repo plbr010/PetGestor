@@ -16,6 +16,7 @@ import {
 import { technicalAuthRobots } from "@/lib/seo/robots-policy";
 
 export const metadata: Metadata = {
+  title: "Verifique seu e-mail",
   robots: technicalAuthRobots,
 };
 
@@ -38,7 +39,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
           <CardDescription>
             {isStaff
               ? "Enviamos um link de confirmação. Depois de confirmar, você verá o convite da empresa — nenhuma empresa nova será criada."
-              : "Enviamos um link de confirmação para o endereço informado no cadastro. Abra o e-mail e clique no link para ativar sua conta."}
+              : "Enviamos um link de confirmação para o endereço informado no cadastro. Abra o e-mail e clique no link para ativar sua conta. Só depois da confirmação você entra no sistema."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">

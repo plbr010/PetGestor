@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { getCustomers } from "@/features/customers/queries";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { formatPhoneDisplay } from "@/lib/phone";
 import { formatDateTimeDisplay } from "@/lib/pet-display";
-import { parsePageParam } from "@/lib/pagination";
+import { outOfRangeListHref, parsePageParam } from "@/lib/pagination";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
   ClearSearchLink,
@@ -43,6 +44,13 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
     page,
     query,
   });
+
+  const outOfRangeHref = outOfRangeListHref(page, result.totalPages, "/dashboard/tutores", {
+    q: query || undefined,
+  });
+  if (outOfRangeHref) {
+    redirect(outOfRangeHref);
+  }
 
   return (
     <>

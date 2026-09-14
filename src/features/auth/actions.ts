@@ -38,6 +38,7 @@ import {
   RECOVERY_GENERIC_MESSAGE,
   RESEND_GENERIC_MESSAGE,
 } from "@/features/auth/messages";
+import { isAntiEnumerationAuthError } from "@/features/auth/provider-errors";
 
 export type AuthActionState = {
   error?: string;
@@ -300,6 +301,9 @@ export async function passwordRecoveryAction(
         status: error.status ?? null,
         code: "code" in error ? error.code : null,
       });
+      if (isAntiEnumerationAuthError(error)) {
+        return { success: RECOVERY_GENERIC_MESSAGE };
+      }
       return { error: PROVIDER_UNAVAILABLE_MESSAGE };
     }
   } catch (error) {
@@ -355,6 +359,9 @@ export async function resendConfirmationAction(
         status: error.status ?? null,
         code: "code" in error ? error.code : null,
       });
+      if (isAntiEnumerationAuthError(error)) {
+        return { success: RESEND_GENERIC_MESSAGE };
+      }
       return { error: PROVIDER_UNAVAILABLE_MESSAGE };
     }
   } catch (error) {

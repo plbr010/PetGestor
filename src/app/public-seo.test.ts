@@ -60,6 +60,10 @@ describe("public metadata and SEO", () => {
     for (const file of files) {
       expect(read(file)).toContain("technicalAuthRobots");
     }
+
+    expect(read("src/app/(auth)/verifique-email/page.tsx")).toContain(
+      'title: "Verifique seu e-mail"',
+    );
   });
 
   it("robots libera landing/cadastro, não faz disallow de /entrar e bloqueia áreas internas", () => {

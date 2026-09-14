@@ -4,11 +4,11 @@ import { notFound } from "next/navigation";
 import type { CustomerDetail, CustomerListItem, CustomerOption } from "@/features/customers/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  buildPaginatedResult,
   DEFAULT_PAGE_SIZE,
   getPaginationRange,
   type PaginatedResult,
   parsePageParam,
+  resolvePaginatedRange,
   sanitizeSearchTerm,
 } from "@/lib/pagination";
 import { normalizePhone } from "@/lib/phone";
@@ -51,35 +51,55 @@ export async function getCustomers({
   const safePage = parsePageParam(String(page));
   const { from, to } = getPaginationRange(safePage, pageSize);
   const search = sanitizeSearchTerm(query);
+  const loadErrorMessage = "Não foi possível carregar os tutores.";
 
-  let builder = supabase
-    .from("customers")
-    .select("id, name, phone, email, created_at", { count: "exact" })
-    .eq("company_id", companyId)
-    .order("name", { ascending: true });
-
-  if (!includeArchived) {
-    builder = builder.is("deleted_at", null);
-  }
-
-  if (search) {
-    const phoneDigits = normalizePhone(search);
-    const filters = [`name.ilike.%${search}%`, `email.ilike.%${search}%`];
-
-    if (phoneDigits.length >= 3) {
-      filters.push(`phone.ilike.%${phoneDigits}%`);
+  const applyFilters = <T extends { is: (column: string, value: null) => T; or: (filters: string) => T }>(
+    builder: T,
+  ): T => {
+    let next = builder;
+    if (!includeArchived) {
+      next = next.is("deleted_at", null);
     }
+    if (search) {
+      const phoneDigits = normalizePhone(search);
+      const filters = [`name.ilike.%${search}%`, `email.ilike.%${search}%`];
+      if (phoneDigits.length >= 3) {
+        filters.push(`phone.ilike.%${phoneDigits}%`);
+      }
+      next = next.or(filters.join(","));
+    }
+    return next;
+  };
 
-    builder = builder.or(filters.join(","));
-  }
+  const pageBuilder = applyFilters(
+    supabase
+      .from("customers")
+      .select("id, name, phone, email, created_at", { count: "exact" })
+      .eq("company_id", companyId)
+      .order("name", { ascending: true }),
+  );
+  const countBuilder = applyFilters(
+    supabase
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId),
+  );
 
-  const { data, error, count } = await builder.range(from, to);
+  const result = await resolvePaginatedRange<Omit<CustomerListItem, "petsCount">>({
+    page: safePage,
+    pageSize,
+    loadErrorMessage,
+    fetchPage: async () => {
+      const { data, error, count } = await pageBuilder.range(from, to);
+      return { data, count, error };
+    },
+    fetchCount: async () => {
+      const { count, error } = await countBuilder;
+      return { count, error };
+    },
+  });
 
-  if (error) {
-    throw new Error("Não foi possível carregar os tutores.");
-  }
-
-  const baseCustomers = data ?? [];
+  const baseCustomers = result.data;
   const customerIds = baseCustomers.map((customer) => customer.id);
 
   let petRows: { customer_id: string }[] | null = null;
@@ -93,18 +113,16 @@ export async function getCustomers({
       .in("customer_id", customerIds);
 
     if (petsResult.error) {
-      throw new Error("Não foi possível carregar os tutores.");
+      throw new Error(loadErrorMessage);
     }
 
     petRows = petsResult.data;
   }
 
-  return buildPaginatedResult(
-    attachPetCounts(baseCustomers, petRows),
-    count ?? 0,
-    safePage,
-    pageSize,
-  );
+  return {
+    ...result,
+    data: attachPetCounts(baseCustomers, petRows),
+  };
 }
 
 export async function getCustomerById(
