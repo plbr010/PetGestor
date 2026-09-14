@@ -81,6 +81,8 @@ describe("subscriber area badges and CTAs", () => {
       nextPaymentAt,
       providerSubscriptionId: "preapproval-1",
       providerStatus: "authorized",
+      currentPeriodStart: "2026-08-10T00:00:00.000Z",
+      currentPeriodEnd: "2026-09-10T12:00:00.000Z",
     });
     const now = addHours(new Date(subscription.trialStartedAt), TRIAL_DURATION_HOURS + 1);
     const entitlement = computeEntitlement(subscription, now);

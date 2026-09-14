@@ -1,3 +1,23 @@
+## [0.51.0] — 2026-09-14
+
+### Corrigido — Assinaturas, trial, Mercado Pago, checkout e webhooks (BLOCO 9)
+
+- Fonte canônica de acesso: `computeEntitlement` — status persistido sozinho não libera trial/assinatura vencida
+- Trial canônico: **7 dias / 168 horas**; nasce uma vez por empresa (`ON CONFLICT DO NOTHING`); checkout/cancelamento/login não reiniciam
+- Planos canônicos em `src/config/subscription.ts`: mensal `petgestor_monthly` R$ 89,90 (8990 centavos); anual `petgestor_annual` R$ 799,00 (79900 centavos)
+- Checkout: browser só envia `plan` (`monthly` \| `annual`); company/amount do body são ignorados; `X-Idempotency-Key` server-side
+- Webhook MP: assinatura `x-signature` obrigatória; consulta o provider; registro local por provider id prevalece sobre `external_reference`
+- `billing_payments` com UNIQUE `(provider, provider_payment_id)`; evento webhook failed/received pode reprocessar; snapshot antigo não regride `active`
+- Cancelamento ao fim do período (`cancel_at_period_end`); acesso residual até `current_period_end` sem badge “ATIVO”
+- `BILLING_DEV_BYPASS` continua ignorado em `NODE_ENV=production` mesmo se `true`
+- Fail-closed se billing estiver indisponível; `/assinatura` mostra erro recuperável sem loop
+
+**MIGRATION PENDENTE:** `supabase/migrations/20260914150000_bloco9_billing_payments_webhook.sql`
+
+Diagnóstico de legado: `docs/sql/diagnose-bloco-9-billing.sql`
+
+Não reaplica BLOCOs 1–8. Não inicia BLOCO 10.
+
 ## [0.50.2] — 2026-09-12
 
 ### Corrigido — hardening final do BLOCO 8 (segredo, marker one-time, RPC server-only)

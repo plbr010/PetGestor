@@ -60,6 +60,8 @@ describe("admin status mapping", () => {
     expect(mapEntitlementToAdminStatus("past_due")).toBe("past_due");
     expect(mapEntitlementToAdminStatus("cancelled")).toBe("cancelled");
     expect(mapEntitlementToAdminStatus("trial_expired")).toBe("blocked");
+    expect(mapEntitlementToAdminStatus("expired")).toBe("blocked");
+    expect(mapEntitlementToAdminStatus("unavailable")).toBe("blocked");
   });
 
   it("rotula status de forma estável", () => {

@@ -159,7 +159,7 @@ async function mercadoPagoRequest<T>(
 
     return data as T;
   } catch (error) {
-    if (process.env.NODE_ENV === "development" && error instanceof Error && error.name === "AbortError") {
+    if (error instanceof Error && error.name === "AbortError") {
       console.error("[MercadoPago] API request timed out", {
         operation: options.operation,
         endpoint: path,
@@ -181,6 +181,7 @@ function logPreapprovalPayloadDev(payload: CreatePendingPreapprovalPayload) {
 
 export async function createPendingSubscription(
   payload: CreatePendingPreapprovalPayload,
+  options: { idempotencyKey?: string } = {},
 ): Promise<MercadoPagoPreapproval> {
   logPreapprovalPayloadDev(payload);
 
@@ -189,6 +190,9 @@ export async function createPendingSubscription(
     {
       method: "POST",
       body: JSON.stringify(payload),
+      headers: options.idempotencyKey
+        ? { "X-Idempotency-Key": options.idempotencyKey }
+        : undefined,
     },
     { operation: "createPendingSubscription" },
   );

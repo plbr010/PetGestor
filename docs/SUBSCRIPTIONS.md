@@ -4,7 +4,7 @@
 
 PetGestor oferece **7 dias de teste gratuito** sem exigir meio de pagamento.
 
-Após `trial_ends_at`, se não houver assinatura `active`, o **acesso operacional é suspenso** até existir assinatura válida.
+Após `trial_ends_at`, se não houver período pago vigente, o **acesso operacional é suspenso** até existir assinatura válida. O status persistido `active` sozinho **não** libera acesso.
 
 Não há cobrança automática ao fim do trial. Sem meio de pagamento cadastrado, simplesmente não há cobrança.
 
@@ -37,8 +37,12 @@ Não há cobrança automática ao fim do trial. Sem meio de pagamento cadastrado
 | `provider_status` | Status real MP (`pending`, `authorized`, `paused`, `canceled`) |
 | `provider_checkout_url` | `init_point` do checkout hospedado |
 | `current_period_start` / `current_period_end` | Período pago (anual = +12 meses civis na 1ª ativação) |
+| `provider_updated_at` | `last_modified` / `date_last_updated` do provider — evento antigo não regride |
+| `checkout_idempotency_key` | `X-Idempotency-Key` do POST /preapproval |
 
-Migration: `20260824200000_annual_subscription_plan.sql` (**aplicar no Supabase**).
+`billing_payments`: UNIQUE `(provider, provider_payment_id)`. Sem policies para `authenticated`.
+
+Migrations: trial + Mercado Pago billing + anual + `20260914150000_bloco9_billing_payments_webhook.sql` (**aplicar no Supabase**).
 
 ## Planos
 
@@ -57,11 +61,14 @@ Migration: `20260824200000_annual_subscription_plan.sql` (**aplicar no Supabase*
 - Checkout **somente após** trial expirado e clique em Assinar
 - **Sem** `free_trial` no Mercado Pago (trial já ocorreu no PetGestor)
 - **Sem** `card_token_id` — checkout hospedado MP
-- `external_reference`: `petgestor_company_<uuid>`
+- `external_reference`: `petgestor_company_<uuid>` — **não autentica**. O webhook resolve o registro local por `provider_subscription_id` e só então valida empresa/plano/valor.
 - Mensal: `auto_recurring` frequency `1` month × R$ 89,90
 - Anual: `auto_recurring` frequency `12` months × R$ 799,00 (renovação recorrente pelo MP)
+- Checkout envia `X-Idempotency-Key` estável por empresa+plano (server-side)
 - Sincronização via API + webhook — nunca confiar em query params do browser
-- Webhooks idempotentes via `billing_webhook_events` (evento duplicado não recria período)
+- Webhook: HMAC `x-signature` obrigatório; consulta GET no Mercado Pago; amount BRL deve bater com o plano local
+- Replay: `billing_webhook_events` unique `(provider, provider_event_id)`; `processed`/`ignored` não reexecutam; `failed`/`received` podem
+- Ordering: se `provider_updated_at` incoming < local, ignora. `pending` não regride `active`
 - Ver `docs/MERCADO_PAGO_SETUP.md`
 
 ### Trocas de plano (escopo atual)
@@ -94,13 +101,16 @@ Estados derivados:
 
 | Estado | Acesso operacional |
 |--------|-------------------|
-| `trialing` (não expirado) | Sim |
-| `trial_expired` | Não |
-| `active` | Sim |
-| `past_due` | Não (MVP) |
-| `cancelled` | Não (sem período restante) |
+| `trialing` (`now < trial_ends_at`) | Sim |
+| `trial_expired` (`now >= trial_ends_at`) | Não |
+| `active` **com** `current_period_end > now` | Sim |
+| `expired` (`active` sem período vigente) | Não |
+| `past_due` | Não (sem grace period inventado) |
+| `cancelled` com `current_period_end > now` | Sim (acesso residual; UI não mostra “ATIVO”) |
+| `cancelled` sem período restante | Não |
+| `unavailable` (falha ao ler billing) | Não |
 
-Implementação: `src/features/subscription/entitlement.ts`
+Implementação: `src/features/subscription/entitlement.ts`. UI, layout, guards, `/assinatura` e `/admin` usam a mesma função.
 
 ## Gate centralizado
 
@@ -133,6 +143,14 @@ Expiração **não apaga** tutores, pets, agenda, financeiro ou empresa. Apenas 
 - CTA: **Cancelar renovação** (não “apagar acesso imediato”)
 - Status `cancelled` + `current_period_end` no futuro → acesso operacional **mantido** até o fim do período já pago
 - Sem política automática de reembolso
+- Histórico nunca é apagado (`billing_payments`, `billing_webhook_events`, timestamps de cancelamento)
+- Reativação: novo checkout; o app não marca `active` sem evidência do provider
+
+## Inadimplência
+
+- `past_due` bloqueia o dashboard (sem grace period — não existe regra comercial de N dias)
+- Timeout/500/429 do Mercado Pago **não** viram `cancelled` nem `rejected`
+- Pagamento `rejected` no recurso consultado pode ir para `past_due`; evento `pending` antigo não regride `active`
 
 ## Dev / teste
 
@@ -150,4 +168,6 @@ Opcional: `BILLING_DEV_BYPASS=true` (somente `NODE_ENV !== 'production'`).
 
 Stripe, cupons, semestral/trimestral/vitalício, NF, afiliados, outro gateway.
 
-**Migrations relevantes:** trial + Mercado Pago billing + `20260824200000_annual_subscription_plan.sql`
+**Migrations relevantes:** trial + Mercado Pago billing + anual + `20260914150000_bloco9_billing_payments_webhook.sql`
+
+Diagnóstico somente leitura: `docs/sql/diagnose-bloco-9-billing.sql`

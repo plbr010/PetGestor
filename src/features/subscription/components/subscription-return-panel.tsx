@@ -2,7 +2,8 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CompanySubscriptionRecord } from "@/features/subscription/types";
 import { formatDateTimeInTimezone } from "@/features/subscription/utils";
-import { PLAN_MONTHLY_PRICE_LABEL } from "@/config/subscription";
+import { computeEntitlement } from "@/features/subscription/entitlement";
+import { planDisplayName, priceLabelForInterval } from "@/config/subscription";
 import { isActiveProviderSubscription } from "@/features/subscription/provider-status";
 
 type SubscriptionReturnPanelProps = {
@@ -18,8 +19,10 @@ export function SubscriptionReturnPanel({
   syncError,
   timeZone,
 }: SubscriptionReturnPanelProps) {
+  const entitlement = computeEntitlement(subscription, new Date());
   const isAuthorized =
-    subscription.status === "active" || isActiveProviderSubscription(subscription.providerStatus);
+    entitlement.hasOperationalAccess &&
+    (entitlement.state === "active" || isActiveProviderSubscription(subscription.providerStatus));
   const isPending =
     subscription.providerStatus === "pending" || subscription.status === "trialing";
 
@@ -35,7 +38,9 @@ export function SubscriptionReturnPanel({
           <>
             <p className="font-medium">Assinatura confirmada pelo Mercado Pago.</p>
             <p className="text-muted-foreground">
-              PetGestor Mensal — {PLAN_MONTHLY_PRICE_LABEL}/mês
+              {planDisplayName(subscription.billingInterval)} —{" "}
+              {priceLabelForInterval(subscription.billingInterval)}
+              {subscription.billingInterval === "annual" ? "/ano" : "/mês"}
             </p>
             {subscription.subscribedAt ? (
               <p className="text-muted-foreground">

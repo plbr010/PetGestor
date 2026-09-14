@@ -66,4 +66,15 @@ export type AdminCompanyDetail = AdminCompanyListItem & {
   cancelledAt: string | null;
   checkoutStartedAt: string | null;
   webhookEvents: AdminWebhookEventSummary[];
+  billingPayments: AdminBillingPaymentSummary[];
+};
+
+export type AdminBillingPaymentSummary = {
+  id: string;
+  providerPaymentId: string;
+  status: string;
+  amountCents: number | null;
+  currency: string | null;
+  paidAt: string | null;
+  providerUpdatedAt: string | null;
 };

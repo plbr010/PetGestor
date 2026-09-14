@@ -18,6 +18,7 @@ import { formatAdminTrialRemaining } from "@/features/admin/utils";
 import {
   planDisplayName,
   planPeriodLabel,
+  PLAN_ANNUAL_PRICE_LABEL,
   priceLabelForInterval,
 } from "@/config/subscription";
 import { getPlanMarketingLabel } from "@/features/subscription/providers/mercado-pago-types";
@@ -119,7 +120,7 @@ export function SubscriptionPageContent({
     }
 
     const confirmed = window.confirm(
-      "Ao mudar para o anual, a renovação mensal é encerrada e você paga R$ 799 no Mercado Pago. O plano anual só ativa após a confirmação do pagamento. Continuar?",
+      `Ao mudar para o anual, a renovação mensal é encerrada e você paga ${PLAN_ANNUAL_PRICE_LABEL} no Mercado Pago. O plano anual só ativa após a confirmação do pagamento. Continuar?`,
     );
     if (!confirmed) {
       event.preventDefault();
@@ -145,7 +146,9 @@ export function SubscriptionPageContent({
               {badge}
             </Badge>
           </div>
-          <CardDescription>{getDescription(pageState, interval)}</CardDescription>
+          <CardDescription>
+            {getDescription(pageState, interval, entitlement.hasOperationalAccess)}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {feedback ? (
@@ -160,6 +163,13 @@ export function SubscriptionPageContent({
               }
             />
           ) : null}
+
+            {pageState === "unavailable" ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                Não foi possível confirmar o estado da assinatura agora. Tente atualizar em instantes.
+                O acesso operacional permanece bloqueado até confirmarmos o billing.
+              </p>
+            ) : null}
 
           {pageState === "trial_active" ? (
             <div className="rounded-lg border bg-primary/5 p-4 text-sm">
@@ -185,7 +195,9 @@ export function SubscriptionPageContent({
             </p>
 
             <dl className="mt-4 space-y-2 text-sm">
-              {pageState === "active" || pageState === "checkout_pending" ? (
+              {pageState === "active" ||
+              pageState === "checkout_pending" ||
+              (pageState === "cancelled" && entitlement.hasOperationalAccess) ? (
                 <>
                   {periodEndLabel ? (
                     <div className="flex justify-between gap-3">
@@ -208,6 +220,15 @@ export function SubscriptionPageContent({
                     </div>
                   ) : null}
                 </>
+              ) : null}
+              {subscription.lastPaymentAt ? (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Último pagamento</dt>
+                  <dd className="font-medium text-right">
+                    {formatDateTimeInTimezone(subscription.lastPaymentAt, timeZone)}
+                    {subscription.lastPaymentStatus ? ` · ${subscription.lastPaymentStatus}` : ""}
+                  </dd>
+                </div>
               ) : null}
             </dl>
           </div>
@@ -233,8 +254,8 @@ export function SubscriptionPageContent({
                 </p>
                 {pageState === "active" && interval === "monthly" ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Mudar para anual encerra a renovação mensal e cobra R$ 799 após o pagamento no
-                    Mercado Pago.
+                    Mudar para anual encerra a renovação mensal e cobra {PLAN_ANNUAL_PRICE_LABEL} após
+                    o pagamento no Mercado Pago.
                   </p>
                 ) : null}
                 {pageState === "active" && interval === "annual" ? (
@@ -275,6 +296,14 @@ export function SubscriptionPageContent({
               </form>
             ) : null}
 
+            {pageState === "unavailable" ? (
+              <form action={refreshAction}>
+                <Button type="submit" className="h-11 w-full" disabled={isRefreshing}>
+                  {isRefreshing ? "Verificando…" : "Tentar novamente"}
+                </Button>
+              </form>
+            ) : null}
+
             {pageState === "checkout_pending" ||
             pageState === "past_due" ||
             pageState === "active" ? (
@@ -305,7 +334,10 @@ function getTitle(state: ReturnType<typeof resolveSubscriptionPageState>): strin
     case "checkout_pending":
       return "Conclua o pagamento";
     case "trial_expired":
+    case "expired":
       return "Escolha um plano";
+    case "unavailable":
+      return "Assinatura temporariamente indisponível";
     default:
       return "Sua assinatura";
   }
@@ -314,6 +346,7 @@ function getTitle(state: ReturnType<typeof resolveSubscriptionPageState>): strin
 function getDescription(
   state: ReturnType<typeof resolveSubscriptionPageState>,
   interval: "monthly" | "annual",
+  hasOperationalAccess: boolean,
 ): string {
   switch (state) {
     case "trial_active":
@@ -325,9 +358,15 @@ function getDescription(
     case "past_due":
       return "Regularize com mensal ou anual para voltar a usar o PetGestor.";
     case "cancelled":
-      return "Você pode assinar novamente quando quiser.";
+      return hasOperationalAccess
+        ? "A renovação foi cancelada. O acesso continua até o fim do período já pago."
+        : "Você pode assinar novamente quando quiser.";
     case "checkout_pending":
       return "Finalize no Mercado Pago. Nada é ativado antes da confirmação.";
+    case "expired":
+      return "O período pago encerrou. Assine novamente para continuar.";
+    case "unavailable":
+      return "Não assumimos assinatura ativa enquanto o billing não responder.";
     default:
       return "Assine o plano mensal ou anual para continuar.";
   }

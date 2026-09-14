@@ -1,13 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import {
-  PLAN_MONTHLY_PRICE_CENTS,
-  TRIAL_DURATION_HOURS,
-} from "@/config/subscription";
-import {
-  computeEntitlement,
-  isTrialExpired,
-} from "@/features/subscription/entitlement";
+import { TRIAL_DURATION_HOURS } from "@/config/subscription";
+import { computeEntitlement, isTrialExpired } from "@/features/subscription/entitlement";
 import type { CompanySubscriptionRecord } from "@/features/subscription/types";
 import { addHours, msBetween } from "@/features/subscription/utils";
 
@@ -51,6 +45,14 @@ describe("computeEntitlement", () => {
     );
   });
 
+  it("1 segundo antes de trial_ends_at → acesso", () => {
+    const subscription = buildSubscription();
+    const now = new Date(ends.getTime() - 1000);
+    const entitlement = computeEntitlement(subscription, now);
+    expect(entitlement.hasOperationalAccess).toBe(true);
+    expect(entitlement.state).toBe("trialing");
+  });
+
   it("quase no fim do trial → acesso permitido", () => {
     const subscription = buildSubscription();
     const now = addHours(started, TRIAL_DURATION_HOURS - 1 / 60);
@@ -67,11 +69,40 @@ describe("computeEntitlement", () => {
     expect(entitlement.state).toBe("trial_expired");
   });
 
-  it("active → permitido", () => {
-    const subscription = buildSubscription({ status: "active" });
+  it("depois do trial sem assinatura paga → bloqueado", () => {
+    const subscription = buildSubscription();
+    const entitlement = computeEntitlement(subscription, addHours(ends, 1));
+    expect(entitlement.hasOperationalAccess).toBe(false);
+    expect(entitlement.state).toBe("trial_expired");
+  });
+
+  it("active com período vigente → permitido", () => {
+    const subscription = buildSubscription({
+      status: "active",
+      currentPeriodStart: started.toISOString(),
+      currentPeriodEnd: addHours(ends, 24 * 30).toISOString(),
+    });
     const entitlement = computeEntitlement(subscription, ends);
     expect(entitlement.hasOperationalAccess).toBe(true);
     expect(entitlement.state).toBe("active");
+  });
+
+  it("status active sem período válido → fail-closed", () => {
+    const subscription = buildSubscription({ status: "active" });
+    const entitlement = computeEntitlement(subscription, ends);
+    expect(entitlement.hasOperationalAccess).toBe(false);
+    expect(entitlement.state).toBe("expired");
+  });
+
+  it("active com período vencido → expired, sem acesso", () => {
+    const subscription = buildSubscription({
+      status: "active",
+      currentPeriodStart: "2026-07-01T00:00:00.000Z",
+      currentPeriodEnd: "2026-08-01T00:00:00.000Z",
+    });
+    const entitlement = computeEntitlement(subscription, new Date("2026-08-01T00:00:00.000Z"));
+    expect(entitlement.hasOperationalAccess).toBe(false);
+    expect(entitlement.state).toBe("expired");
   });
 
   it("past_due → bloqueado", () => {
@@ -88,7 +119,7 @@ describe("computeEntitlement", () => {
     expect(entitlement.state).toBe("cancelled");
   });
 
-  it("cancelled anual com período pago restante → acesso mantido", () => {
+  it("cancelled anual com período pago restante → acesso residual, não mostra active", () => {
     const subscription = buildSubscription({
       status: "cancelled",
       billingInterval: "annual",
@@ -102,10 +133,38 @@ describe("computeEntitlement", () => {
       new Date("2027-01-01T00:00:00.000Z"),
     );
     expect(entitlement.hasOperationalAccess).toBe(true);
-    expect(entitlement.state).toBe("active");
+    expect(entitlement.state).toBe("cancelled");
   });
 
-  it("devBypass ignora expiração", () => {
+  it("cancelled após current_period_end → sem acesso", () => {
+    const subscription = buildSubscription({
+      status: "cancelled",
+      currentPeriodStart: "2026-07-01T00:00:00.000Z",
+      currentPeriodEnd: "2026-08-01T00:00:00.000Z",
+      cancelAtPeriodEnd: true,
+    });
+    const entitlement = computeEntitlement(subscription, new Date("2026-08-01T00:00:00.000Z"));
+    expect(entitlement.hasOperationalAccess).toBe(false);
+    expect(entitlement.state).toBe("cancelled");
+  });
+
+  it("billing indisponível → fail-closed operacional", () => {
+    const subscription = buildSubscription({ status: "active" });
+    const entitlement = computeEntitlement(subscription, started, { billingUnavailable: true });
+    expect(entitlement.hasOperationalAccess).toBe(false);
+    expect(entitlement.state).toBe("unavailable");
+    expect(entitlement.billingUnavailable).toBe(true);
+  });
+
+  it("status desconhecido → fail-closed", () => {
+    const subscription = buildSubscription({
+      status: "unknown" as CompanySubscriptionRecord["status"],
+    });
+    const entitlement = computeEntitlement(subscription, started);
+    expect(entitlement.hasOperationalAccess).toBe(false);
+  });
+
+  it("devBypass ignora expiração só quando a opção é explícita", () => {
     const subscription = buildSubscription();
     const now = addHours(started, TRIAL_DURATION_HOURS + 1);
     const entitlement = computeEntitlement(subscription, now, { devBypass: true });
@@ -136,8 +195,15 @@ describe("isTrialExpired", () => {
   });
 });
 
-describe("PLAN_MONTHLY_PRICE_CENTS", () => {
-  it("define preço de 8990 centavos", () => {
-    expect(PLAN_MONTHLY_PRICE_CENTS).toBe(8990);
+describe("BILLING_DEV_BYPASS em produção", () => {
+  it("não libera acesso mesmo com env true", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("BILLING_DEV_BYPASS", "true");
+    const subscription = buildSubscription();
+    const now = addHours(new Date(subscription.trialStartedAt), TRIAL_DURATION_HOURS + 1);
+    const entitlement = computeEntitlement(subscription, now);
+    expect(entitlement.hasOperationalAccess).toBe(false);
+    expect(entitlement.state).toBe("trial_expired");
+    vi.unstubAllEnvs();
   });
 });

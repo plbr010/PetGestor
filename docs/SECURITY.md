@@ -93,9 +93,12 @@ Arquivos: `src/lib/security/uuid.ts`, `src/lib/security/tenant-access.ts`
 - `company_subscriptions`: SELECT membros; **sem** INSERT/UPDATE/DELETE para `authenticated`
 - Status `active` **não** pode ser definido pelo browser
 - Entitlement calculado no servidor (`computeEntitlement`) — nunca `Date.now()` do client para autorização
+- Status persistido `active` **não** libera acesso se `current_period_end` já passou ou está ausente
 - Gate: layout dashboard + `requireCompanyContext()` em Server Actions
-- `/assinatura` acessível sem entitlement operacional
-- `BILLING_DEV_BYPASS`: ignorado em produção
+- `/assinatura` acessível sem entitlement operacional (erro recuperável se billing cair)
+- `BILLING_DEV_BYPASS`: ignorado em produção mesmo se `true`
+- `billing_payments` / `billing_webhook_events`: RLS on, **sem** policy para `authenticated` — só backend/webhook
+- Access token e webhook secret Mercado Pago: server-only, nunca `NEXT_PUBLIC_`
 
 ### Service role (Etapa 10B — exceção controlada)
 

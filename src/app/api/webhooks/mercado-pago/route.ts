@@ -11,7 +11,12 @@ import {
   syncPaymentFromProvider,
   syncSubscriptionFromProvider,
 } from "@/features/subscription/sync";
-import { getMercadoPagoWebhookSecret } from "@/lib/env/server-env";
+import {
+  buildWebhookProviderEventId,
+  decideWebhookReplay,
+  resolveWebhookDataId,
+} from "@/features/subscription/webhook-policy";
+import { BillingConfigError, getMercadoPagoWebhookSecret } from "@/lib/env/server-env";
 
 type MercadoPagoWebhookBody = {
   id?: number | string;
@@ -26,10 +31,31 @@ export async function POST(request: NextRequest) {
   let eventRecordId: string | null = null;
 
   try {
-    const dataId = request.nextUrl.searchParams.get("data.id");
+    const queryDataId = request.nextUrl.searchParams.get("data.id");
     const xSignature = request.headers.get("x-signature");
     const xRequestId = request.headers.get("x-request-id");
-    const secret = getMercadoPagoWebhookSecret();
+
+    let secret: string;
+    try {
+      secret = getMercadoPagoWebhookSecret();
+    } catch (error) {
+      if (error instanceof BillingConfigError) {
+        return NextResponse.json({ error: "webhook_not_configured" }, { status: 401 });
+      }
+      throw error;
+    }
+
+    const rawBody = await request.text();
+    let body: MercadoPagoWebhookBody = {};
+    if (rawBody) {
+      try {
+        body = JSON.parse(rawBody) as MercadoPagoWebhookBody;
+      } catch {
+        return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+      }
+    }
+
+    const dataId = resolveWebhookDataId(queryDataId, body.data?.id ?? null);
 
     if (
       !verifyMercadoPagoWebhookSignature({
@@ -42,11 +68,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
     }
 
-    const body = (await request.json()) as MercadoPagoWebhookBody;
     const eventType = body.type ?? "unknown";
     const action = body.action ?? null;
     const resourceId = body.data?.id ?? dataId ?? null;
-    const providerEventId = xRequestId ?? `${eventType}:${resourceId ?? "unknown"}:${action ?? "none"}`;
+    const providerEventId = buildWebhookProviderEventId({
+      xRequestId,
+      eventType,
+      resourceId,
+      action,
+    });
 
     const recorded = await recordWebhookEvent({
       provider: MERCADO_PAGO_PROVIDER,
@@ -56,7 +86,7 @@ export async function POST(request: NextRequest) {
       resource_id: resourceId,
     });
 
-    if (recorded.duplicate) {
+    if (recorded.duplicate || decideWebhookReplay(recorded.processingStatus) === "duplicate") {
       return NextResponse.json({ ok: true, duplicate: true });
     }
 

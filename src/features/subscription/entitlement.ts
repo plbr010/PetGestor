@@ -3,6 +3,7 @@ import {
   isBillingDevBypassEnabled,
   type BillingInterval,
 } from "@/config/subscription";
+import { isPaidPeriodValidAt } from "@/features/subscription/sync-policy";
 import type {
   CompanyEntitlement,
   CompanySubscriptionRecord,
@@ -31,6 +32,8 @@ export function mapSubscriptionRow(row: {
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  provider_updated_at?: string | null;
+  checkout_idempotency_key?: string | null;
 }): CompanySubscriptionRecord {
   const billingInterval: BillingInterval =
     row.billing_interval === "annual" || row.billing_interval === "monthly"
@@ -58,17 +61,35 @@ export function mapSubscriptionRow(row: {
     currentPeriodStart: row.current_period_start,
     currentPeriodEnd: row.current_period_end,
     cancelAtPeriodEnd: row.cancel_at_period_end,
+    providerUpdatedAt: row.provider_updated_at ?? null,
+    checkoutIdempotencyKey: row.checkout_idempotency_key ?? null,
   };
 }
 
+/**
+ * Única semântica canônica de acesso SaaS.
+ * Status persistido sozinho não libera trial/assinatura vencida.
+ * Estado crítico desconhecido ou billing indisponível → fail-closed.
+ */
 export function computeEntitlement(
   subscription: CompanySubscriptionRecord | null,
   serverNow: Date,
   options: EntitlementOptions = {},
 ): CompanyEntitlement {
   const serverNowIso = serverNow.toISOString();
+  const billingUnavailable = options.billingUnavailable === true;
   const devBypass = options.devBypass ?? isBillingDevBypassEnabled();
   const billingExempt = options.billingExempt === true;
+
+  if (billingUnavailable) {
+    return {
+      state: "unavailable",
+      hasOperationalAccess: false,
+      subscription,
+      serverNowIso,
+      billingUnavailable: true,
+    };
+  }
 
   if (devBypass || billingExempt) {
     return {
@@ -90,15 +111,7 @@ export function computeEntitlement(
 
   const nowMs = serverNow.getTime();
   const trialEndsMs = new Date(subscription.trialEndsAt).getTime();
-
-  if (subscription.status === "active") {
-    return {
-      state: "active",
-      hasOperationalAccess: true,
-      subscription,
-      serverNowIso,
-    };
-  }
+  const paidPeriodValid = isPaidPeriodValidAt(subscription.currentPeriodEnd, serverNow);
 
   if (subscription.status === "trialing") {
     if (nowMs < trialEndsMs) {
@@ -118,6 +131,24 @@ export function computeEntitlement(
     };
   }
 
+  if (subscription.status === "active") {
+    if (paidPeriodValid) {
+      return {
+        state: "active",
+        hasOperationalAccess: true,
+        subscription,
+        serverNowIso,
+      };
+    }
+
+    return {
+      state: "expired",
+      hasOperationalAccess: false,
+      subscription,
+      serverNowIso,
+    };
+  }
+
   if (subscription.status === "past_due") {
     return {
       state: "past_due",
@@ -128,13 +159,9 @@ export function computeEntitlement(
   }
 
   if (subscription.status === "cancelled") {
-    const periodEndMs = subscription.currentPeriodEnd
-      ? new Date(subscription.currentPeriodEnd).getTime()
-      : 0;
-
-    if (periodEndMs > nowMs) {
+    if (paidPeriodValid) {
       return {
-        state: "active",
+        state: "cancelled",
         hasOperationalAccess: true,
         subscription,
         serverNowIso,
@@ -150,7 +177,7 @@ export function computeEntitlement(
   }
 
   return {
-    state: "trial_expired",
+    state: "expired",
     hasOperationalAccess: false,
     subscription,
     serverNowIso,

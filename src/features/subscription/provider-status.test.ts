@@ -39,7 +39,15 @@ describe("mapPaymentStatusToLocal", () => {
     expect(mapPaymentStatusToLocal("pending").localStatus).toBeNull();
   });
 
-  it("rejected → past_due", () => {
-    expect(mapPaymentStatusToLocal("rejected").localStatus).toBe("past_due");
+  it("authorized no payment NÃO ativa (só approved)", () => {
+    expect(mapPaymentStatusToLocal("authorized")).toEqual({
+      localStatus: null,
+      grantsAccess: false,
+    });
+  });
+
+  it("refunded e charged_back → past_due", () => {
+    expect(mapPaymentStatusToLocal("refunded").localStatus).toBe("past_due");
+    expect(mapPaymentStatusToLocal("charged_back").localStatus).toBe("past_due");
   });
 });

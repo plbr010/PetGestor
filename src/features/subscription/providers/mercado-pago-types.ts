@@ -49,8 +49,10 @@ export type MercadoPagoPreapproval = {
   payer_email?: string;
   next_payment_date?: string;
   date_created?: string;
+  last_modified?: string;
   auto_recurring?: MercadoPagoAutoRecurring & {
     free_trial?: unknown;
+    currency_id?: string;
   };
 };
 
@@ -68,7 +70,11 @@ export type MercadoPagoPayment = {
   id: string;
   status: string;
   date_approved?: string | null;
+  date_created?: string | null;
+  date_last_updated?: string | null;
   transaction_amount?: number | null;
+  currency_id?: string | null;
+  external_reference?: string | null;
 };
 
 export function buildExternalReference(companyId: string): string {
@@ -180,6 +186,21 @@ export function assertExpectedCheckoutAmount(
   if (typeof amount !== "number" || Number(amount.toFixed(2)) !== expected) {
     throw new Error("billing_amount_mismatch");
   }
+}
+
+export function assertExpectedCheckoutCurrency(currency: string | null | undefined): void {
+  if (!currency || currency.trim().toUpperCase() !== "BRL") {
+    throw new Error("billing_currency_mismatch");
+  }
+}
+
+export function assertActivationMatchesPlan(params: {
+  billingInterval: BillingInterval;
+  amount: number | null | undefined;
+  currency: string | null | undefined;
+}): void {
+  assertExpectedCheckoutCurrency(params.currency);
+  assertExpectedCheckoutAmount(params.billingInterval, params.amount);
 }
 
 export {

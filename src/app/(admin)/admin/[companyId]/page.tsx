@@ -89,6 +89,10 @@ export default async function AdminCompanyDetailPage({
       label: "ID externo Mercado Pago",
       value: detail.providerSubscriptionId ?? "—",
     },
+    {
+      label: "Atualizado no provider",
+      value: formatAdminDateTime(detail.subscription?.providerUpdatedAt ?? null),
+    },
   ];
 
   return (
@@ -135,6 +139,51 @@ export default async function AdminCompanyDetailPage({
               Abrir WhatsApp do responsável
             </a>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pagamentos do provider</CardTitle>
+          <CardDescription>
+            IDs de pagamento persistidos. Sem tokens, cartão ou segredos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {detail.billingPayments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum payment id persistido para esta empresa.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-2 font-medium">Payment ID</th>
+                    <th className="px-2 py-2 font-medium">Status</th>
+                    <th className="px-2 py-2 font-medium">Valor</th>
+                    <th className="px-2 py-2 font-medium">Pago em</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.billingPayments.map((payment) => (
+                    <tr key={payment.id} className="border-b last:border-0">
+                      <td className="px-2 py-2 break-all">{payment.providerPaymentId}</td>
+                      <td className="px-2 py-2">{payment.status}</td>
+                      <td className="px-2 py-2">
+                        {payment.amountCents != null
+                          ? `${formatAdminCurrencyFromCents(payment.amountCents)} ${payment.currency ?? ""}`.trim()
+                          : "—"}
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap">
+                        {formatAdminDateTime(payment.paidAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
