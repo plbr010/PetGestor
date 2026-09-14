@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { parseRecipesJson, recipesToRpcPayload } from "@/features/services/mutation-engine";
 import { parseServiceForm } from "@/features/services/schemas";
 import { sizePricesToRpcPayload } from "@/features/services/utils";
-import { parseQuantityInput } from "@/features/inventory/stock-engine";
 import { requirePermission } from "@/lib/auth/require-permission";
 import {
   didMutateAccessibleRow,
@@ -31,66 +31,23 @@ function mapRpcError(error: { code?: string; message?: string } | null): string 
   if (message.includes("invalid_recipe_quantity") || message.includes("duplicate_recipe_product")) {
     return "Revise os produtos e quantidades da receita.";
   }
+  if (message.includes("idempotency_key_conflict")) {
+    return "Esta tentativa já foi usada com dados diferentes. Recarregue a página e tente novamente.";
+  }
+  if (message.includes("invalid_idempotency_key")) {
+    return "Não foi possível concluir a operação. Recarregue a página e tente novamente.";
+  }
 
   return GENERIC_NOT_FOUND_MESSAGE;
 }
 
-function parseRecipesJson(formData: FormData): { product_id: string; quantity: number }[] | null {
-  const raw = formData.get("recipes_json");
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) {
-      return null;
-    }
-
-    const items: { product_id: string; quantity: number }[] = [];
-    for (const row of parsed) {
-      if (!row || typeof row !== "object") {
-        return null;
-      }
-      const record = row as Record<string, unknown>;
-      const productId = String(record.product_id ?? "");
-      const quantity =
-        typeof record.quantity === "number"
-          ? record.quantity
-          : parseQuantityInput(String(record.quantity ?? ""));
-      if (!isValidUuid(productId) || quantity == null) {
-        return null;
-      }
-      items.push({ product_id: productId, quantity });
-    }
-    return items;
-  } catch {
+function parseIdempotencyKey(formData: FormData): string | null {
+  const raw = formData.get("idempotency_key");
+  if (typeof raw !== "string") {
     return null;
   }
-}
-
-async function saveServiceRecipes(
-  serviceId: string,
-  formData: FormData,
-  companyId: string,
-): Promise<string | null> {
-  const recipes = parseRecipesJson(formData);
-  if (recipes == null) {
-    return "Revise os produtos e quantidades da receita.";
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.rpc("replace_service_product_recipes", {
-    p_service_id: serviceId,
-    p_items: recipes,
-    p_company_id: companyId,
-  });
-
-  if (error) {
-    return mapRpcError(error);
-  }
-
-  return null;
+  const key = raw.trim();
+  return key.length >= 8 ? key : null;
 }
 
 export async function createServiceAction(
@@ -99,9 +56,19 @@ export async function createServiceAction(
 ): Promise<ServiceActionState> {
   const context = await requirePermission("services.manage");
   const parsed = parseServiceForm(formData);
+  const recipes = parseRecipesJson(formData.get("recipes_json"));
+  const idempotencyKey = parseIdempotencyKey(formData);
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  if (recipes == null) {
+    return { error: "Revise os produtos e quantidades da receita." };
+  }
+
+  if (!idempotencyKey) {
+    return { error: "Não foi possível concluir a operação. Recarregue a página e tente novamente." };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -120,20 +87,13 @@ export async function createServiceAction(
       parsed.data.pricingMode === "by_size" && parsed.data.sizePrices
         ? sizePricesToRpcPayload(parsed.data.sizePrices)
         : null,
+    p_items: recipesToRpcPayload(recipes),
+    p_idempotency_key: idempotencyKey,
     p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
-    return { error: "Não foi possível cadastrar o serviço. Tente novamente." };
-  }
-
-  const recipeError = await saveServiceRecipes(
-    String(data),
-    formData,
-    context.membership.company.id,
-  );
-  if (recipeError) {
-    return { error: recipeError };
+    return { error: mapRpcError(error) };
   }
 
   revalidatePath("/dashboard/servicos");
@@ -152,9 +112,19 @@ export async function updateServiceAction(
 
   const context = await requirePermission("services.manage");
   const parsed = parseServiceForm(formData);
+  const recipes = parseRecipesJson(formData.get("recipes_json"));
+  const idempotencyKey = parseIdempotencyKey(formData);
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  if (recipes == null) {
+    return { error: "Revise os produtos e quantidades da receita." };
+  }
+
+  if (!idempotencyKey) {
+    return { error: "Não foi possível concluir a operação. Recarregue a página e tente novamente." };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -174,20 +144,13 @@ export async function updateServiceAction(
       parsed.data.pricingMode === "by_size" && parsed.data.sizePrices
         ? sizePricesToRpcPayload(parsed.data.sizePrices)
         : null,
+    p_items: recipesToRpcPayload(recipes),
+    p_idempotency_key: idempotencyKey,
     p_company_id: context.membership.company.id,
   });
 
   if (error || !data) {
     return { error: mapRpcError(error) };
-  }
-
-  const recipeError = await saveServiceRecipes(
-    serviceId,
-    formData,
-    context.membership.company.id,
-  );
-  if (recipeError) {
-    return { error: recipeError };
   }
 
   revalidatePath("/dashboard/servicos");

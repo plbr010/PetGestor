@@ -236,10 +236,22 @@ async function seedPets(
   return ids;
 }
 
-async function seedServices(client: DbClient, companyId: string): Promise<IdMap> {
+async function seedServices(
+  client: DbClient,
+  companyId: string,
+  productIds: IdMap = {},
+): Promise<IdMap> {
   const ids: IdMap = {};
 
   for (const service of DEMO_SERVICES) {
+    const items =
+      service.key === "banho-tosa" && productIds.shampoo && productIds.condicionador
+        ? [
+            { product_id: productIds.shampoo, quantity: 0.05 },
+            { product_id: productIds.condicionador, quantity: 0.03 },
+          ]
+        : [];
+
     const { data, error } = await client.rpc("create_service_with_prices", {
       p_name: service.name,
       p_description: service.description,
@@ -254,6 +266,8 @@ async function seedServices(client: DbClient, companyId: string): Promise<IdMap>
         service.pricingMode === "by_size"
           ? sizePricesToRpcPayload([...service.sizePrices])
           : null,
+      p_items: items,
+      p_idempotency_key: crypto.randomUUID(),
       p_company_id: companyId,
     });
 
@@ -399,34 +413,6 @@ async function seedInventory(
   }
 
   return { categoryIds, supplierIds, productIds };
-}
-
-async function seedServiceRecipes(
-  client: DbClient,
-  companyId: string,
-  serviceIds: IdMap,
-  productIds: IdMap,
-) {
-  const banhoTosaId = serviceIds["banho-tosa"];
-  const shampooId = productIds.shampoo;
-  const condicionadorId = productIds.condicionador;
-
-  if (!banhoTosaId || !shampooId || !condicionadorId) {
-    return;
-  }
-
-  const { error } = await client.rpc("replace_service_product_recipes", {
-    p_service_id: banhoTosaId,
-    p_items: [
-      { product_id: shampooId, quantity: 0.05 },
-      { product_id: condicionadorId, quantity: 0.03 },
-    ],
-    p_company_id: String(companyId),
-  });
-
-  if (error) {
-    throw new Error(`Receita de insumos: ${error.message}`);
-  }
 }
 
 async function seedServicePackage(
@@ -893,13 +879,10 @@ async function seedOperationalData(
   const customerIds = await seedCustomers(client, companyId, userId);
   const petIds = await seedPets(client, companyId, userId, customerIds);
 
-  logStep(log, "Cadastrando serviços e equipe…");
-  const serviceIds = await seedServices(client, companyId);
-  const employeeIds = await seedEmployees(client, companyId, serviceIds);
-
-  logStep(log, "Cadastrando estoque e receitas de insumos…");
+  logStep(log, "Cadastrando estoque, serviços e equipe…");
   const { productIds } = await seedInventory(client, companyId, userId);
-  await seedServiceRecipes(client, companyId, serviceIds, productIds);
+  const serviceIds = await seedServices(client, companyId, productIds);
+  const employeeIds = await seedEmployees(client, companyId, serviceIds);
 
   logStep(log, "Cadastrando pacotes de serviços…");
   await seedServicePackage(client, companyId, serviceIds, customerIds, petIds);

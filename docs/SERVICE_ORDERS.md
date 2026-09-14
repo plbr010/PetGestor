@@ -132,7 +132,8 @@ Exibição continua no timezone da empresa.
 | `seed_service_order_consumptions` | Garantir seed da receita |
 | `upsert_service_order_consumption` | Ajustar/adicionar insumo |
 | `remove_service_order_consumption` | Remover insumo antes da baixa |
-| `replace_service_product_recipes` | Salvar receita do serviço |
+
+A ficha do **cadastro de serviço** é gravada atômicamente em `create_service_with_prices` / `update_service_with_prices` (BLOCO 8.1). `replace_service_product_recipes` permanece como rotina interna da mesma transação.
 
 `SECURITY DEFINER`, `auth.uid()` obrigatório, `p_company_id` explícito + `require_app_permission('service_orders.update_status')`, `EXECUTE` apenas `authenticated`.
 

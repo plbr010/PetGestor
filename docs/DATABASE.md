@@ -171,8 +171,8 @@ UNIQUE `(service_id, size)`.
 
 | Função | Uso |
 |--------|-----|
-| `create_service_with_prices(...)` | Criação atômica service + faixas |
-| `update_service_with_prices(...)` | Atualização atômica incluindo troca de pricing_mode |
+| `create_service_with_prices(..., p_items, p_idempotency_key, p_company_id)` | Criação atômica service + faixas + ficha |
+| `update_service_with_prices(..., p_items, p_idempotency_key, p_company_id)` | Atualização atômica incluindo troca de pricing_mode e substituição da ficha |
 
 ### RLS
 
@@ -180,7 +180,7 @@ UNIQUE `(service_id, size)`.
 - SELECT/INSERT/UPDATE/DELETE membros em `service_size_prices` (DELETE controlado via RPC/update)
 - Trigger `prevent_company_change` em ambas
 
-Ver `docs/SERVICES.md`. **Migration pendente de aplicação remota.**
+Ver `docs/SERVICES.md`. **Migration BLOCO 8.1 pendente de aplicação remota:** `20260914172942_bloco81_service_prices_recipe_atomic.sql`.
 
 ## Etapa 6 — Funcionários
 
