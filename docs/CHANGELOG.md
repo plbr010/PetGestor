@@ -1,3 +1,16 @@
+## [0.52.1] — 2026-09-14
+
+### Corrigido — BLOCO 10 hardening final (SEO e metadataBase)
+
+- `/entrar` fora do sitemap, com `noindex, follow` explícito
+- `/cadastro` permanece indexável como página de conversão (`index, follow` + canonical), não por herança do RootLayout
+- Rotas técnicas de auth (`recuperar-senha`, `nova-senha`, `convite`, `onboarding`, `verifique-email`, `/auth/*`) com `noindex, nofollow`
+- `metadataBase`/sitemap/canonical reutilizam `resolve-app-url`: localhost só em development/test; production sem URL falha fechado
+- Headers de segurança numa única regra `/:path*` (sem duplicar `"/"`); CSP continua só `frame-ancestors 'none'`
+- Landing pública permanece indexável
+
+**Migration nova: NENHUMA.**
+
 ## [0.52.0] — 2026-09-14
 
 ### Corrigido — BLOCO 10 (landing, conversão, acessibilidade e security headers)

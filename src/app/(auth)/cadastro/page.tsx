@@ -3,11 +3,16 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { SignUpWizard } from "@/components/auth/sign-up-wizard";
 import { brand } from "@/config/brand";
 import { formatTrialCtaLabel, formatTrialNote } from "@/config/subscription";
+import { publicIndexRobots } from "@/lib/seo/robots-policy";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Criar conta",
   description: `${formatTrialCtaLabel()} no ${brand.name}. ${formatTrialNote()}`,
+  alternates: {
+    canonical: "/cadastro",
+  },
+  robots: publicIndexRobots,
 };
 
 type SignUpPageProps = {

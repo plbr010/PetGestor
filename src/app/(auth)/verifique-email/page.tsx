@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail } from "lucide-react";
 
@@ -12,6 +13,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { technicalAuthRobots } from "@/lib/seo/robots-policy";
+
+export const metadata: Metadata = {
+  robots: technicalAuthRobots,
+};
 
 type VerifyEmailPageProps = {
   searchParams: Promise<{ modo?: string }>;

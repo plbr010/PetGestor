@@ -20,6 +20,19 @@ Donos e gestores de pet shops que precisam de uma solução simples, acessível 
 
 A prévia da landing (`/#demonstracao`) é ilustrativa. Não existe dashboard público anônimo.
 
+## Indexação pública (SEO)
+
+Decisão explícita — não herdar `robots` do `RootLayout` por acaso:
+
+| Rota | Indexável | Motivo |
+|------|-----------|--------|
+| `/` | Sim (`index, follow`) | Landing pública |
+| `/cadastro` | Sim (`index, follow`) | Página de conversão do trial; permanece no sitemap |
+| `/entrar` | Não (`noindex, follow`) | Login não é destino de busca; fora do sitemap. Sem `Disallow` no robots.txt para o crawler ler o noindex |
+| Recuperar/nova senha, convite, onboarding, verifique-email, `/auth/*` | Não (`noindex, nofollow`) | Rotas técnicas / com token |
+
+`metadataBase`, canonical e sitemap usam a política de `src/lib/env/resolve-app-url.ts`. Em production sem `APP_URL` / `NEXT_PUBLIC_APP_URL` / `VERCEL_URL` válido, não há fallback para localhost.
+
 ## Fora do escopo atual
 
 - Chatbot, inteligência artificial, marketing e disparo em massa no WhatsApp

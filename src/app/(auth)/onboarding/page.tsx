@@ -1,9 +1,16 @@
+import type { Metadata } from "next";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { peekPendingInvite } from "@/features/employees/access/accept-invite";
 import { requireAuthenticatedWithoutCompany } from "@/lib/auth/guards";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { OnboardingForm } from "@/components/auth/onboarding-form";
 import { redirect } from "next/navigation";
+import { technicalAuthRobots } from "@/lib/seo/robots-policy";
+
+export const metadata: Metadata = {
+  robots: technicalAuthRobots,
+};
 
 export default async function OnboardingPage() {
   await requireAuthenticatedWithoutCompany();
