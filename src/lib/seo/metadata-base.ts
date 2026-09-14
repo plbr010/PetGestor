@@ -1,16 +1,28 @@
-import { resolveConfiguredAppUrl } from "@/lib/env/resolve-app-url";
+import {
+  requireAppUrl,
+  resolveConfiguredAppUrl,
+  resolveDevLocalAppUrl,
+} from "@/lib/env/resolve-app-url";
 
-/** Fallback só para build/dev local. Não inventa domínio de produção. */
-export const DEV_METADATA_BASE_URL = "http://localhost:3000";
+type EnvLike = Record<string, string | undefined>;
 
-export function getMetadataBaseUrl(
-  env: Record<string, string | undefined> = process.env,
-): string {
-  return resolveConfiguredAppUrl(env) ?? DEV_METADATA_BASE_URL;
+/**
+ * URL absoluta para metadata/canonical/sitemap.
+ * Reutiliza a política canônica de `resolve-app-url` — sem segundo fallback.
+ *
+ * - development/test sem env → localhost permitido
+ * - production sem APP_URL/NEXT_PUBLIC_APP_URL/VERCEL_URL → undefined (fail-closed)
+ */
+export function tryGetMetadataBaseUrl(env: EnvLike = process.env): string | undefined {
+  return resolveConfiguredAppUrl(env) ?? resolveDevLocalAppUrl(env);
 }
 
-export function getMetadataBase(
-  env: Record<string, string | undefined> = process.env,
-): URL {
-  return new URL(getMetadataBaseUrl(env));
+/** Igual a `requireAppUrl`: localhost só fora de production; senão lança. */
+export function getMetadataBaseUrl(env: EnvLike = process.env): string {
+  return requireAppUrl(env);
+}
+
+export function getMetadataBase(env: EnvLike = process.env): URL | undefined {
+  const url = tryGetMetadataBaseUrl(env);
+  return url ? new URL(url) : undefined;
 }

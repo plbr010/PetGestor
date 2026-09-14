@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { publicIndexRobots } from "@/lib/seo/robots-policy";
 import { PublicHeader } from "@/components/layout/public-header";
 import { PublicFooter } from "@/components/layout/public-footer";
 import { BenefitsSection } from "@/components/marketing/benefits-section";
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  robots: publicIndexRobots,
 };
 
 export default function HomePage() {

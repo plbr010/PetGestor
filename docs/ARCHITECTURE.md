@@ -81,7 +81,7 @@ O Proxy **não substitui** proteção server-side em layouts.
 5. **Rotas agrupadas** por contexto: `(public)`, `(auth)`, `(dashboard)`.
 6. **Service role** — apenas rotas privilegiadas (billing, cron WhatsApp, webhook Meta, painel `/admin`). Operações do pet shop continuam no client autenticado + RLS.
 7. **user_metadata** só para pré-preenchimento — nunca para autorização.
-8. **Security headers** — `src/lib/security/http-headers.ts` (clickjacking + headers seguros). CSP completa ainda não.
+8. **Security headers** — `src/lib/security/http-headers.ts` (clickjacking + headers seguros). CSP completa ainda não. SEO público: `src/lib/seo/robots-policy.ts` + `resolve-app-url` (sem localhost em production).
 
 ## WhatsApp Cloud API
 

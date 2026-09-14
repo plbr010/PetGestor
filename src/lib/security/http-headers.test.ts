@@ -36,10 +36,30 @@ describe("security HTTP headers", () => {
     );
   });
 
-  it("expõe os headers para a raiz e para demais caminhos", () => {
+  it("aplica uma única regra /:path* sem duplicar a raiz", () => {
     const config = buildNextSecurityHeaders({ enableHsts: false });
-    expect(config.map((entry) => entry.source)).toEqual(["/", "/:path*"]);
-    expect(config[0]?.headers).toEqual(config[1]?.headers);
+    const sources = config.map((entry) => entry.source);
+    expect(sources).toContain("/:path*");
+    expect(sources.filter((source) => source === "/")).toHaveLength(0);
+    expect(sources.filter((source) => source === "/:path*")).toHaveLength(1);
+
+    const rootRule = config.find((entry) => entry.source === "/:path*");
+    const map = Object.fromEntries(
+      (rootRule?.headers ?? []).map((header) => [header.key, header.value]),
+    );
+    expect(map["X-Content-Type-Options"]).toBe("nosniff");
+    expect(map["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
+    expect(map["Permissions-Policy"]).toContain("camera=()");
+    expect(map["X-Frame-Options"]).toBe("DENY");
+    expect(map["Content-Security-Policy"]).toBe(FRAME_ANCESTORS_CSP);
+  });
+
+  it("marca callbacks /auth/* com X-Robots-Tag noindex", () => {
+    const config = buildNextSecurityHeaders({ enableHsts: false });
+    const authRule = config.find((entry) => entry.source === "/auth/:path*");
+    expect(authRule?.headers).toEqual([
+      { key: "X-Robots-Tag", value: "noindex, nofollow" },
+    ]);
   });
 
   it("next.config usa o módulo canônico de headers", () => {

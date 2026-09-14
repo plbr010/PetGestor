@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AcceptInviteCard } from "@/features/employees/access/components/accept-invite-card";
@@ -15,6 +16,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { technicalAuthRobots } from "@/lib/seo/robots-policy";
+
+export const metadata: Metadata = {
+  robots: technicalAuthRobots,
+};
 
 export default async function ConvitePage() {
   const user = await requireAuthenticatedUser();

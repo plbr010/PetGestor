@@ -208,6 +208,10 @@ Aplicados em `next.config.ts` via `src/lib/security/http-headers.ts`:
 
 CSP completa (`script-src`, `connect-src`, etc.) **não** está habilitada: Next.js, Meta Pixel, Supabase Auth, Mercado Pago e imagens exigiriam allowlist testada em produção. Uma política genérica quebraria o app.
 
+Padrão Next: uma única regra `/:path*` (cobre `/`). Não há regra extra `"/"` para não duplicar headers na raiz. Callbacks `/auth/:path*` recebem `X-Robots-Tag: noindex, nofollow`.
+
+`metadataBase` / sitemap / canonical **não** caem em `localhost` em production. Sem URL configurada o app falha fechado (`requireAppUrl` / `tryGetMetadataBaseUrl` indefinido).
+
 Clickjacking: o app autenticado não pode ser embutido em iframe externo (`frame-ancestors 'none'` + `X-Frame-Options: DENY`).
 
 ## Próximas implementações

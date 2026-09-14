@@ -46,13 +46,20 @@ export function buildSecurityHeaderList(options: {
   return [...BASE_SECURITY_HEADERS];
 }
 
+export const TECHNICAL_AUTH_ROBOTS_HEADER: SecurityHeader = {
+  key: "X-Robots-Tag",
+  value: "noindex, nofollow",
+};
+
 export function buildNextSecurityHeaders(options: { enableHsts: boolean }): Array<{
   source: string;
   headers: SecurityHeader[];
 }> {
   const headers = buildSecurityHeaderList(options);
+  // `/:path*` cobre `/` no Next.js (ao contrário de `/(.*)`). Uma única regra
+  // evita headers duplicados na raiz.
   return [
-    { source: "/", headers },
     { source: "/:path*", headers },
+    { source: "/auth/:path*", headers: [TECHNICAL_AUTH_ROBOTS_HEADER] },
   ];
 }

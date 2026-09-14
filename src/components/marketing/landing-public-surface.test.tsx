@@ -6,7 +6,9 @@ import userEvent from "@testing-library/user-event";
 
 import { PublicFooter } from "@/components/layout/public-footer";
 import { PublicHeader } from "@/components/layout/public-header";
+import { CtaSection } from "@/components/marketing/cta-section";
 import { HeroSection } from "@/components/marketing/hero-section";
+import { PricingSection } from "@/components/marketing/pricing-section";
 import { marketingContent } from "@/config/marketing";
 import { publicPaths } from "@/config/public-routes";
 
@@ -58,7 +60,12 @@ describe("landing conversion CTAs", () => {
     expect(screen.getByRole("navigation", { name: "Menu mobile" })).toBeInTheDocument();
 
     const demoLinks = screen.queryAllByRole("link", { name: marketingContent.demoCtaLabel });
-    expect(demoLinks.every((link) => link.getAttribute("href") !== "/dashboard")).toBe(true);
+    expect(
+      demoLinks.every((link) => {
+        const href = link.getAttribute("href") ?? "";
+        return href !== "/dashboard" && !href.startsWith("/admin");
+      }),
+    ).toBe(true);
 
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -80,7 +87,26 @@ describe("landing conversion CTAs", () => {
     ).toHaveAttribute("href", publicPaths.signup);
   });
 
-  it("superfície pública não usa dashboard/admin como CTA de demo", () => {
+  it("pricing e CTA final levam teste grátis a /cadastro e conta a /entrar", () => {
+    render(<PricingSection />);
+    const pricingCtas = screen.getAllByRole("link", {
+      name: marketingContent.pricingCtaLabel,
+    });
+    expect(pricingCtas.length).toBeGreaterThan(0);
+    expect(pricingCtas.every((link) => link.getAttribute("href") === "/cadastro")).toBe(
+      true,
+    );
+
+    render(<CtaSection />);
+    expect(
+      screen.getByRole("link", { name: marketingContent.trialCtaLabel }),
+    ).toHaveAttribute("href", "/cadastro");
+    expect(
+      screen.getByRole("link", { name: marketingContent.alreadyHaveAccountCtaLabel }),
+    ).toHaveAttribute("href", "/entrar");
+  });
+
+  it("superfície pública não usa dashboard/admin como CTA de demo nem href placeholder", () => {
     const files = [
       "src/components/marketing/hero-section.tsx",
       "src/components/layout/public-header.tsx",
@@ -89,13 +115,21 @@ describe("landing conversion CTAs", () => {
       "src/components/marketing/cta-section.tsx",
       "src/app/not-found.tsx",
       "src/app/(public)/page.tsx",
+      "src/config/marketing.ts",
     ];
 
     for (const file of files) {
       const source = read(file);
       expect(source).not.toMatch(/href=["']\/dashboard/);
       expect(source).not.toMatch(/href=["']\/admin/);
+      expect(source).not.toMatch(/href=["']#["']/);
     }
+
+    expect(marketingContent.demoHref).toBe("/#demonstracao");
+    expect(marketingContent.demoHref).not.toContain("/dashboard");
+    expect(marketingContent.demoHref).not.toContain("/admin");
+    expect(marketingContent.signupHref).toBe("/cadastro");
+    expect(marketingContent.loginHref).toBe("/entrar");
   });
 
   it("âncoras da landing têm folga para o header sticky", () => {
