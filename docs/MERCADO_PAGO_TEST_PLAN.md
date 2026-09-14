@@ -22,8 +22,8 @@
 11. Concluir checkout de teste no MP
 12. Retorno `/assinatura/retorno`
 13. Página consulta `GET /preapproval/{id}` — não confia em query params
-14. Provider `authorized` → local `active`
-15. Dashboard liberado
+14. Provider `authorized` **não** libera acesso pago
+15. Dashboard liberado só após payment `approved` (GET) com período pago vigente
 16. Dados anteriores preservados
 17. Webhook `subscription_preapproval`
 18. Webhook `subscription_authorized_payment`

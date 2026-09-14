@@ -2,9 +2,9 @@ import type { BillingInterval } from "@/config/subscription";
 import { computeEntitlement } from "@/features/subscription/entitlement";
 import type { CompanyEntitlement, CompanySubscriptionRecord } from "@/features/subscription/types";
 import {
-  isActiveProviderSubscription,
   isCancelledProviderSubscription,
   isReusablePendingCheckout,
+  normalizeProviderStatus,
 } from "@/features/subscription/provider-status";
 
 export function resolveSubscriptionPageState(
@@ -79,11 +79,8 @@ export function canStartMercadoPagoCheckout(
   }
 
   // Assinatura paga vigente (não residual de cancelamento) não inicia novo checkout de subscribe.
+  // Preapproval `authorized` sem payment approved NÃO bloqueia checkout.
   if (entitlement.state === "active") {
-    return false;
-  }
-
-  if (isActiveProviderSubscription(subscription.providerStatus) && entitlement.hasOperationalAccess) {
     return false;
   }
 
@@ -132,4 +129,30 @@ export function canShowPlanPicker(
     pageState === "checkout_pending" ||
     pageState === "expired"
   );
+}
+
+export type SubscriptionReturnState = "confirmed" | "processing" | "unconfirmed";
+
+/**
+ * Confirmação visual do retorno do checkout: só `entitlement.state === "active"`
+ * (período pago vigente). Preapproval authorized sem payment approved é processamento.
+ */
+export function resolveSubscriptionReturnState(
+  subscription: CompanySubscriptionRecord,
+  entitlement: CompanyEntitlement,
+): SubscriptionReturnState {
+  if (entitlement.state === "active") {
+    return "confirmed";
+  }
+
+  const providerStatus = normalizeProviderStatus(subscription.providerStatus);
+  if (
+    providerStatus === "pending" ||
+    providerStatus === "authorized" ||
+    subscription.status === "trialing"
+  ) {
+    return "processing";
+  }
+
+  return "unconfirmed";
 }

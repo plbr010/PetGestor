@@ -4,7 +4,7 @@ import type { CompanySubscriptionRecord } from "@/features/subscription/types";
 import { formatDateTimeInTimezone } from "@/features/subscription/utils";
 import { computeEntitlement } from "@/features/subscription/entitlement";
 import { planDisplayName, priceLabelForInterval } from "@/config/subscription";
-import { isActiveProviderSubscription } from "@/features/subscription/provider-status";
+import { resolveSubscriptionReturnState } from "@/features/subscription/subscription-ui";
 
 type SubscriptionReturnPanelProps = {
   subscription: CompanySubscriptionRecord;
@@ -20,11 +20,7 @@ export function SubscriptionReturnPanel({
   timeZone,
 }: SubscriptionReturnPanelProps) {
   const entitlement = computeEntitlement(subscription, new Date());
-  const isAuthorized =
-    entitlement.hasOperationalAccess &&
-    (entitlement.state === "active" || isActiveProviderSubscription(subscription.providerStatus));
-  const isPending =
-    subscription.providerStatus === "pending" || subscription.status === "trialing";
+  const returnState = resolveSubscriptionReturnState(subscription, entitlement);
 
   return (
     <Card>
@@ -34,7 +30,7 @@ export function SubscriptionReturnPanel({
       <CardContent className="space-y-4 text-sm">
         {syncError ? <p className="text-destructive">{syncError}</p> : null}
 
-        {!syncError && isAuthorized ? (
+        {!syncError && returnState === "confirmed" ? (
           <>
             <p className="font-medium">Assinatura confirmada pelo Mercado Pago.</p>
             <p className="text-muted-foreground">
@@ -53,11 +49,12 @@ export function SubscriptionReturnPanel({
           </>
         ) : null}
 
-        {!syncError && !isAuthorized && isPending ? (
+        {!syncError && returnState === "processing" ? (
           <>
             <p>Seu pagamento/assinatura ainda está sendo processado.</p>
             <p className="text-muted-foreground">
-              Assim que o Mercado Pago confirmar, seu acesso será liberado automaticamente.
+              Assim que o Mercado Pago confirmar o pagamento aprovado, seu acesso será
+              liberado automaticamente.
             </p>
             <ButtonLink href="/assinatura" variant="outline" className="w-full">
               Voltar para assinatura
@@ -65,7 +62,7 @@ export function SubscriptionReturnPanel({
           </>
         ) : null}
 
-        {!syncError && !isAuthorized && !isPending ? (
+        {!syncError && returnState === "unconfirmed" ? (
           <>
             <p>Não foi possível confirmar a assinatura ainda.</p>
             {synced ? (
