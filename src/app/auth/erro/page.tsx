@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 
@@ -11,6 +12,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { technicalAuthRobots } from "@/lib/seo/robots-policy";
+
+export const metadata: Metadata = {
+  robots: technicalAuthRobots,
+};
 
 type AuthErrorPageProps = {
   searchParams: Promise<{

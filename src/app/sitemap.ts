@@ -1,29 +1,25 @@
 import type { MetadataRoute } from "next";
 
 import { publicPaths } from "@/config/public-routes";
-import { getMetadataBaseUrl } from "@/lib/seo/metadata-base";
+import { tryGetMetadataBaseUrl } from "@/lib/seo/metadata-base";
+import { sitemapPublicPathnames } from "@/lib/seo/robots-policy";
+
+export function buildSitemap(
+  env: Record<string, string | undefined> = process.env,
+): MetadataRoute.Sitemap {
+  const base = tryGetMetadataBaseUrl(env);
+  if (!base) {
+    return [];
+  }
+
+  return sitemapPublicPathnames.map((pathname, index) => ({
+    url: pathname === publicPaths.home ? base : `${base}${pathname}`,
+    lastModified: new Date(),
+    changeFrequency: index === 0 ? "weekly" : "monthly",
+    priority: index === 0 ? 1 : 0.8,
+  }));
+}
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = getMetadataBaseUrl();
-
-  return [
-    {
-      url: base,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 1,
-    },
-    {
-      url: `${base}${publicPaths.signup}`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${base}${publicPaths.login}`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-  ];
+  return buildSitemap();
 }

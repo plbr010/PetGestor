@@ -4,6 +4,7 @@ import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { MetaPixelRoot } from "@/components/analytics/meta-pixel-root";
 import { brand } from "@/config/brand";
 import { getMetadataBase } from "@/lib/seo/metadata-base";
+import { publicIndexRobots } from "@/lib/seo/robots-policy";
 
 import "./globals.css";
 
@@ -39,10 +40,7 @@ export const metadata: Metadata = {
     title: brand.defaultTitle,
     description: brand.defaultDescription,
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: publicIndexRobots,
 };
 
 export const viewport: Viewport = {
