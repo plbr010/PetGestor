@@ -94,6 +94,17 @@ describe("computeEntitlement", () => {
     expect(entitlement.state).toBe("expired");
   });
 
+  it("preapproval authorized sem current_period_end → sem acesso pago", () => {
+    const subscription = buildSubscription({
+      status: "trialing",
+      providerStatus: "authorized",
+      providerSubscriptionId: "pre-authorized",
+    });
+    const entitlement = computeEntitlement(subscription, ends);
+    expect(entitlement.hasOperationalAccess).toBe(false);
+    expect(entitlement.state).not.toBe("active");
+  });
+
   it("active com período vencido → expired, sem acesso", () => {
     const subscription = buildSubscription({
       status: "active",

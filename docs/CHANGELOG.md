@@ -1,3 +1,16 @@
+## [0.51.1] — 2026-09-14
+
+### Corrigido — hardening BLOCO 9 (preapproval authorized ≠ acesso pago)
+
+- `mapPreapprovalStatusToLocal("authorized")` **não** mapeia para `active` e **não** concede acesso (`grantsAccess: false`)
+- Período pago só é criado/renovado com payment `approved` obtido via GET `/v1/payments/{id}`, com conferência de valor BRL, plano e tenant locais
+- Envelope `subscription_authorized_payment` sem GET do payment **não** ativa
+- Checkout e tela de retorno deixam de tratar preapproval `authorized` como assinatura paga confirmada
+
+Não altera schema. **Migration nova: NÃO.**
+
+Não inicia BLOCO 10.
+
 ## [0.51.0] — 2026-09-14
 
 ### Corrigido — Assinaturas, trial, Mercado Pago, checkout e webhooks (BLOCO 9)

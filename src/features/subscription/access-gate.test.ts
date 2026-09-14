@@ -121,4 +121,17 @@ describe("acesso SaaS canônico", () => {
     expect(entitlement.state).toBe("unavailable");
     expect(SUBSCRIPTION_REQUIRED_PATH).toBe("/assinatura");
   });
+
+  it("preapproval authorized sem período pago não libera dashboard", () => {
+    const subscription = buildSubscription({
+      status: "trialing",
+      providerStatus: "authorized",
+      providerSubscriptionId: "preapproval-authorized",
+    });
+    const now = addHours(new Date(subscription.trialStartedAt), TRIAL_DURATION_HOURS + 1);
+    const entitlement = computeEntitlement(subscription, now);
+    expect(entitlement.hasOperationalAccess).toBe(false);
+    expect(entitlement.state).toBe("trial_expired");
+    expect(canStartMercadoPagoCheckout(subscription, now)).toBe(true);
+  });
 });

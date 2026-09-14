@@ -7,6 +7,7 @@ import {
   isTrialStillActiveServerSide,
   resolvePlanChangeKind,
   resolveSubscriptionPageState,
+  resolveSubscriptionReturnState,
 } from "@/features/subscription/subscription-ui";
 import { addHours } from "@/features/subscription/utils";
 import { TRIAL_DURATION_HOURS } from "@/config/subscription";
@@ -60,6 +61,30 @@ describe("checkout rules", () => {
     const expiredNow = addHours(new Date(subscription.trialStartedAt), TRIAL_DURATION_HOURS + 1);
     const entitlement = computeEntitlement(subscription, expiredNow);
     expect(entitlement.hasOperationalAccess).toBe(false);
+  });
+
+  it("preapproval authorized sem período pago permite checkout após o trial", () => {
+    const subscription = buildSubscription({
+      status: "trialing",
+      providerStatus: "authorized",
+      providerSubscriptionId: "pre-authorized",
+    });
+    const now = addHours(new Date(subscription.trialStartedAt), TRIAL_DURATION_HOURS);
+    expect(canStartMercadoPagoCheckout(subscription, now)).toBe(true);
+    const entitlement = computeEntitlement(subscription, now);
+    expect(resolveSubscriptionReturnState(subscription, entitlement)).toBe("processing");
+  });
+
+  it("só período pago vigente confirma retorno do checkout", () => {
+    const subscription = buildSubscription({
+      status: "active",
+      providerStatus: "authorized",
+      subscribedAt: "2026-08-10T00:00:00.000Z",
+      currentPeriodStart: "2026-08-10T00:00:00.000Z",
+      currentPeriodEnd: "2026-09-10T00:00:00.000Z",
+    });
+    const entitlement = computeEntitlement(subscription, new Date("2026-08-20T00:00:00.000Z"));
+    expect(resolveSubscriptionReturnState(subscription, entitlement)).toBe("confirmed");
   });
 });
 

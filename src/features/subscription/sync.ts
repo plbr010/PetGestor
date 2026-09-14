@@ -8,7 +8,11 @@ import {
   recordBillingPayment,
   updateCompanySubscriptionBilling,
 } from "@/features/subscription/billing-repository";
-import { mapPaymentStatusToLocal, mapPreapprovalStatusToLocal } from "@/features/subscription/provider-status";
+import {
+  mapPaymentStatusToLocal,
+  mapPreapprovalStatusToLocal,
+  shouldCreateOrRenewPaidPeriod,
+} from "@/features/subscription/provider-status";
 import {
   getAuthorizedPayment,
   getPayment,
@@ -92,21 +96,12 @@ export async function syncSubscriptionFromProvider(params: {
   const resolvedCompanyId = tenant.companyId;
   const mapping = mapPreapprovalStatusToLocal(preapproval.status);
   const now = new Date();
-  const billingInterval = resolveBillingInterval(existing ?? {});
   const incomingUpdatedAt =
     providerTimestamp(preapproval.last_modified) ?? providerTimestamp(preapproval.date_created);
   const snapshotIsNewerOrEqual = shouldApplyProviderSnapshot({
     localProviderUpdatedAt: existing?.provider_updated_at ?? null,
     incomingProviderUpdatedAt: incomingUpdatedAt,
   });
-
-  if (mapping.localStatus === "active") {
-    assertActivationMatchesPlan({
-      billingInterval,
-      amount: preapproval.auto_recurring?.transaction_amount,
-      currency: preapproval.auto_recurring?.currency_id ?? "BRL",
-    });
-  }
 
   const applyStatus = shouldApplyLocalStatusTransition({
     currentLocalStatus: existing?.status ?? null,
@@ -137,20 +132,6 @@ export async function syncSubscriptionFromProvider(params: {
 
   if (applyStatus && mapping.localStatus) {
     update.status = mapping.localStatus;
-  }
-
-  if (applyStatus && mapping.localStatus === "active") {
-    Object.assign(
-      update,
-      resolvePaidPeriodOnApprovedPayment({
-        alreadySubscribed: Boolean(existing?.subscribed_at),
-        currentPeriodStart: existing?.current_period_start,
-        currentPeriodEnd: existing?.current_period_end,
-        billingInterval,
-        now,
-        nextPaymentAt: preapproval.next_payment_date,
-      }),
-    );
   }
 
   if (applyStatus && mapping.localStatus === "cancelled") {
@@ -187,34 +168,25 @@ export async function syncAuthorizedPaymentFromProvider(authorizedPaymentId: str
     throw new Error("billing_local_record_required");
   }
 
-  let paymentStatus: string | undefined;
-  let paymentApprovedAt: string | null = null;
-  let paymentAmount: number | null = null;
-  let paymentCurrency: string | null = null;
-  let paymentUpdatedAt: string | null = null;
-  let providerPaymentId: string | null = null;
-
   const paymentId = authorizedPayment.payment?.id;
-  if (paymentId) {
-    const payment = await getPayment(String(paymentId));
-    paymentStatus = payment.status;
-    paymentApprovedAt = payment.date_approved ?? null;
-    paymentAmount = payment.transaction_amount ?? null;
-    paymentCurrency = payment.currency_id ?? null;
-    paymentUpdatedAt =
-      providerTimestamp(payment.date_last_updated) ??
-      providerTimestamp(payment.date_approved) ??
-      providerTimestamp(payment.date_created);
-    providerPaymentId = String(payment.id);
-  } else if (authorizedPayment.payment?.status) {
-    paymentStatus = authorizedPayment.payment.status;
-  } else if (authorizedPayment.status) {
-    paymentStatus = authorizedPayment.status;
+  if (!paymentId) {
+    return {
+      companyId: local.company_id,
+      paymentStatus: authorizedPayment.payment?.status ?? authorizedPayment.status ?? null,
+    };
   }
 
-  if (!paymentStatus) {
-    return null;
-  }
+  const payment = await getPayment(String(paymentId));
+  const paymentStatus = payment.status;
+  const paymentApprovedAt = payment.date_approved ?? null;
+  const paymentAmount = payment.transaction_amount ?? null;
+  const paymentCurrency = payment.currency_id ?? null;
+  const paymentUpdatedAt =
+    providerTimestamp(payment.date_last_updated) ??
+    providerTimestamp(payment.date_approved) ??
+    providerTimestamp(payment.date_created);
+  const providerPaymentId = String(payment.id);
+  const verifiedPaymentFetched = true;
 
   const paymentMapping = mapPaymentStatusToLocal(paymentStatus);
   const snapshotIsNewerOrEqual = shouldApplyProviderSnapshot({
@@ -227,25 +199,24 @@ export async function syncAuthorizedPaymentFromProvider(authorizedPaymentId: str
     snapshotIsNewerOrEqual,
   });
 
-  if (providerPaymentId) {
-    const recorded = await recordBillingPayment({
-      company_id: local.company_id,
-      provider: MERCADO_PAGO_PROVIDER,
-      provider_payment_id: providerPaymentId,
-      provider_subscription_id: preapprovalId,
-      status: paymentStatus,
-      amount_cents: typeof paymentAmount === "number" ? amountToCents(paymentAmount) : null,
-      currency: paymentCurrency,
-      provider_updated_at: paymentUpdatedAt,
-      paid_at: paymentApprovedAt,
-    });
+  const recorded = await recordBillingPayment({
+    company_id: local.company_id,
+    provider: MERCADO_PAGO_PROVIDER,
+    provider_payment_id: providerPaymentId,
+    provider_subscription_id: preapprovalId,
+    status: paymentStatus,
+    amount_cents: typeof paymentAmount === "number" ? amountToCents(paymentAmount) : null,
+    currency: paymentCurrency,
+    provider_updated_at: paymentUpdatedAt,
+    paid_at: paymentApprovedAt,
+  });
 
-    if (recorded.duplicate) {
-      return { companyId: local.company_id, paymentStatus, duplicate: true };
-    }
-  }
+  const grantsPaidPeriod = shouldCreateOrRenewPaidPeriod({
+    verifiedPaymentFetched,
+    paymentStatus,
+  });
 
-  if (paymentMapping.localStatus === "active") {
+  if (grantsPaidPeriod) {
     assertActivationMatchesPlan({
       billingInterval: resolveBillingInterval(local),
       amount: paymentAmount,
@@ -262,7 +233,7 @@ export async function syncAuthorizedPaymentFromProvider(authorizedPaymentId: str
     update.status = paymentMapping.localStatus;
   }
 
-  if (applyStatus && paymentMapping.localStatus === "active") {
+  if (applyStatus && grantsPaidPeriod) {
     Object.assign(
       update,
       resolvePaidPeriodOnApprovedPayment({
@@ -286,7 +257,7 @@ export async function syncAuthorizedPaymentFromProvider(authorizedPaymentId: str
   revalidatePath("/assinatura");
   revalidatePath("/dashboard");
 
-  return { companyId: local.company_id, paymentStatus };
+  return { companyId: local.company_id, paymentStatus, duplicate: recorded.duplicate };
 }
 
 export async function syncPaymentFromProvider(paymentId: string) {

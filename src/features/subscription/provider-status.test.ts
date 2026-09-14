@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isActiveProviderSubscription,
   mapPaymentStatusToLocal,
   mapPreapprovalStatusToLocal,
+  shouldCreateOrRenewPaidPeriod,
 } from "@/features/subscription/provider-status";
 
 describe("mapPreapprovalStatusToLocal", () => {
-  it("authorized → active", () => {
+  it("authorized NÃO concede acesso pago", () => {
     expect(mapPreapprovalStatusToLocal("authorized")).toEqual({
-      localStatus: "active",
-      grantsAccess: true,
+      localStatus: null,
+      grantsAccess: false,
     });
+    expect(isActiveProviderSubscription("authorized")).toBe(true);
   });
 
   it("pending não libera acesso", () => {
@@ -49,5 +52,34 @@ describe("mapPaymentStatusToLocal", () => {
   it("refunded e charged_back → past_due", () => {
     expect(mapPaymentStatusToLocal("refunded").localStatus).toBe("past_due");
     expect(mapPaymentStatusToLocal("charged_back").localStatus).toBe("past_due");
+  });
+});
+
+describe("shouldCreateOrRenewPaidPeriod", () => {
+  it("exige GET do payment e status approved", () => {
+    expect(
+      shouldCreateOrRenewPaidPeriod({
+        verifiedPaymentFetched: true,
+        paymentStatus: "approved",
+      }),
+    ).toBe(true);
+  });
+
+  it("envelope authorized_payment sem GET não cria período pago", () => {
+    expect(
+      shouldCreateOrRenewPaidPeriod({
+        verifiedPaymentFetched: false,
+        paymentStatus: "approved",
+      }),
+    ).toBe(false);
+  });
+
+  it("payment authorized não cria período pago", () => {
+    expect(
+      shouldCreateOrRenewPaidPeriod({
+        verifiedPaymentFetched: true,
+        paymentStatus: "authorized",
+      }),
+    ).toBe(false);
   });
 });

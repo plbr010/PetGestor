@@ -90,7 +90,7 @@ Sem essa migration, trocar para o anual / gravar `billing_interval` pode falhar 
 3. Acesse `/assinatura` → **Assinar por R$ 89,90/mês**
 4. Conclua checkout no Mercado Pago (cartões de teste)
 5. Retorno em `/assinatura/retorno` consulta API real
-6. Dashboard liberado quando status = **authorized**
+6. Dashboard liberado somente após **payment `approved`** (GET `/v1/payments/{id}`) com valor/BRL/plano conferidos — preapproval `authorized` sozinho **não** libera
 
 ## 7. Produção (futuro)
 

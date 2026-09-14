@@ -53,7 +53,7 @@ Migrations: trial + Mercado Pago billing + anual + `20260914150000_bloco9_billin
 
 - Equivalente anual: R$ 66,58/mês; economia vs 12× mensal: R$ 279,80
 - Frontend informa só `plan` (`monthly` \| `annual`); **preço nunca vem do browser**
-- Clicar em Assinar **não** ativa — só webhook/sync com preapproval autorizado
+- Clicar em Assinar **não** ativa — só webhook/sync com **payment `approved`** válido (GET no provider, valor BRL, plano e tenant locais). Preapproval `authorized` **não** concede acesso pago.
 
 ## Mercado Pago (Etapa 10B)
 

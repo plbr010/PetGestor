@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 
 import { updateCompanySubscriptionBilling } from "@/features/subscription/billing-repository";
+import { computeEntitlement } from "@/features/subscription/entitlement";
 import {
-  isActiveProviderSubscription,
   isCancelledProviderSubscription,
   isReusablePendingCheckout,
 } from "@/features/subscription/provider-status";
@@ -305,10 +305,7 @@ export async function createSubscriptionCheckoutAction(
       subscription = await prepareMonthlyToAnnualUpgrade({ companyId, subscription });
     }
 
-    if (
-      changeKind === "subscribe" &&
-      (subscription.status === "active" || isActiveProviderSubscription(subscription.providerStatus))
-    ) {
+    if (changeKind === "subscribe" && computeEntitlement(subscription, serverNow).state === "active") {
       stage = "redirecting";
       logSubscriptionDevStage(stage, { destination: "/dashboard", reason: "already_active" });
       redirect("/dashboard");
