@@ -1,5 +1,7 @@
 # Reteste ponta a ponta — pós-merge PRs #71–#75
 
+Reteste focado após o merge do PR #77: `docs/RETEST_POS_PR_77.md`.
+
 **Data:** 14/09/2026  
 **Ambiente:** produção `https://pet-gestor-sepia.vercel.app` (deploy alinhado ao merge do #75, `962f48c`)  
 **HEAD testado:** `main` @ `962f48c`  

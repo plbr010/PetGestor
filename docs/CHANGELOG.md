@@ -1,3 +1,18 @@
+## [0.52.4] — 2026-09-15
+
+### Relatório — reteste final focado pós-merge #77
+
+- Relatório em `docs/RETEST_POS_PR_77.md`
+- Produção `pet-gestor-sepia.vercel.app` @ `f1f38a6`
+- Sem migration e sem correção de código neste marco
+- Paginação tutores/pets `?page=2`: **PASSOU** (redirect, totais corretos)
+- Recovery ao vivo: **FALHOU** (ainda indisponível — config não lida no painel)
+- Confirmação de e-mail: **FALHOU** (sessão imediata no cadastro)
+- Isolamento Empresa A × C: **PASSOU**
+- OS / pacotes / financeiro operacional / staff / mobile autenticado: **NÃO PROVADO**
+- Automação: 1290 testes / 127 arquivos, lint, typecheck, build OK
+- Resultado: **74/100**. Não GA
+
 ## [0.52.3] — 2026-09-14
 
 ### Corrigido — pós-reteste #76 (recovery + paginação)
