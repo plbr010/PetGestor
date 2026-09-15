@@ -22,10 +22,31 @@ Documentação dos fluxos de autenticação, sessão SSR e onboarding multi-tena
 1. Usuário preenche nome, pet shop, e-mail e senha em `/cadastro`.
 2. Server Action valida com Zod e chama `supabase.auth.signUp`.
 3. Metadata (`full_name`, `company_name`) é salva **apenas como conveniência** — nunca usada para autorização.
-4. **Com confirmação de e-mail habilitada:** redireciona para `/verifique-email`.
-5. **Sem confirmação / sessão imediata:** chama `complete_onboarding` e redireciona para `/dashboard`.
+4. **Regra de produto (obrigatória):** novo cadastro **não** entra no sistema até confirmar o e-mail.
+5. Com **Confirm email** ligado no Auth: `signUp` **sem sessão** → `/verifique-email` → link → `/auth/confirm` → onboarding/dashboard.
+6. Se o Auth devolver sessão imediata, o app **não descarta a sessão no frontend** (isso mascararia a configuração). O caminho de onboarding imediato só existe como reflexo do toggle desligado — não é o comportamento desejado.
 
 ## Confirmação de e-mail (SSR)
+
+**Configuração obrigatória no Supabase (não dá para ligar pelo código do app):**
+
+| Onde | Opção | Valor esperado |
+|---|---|---|
+| Painel do projeto → **Authentication** → **Providers** → **Email** | **Confirm email** | **ON** (ligado) |
+| **Authentication** → **URL Configuration** | **Site URL** | `https://pet-gestor-sepia.vercel.app` |
+| **Authentication** → **URL Configuration** | **Redirect URLs** | ver lista abaixo |
+| **Authentication** → **Email Templates** → Confirm signup | Link | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard` |
+
+Redirect URLs (produção):
+
+```text
+https://pet-gestor-sepia.vercel.app/**
+https://pet-gestor-sepia.vercel.app/auth/confirm**
+https://pet-gestor-sepia.vercel.app/auth/callback**
+https://pet-gestor-sepia.vercel.app/verifique-email
+https://pet-gestor-sepia.vercel.app/nova-senha
+https://pet-gestor-sepia.vercel.app/convite
+```
 
 O link do e-mail aponta para:
 
@@ -41,10 +62,12 @@ A rota `/auth/confirm`:
 4. Owner com metadata válida → `complete_onboarding`.
 5. `next` passa por `getSafeRedirectPath` (allowlist interna). Sem dados de onboarding → `/onboarding`.
 
-Regra de confirmação (baseada na resposta real do Auth, sem presumir o toggle do dashboard):
+`/verifique-email` é a tela pós-cadastro enquanto o e-mail não foi confirmado. Reenvio usa a mesma mensagem genérica para e-mail existente e inexistente (anti-enumeração).
 
-- `signUp` devolve **sessão** → confirmação desabilitada ou auto-confirmada; segue onboarding/dashboard.
-- `signUp` **sem sessão** → confirmação habilitada; `/verifique-email` até o link. Reenvio é genérico (anti-enumeração).
+Como o app interpreta a resposta do Auth (sem inventar o toggle):
+
+- `signUp` devolve **sessão** → Confirm email está **desligado** ou auto-confirmado; o app segue onboarding/dashboard. **Corrigir no painel**, não no cliente.
+- `signUp` **sem sessão** → confirmação habilitada; `/verifique-email` até o link.
 
 ## Login
 
@@ -90,11 +113,13 @@ Prova server-side:
 
 Marcador adulterado, expirado ou de outro usuário é recusado. Alterar senha logado em **Configurações** continua em `updatePasswordAction` (sessão da conta, sem marcador).
 
-Segredo: **somente** `AUTH_RECOVERY_SECRET` (≥ 32 bytes aleatórios). Sem esse valor o recovery falha fechado (mensagem genérica) **antes** de assinar/enviar ticket. Não há fallback para `NEXT_PUBLIC_*` nem `SUPABASE_SERVICE_ROLE_KEY`.
+Segredo: **somente** `AUTH_RECOVERY_SECRET` (≥ 32 bytes aleatórios). Sem esse valor o recovery falha fechado (mensagem genérica) **antes** de assinar/enviar ticket. Não há fallback para `NEXT_PUBLIC_*` nem `SUPABASE_SERVICE_ROLE_KEY`. Obrigatório na Vercel (Production e Preview). Ausência **não** é rate limit: a mensagem de RPC/rate-limit é outra (`Não foi possível processar sua solicitação agora…` / `Muitas tentativas…`).
 
-Mensagem genérica sempre: “Se houver uma conta associada a esse e-mail…”
+Mensagem genérica (anti-enumeração) para e-mail existente **e** inexistente, inclusive quando o GoTrue responde `user_not_found` / e-mail inválido: “Se houver uma conta associada a esse e-mail…”
 
-Erro real do provider / URL de produção ausente: “Serviço temporariamente indisponível…” — sem revelar se a conta existe.
+Erro real do provider (SMTP, 5xx, redirect URL fora da allowlist) / URL de produção ausente / secret ausente: “Serviço temporariamente indisponível…” — sem revelar se a conta existe.
+
+Redirect URL de recovery (allowlist do Auth): `{APP_URL}/auth/callback?flow=recovery&rt=…` — incluir `https://pet-gestor-sepia.vercel.app/auth/callback**` (ou `/**`).
 
 ## Logout
 

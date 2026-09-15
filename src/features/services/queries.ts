@@ -9,6 +9,7 @@ import {
   getPaginationRange,
   type PaginatedResult,
   parsePageParam,
+  resolvePaginatedRange,
   sanitizeSearchTerm,
 } from "@/lib/pagination";
 import { isValidUuid } from "@/lib/security/uuid";
@@ -81,48 +82,72 @@ export async function getServices({
   const safePage = parsePageParam(String(page));
   const { from, to } = getPaginationRange(safePage, pageSize);
   const search = sanitizeSearchTerm(query);
+  const loadErrorMessage = "Não foi possível carregar os serviços.";
 
-  let builder = supabase
-    .from("services")
-    .select(
-      "id, name, description, pricing_mode, price_cents, duration_minutes, active, created_at",
-      { count: "exact" },
-    )
-    .eq("company_id", companyId)
-    .order("name", { ascending: true });
+  const applyFilters = <
+    T extends {
+      is: (column: string, value: null) => T;
+      eq: (column: string, value: boolean) => T;
+      or: (filters: string) => T;
+    },
+  >(
+    builder: T,
+  ): T => {
+    let next = builder;
+    if (!includeArchived) {
+      next = next.is("deleted_at", null);
+    }
+    if (status === "active") {
+      next = next.eq("active", true);
+    } else if (status === "inactive") {
+      next = next.eq("active", false);
+    }
+    if (search) {
+      next = next.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+    return next;
+  };
 
-  if (!includeArchived) {
-    builder = builder.is("deleted_at", null);
-  }
+  const result = await resolvePaginatedRange<Omit<ServiceListItem, "sizePrices">>({
+    page: safePage,
+    pageSize,
+    loadErrorMessage,
+    fetchPage: async () => {
+      const { data, error, count } = await applyFilters(
+        supabase
+          .from("services")
+          .select(
+            "id, name, description, pricing_mode, price_cents, duration_minutes, active, created_at",
+            { count: "exact" },
+          )
+          .eq("company_id", companyId)
+          .order("name", { ascending: true }),
+      ).range(from, to);
+      return { data, count, error };
+    },
+    fetchCount: async () => {
+      const { count, error } = await applyFilters(
+        supabase
+          .from("services")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", companyId),
+      );
+      return { count, error };
+    },
+  });
 
-  if (status === "active") {
-    builder = builder.eq("active", true);
-  } else if (status === "inactive") {
-    builder = builder.eq("active", false);
-  }
-
-  if (search) {
-    builder = builder.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
-  }
-
-  const { data, error, count } = await builder.range(from, to);
-
-  if (error) {
-    throw new Error("Não foi possível carregar os serviços.");
-  }
-
-  const services = data ?? [];
-  const bySizeIds = services
+  const bySizeIds = result.data
     .filter((service) => service.pricing_mode === "by_size")
     .map((service) => service.id);
   const sizePricesMap = await loadSizePricesForServices(companyId, bySizeIds);
 
-  const rows: ServiceListItem[] = services.map((service) => ({
-    ...service,
-    sizePrices: sizePricesMap.get(service.id),
-  }));
-
-  return buildPaginatedResult(rows, count ?? 0, safePage, pageSize);
+  return {
+    ...result,
+    data: result.data.map((service) => ({
+      ...service,
+      sizePrices: sizePricesMap.get(service.id),
+    })),
+  };
 }
 
 export async function getServiceById(

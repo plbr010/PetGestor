@@ -5,11 +5,11 @@ import type { PetDetail, PetListItem, PetSpeciesFilter } from "@/features/pets/t
 import { buildPetPhotoThumbMap } from "@/features/pets/enrich-photo-thumbs";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  buildPaginatedResult,
   DEFAULT_PAGE_SIZE,
   getPaginationRange,
   type PaginatedResult,
   parsePageParam,
+  resolvePaginatedRange,
   sanitizeSearchTerm,
 } from "@/lib/pagination";
 import type { PetSpecies } from "@/types/database.types";
@@ -41,83 +41,112 @@ export async function getPets({
   const safePage = parsePageParam(String(page));
   const { from, to } = getPaginationRange(safePage, pageSize);
   const search = sanitizeSearchTerm(query);
+  const loadErrorMessage = "Não foi possível carregar os pets.";
 
-  let builder = supabase
-    .from("pets")
-    .select(
-      "id, name, species, breed, birth_date, created_at, customer_id, photo_thumb_path, photo_storage_path, customers!inner(name)",
-      { count: "exact" },
-    )
-    .eq("company_id", companyId)
-    .order("name", { ascending: true });
-
-  if (!includeArchived) {
-    builder = builder.is("deleted_at", null);
-  }
-
-  if (customerId && isValidUuid(customerId)) {
-    builder = builder.eq("customer_id", customerId);
-  }
-
-  if (species !== "all") {
-    builder = builder.eq("species", species as PetSpecies);
-  }
-
-  if (search) {
-    builder = builder.or(`name.ilike.%${search}%,breed.ilike.%${search}%`);
-  }
-
-  let { data, error, count } = await builder.range(from, to);
-
-  if (error && isMissingSchemaError(error)) {
-    let fallbackBuilder = supabase
-      .from("pets")
-      .select(
-        "id, name, species, breed, birth_date, created_at, customer_id, customers!inner(name)",
-        { count: "exact" },
-      )
-      .eq("company_id", companyId)
-      .order("name", { ascending: true });
-
+  const applyFilters = <
+    T extends {
+      is: (column: string, value: null) => T;
+      eq: (column: string, value: string) => T;
+      or: (filters: string) => T;
+    },
+  >(
+    builder: T,
+  ): T => {
+    let next = builder;
     if (!includeArchived) {
-      fallbackBuilder = fallbackBuilder.is("deleted_at", null);
+      next = next.is("deleted_at", null);
     }
     if (customerId && isValidUuid(customerId)) {
-      fallbackBuilder = fallbackBuilder.eq("customer_id", customerId);
+      next = next.eq("customer_id", customerId);
     }
     if (species !== "all") {
-      fallbackBuilder = fallbackBuilder.eq("species", species as PetSpecies);
+      next = next.eq("species", species as PetSpecies);
     }
     if (search) {
-      fallbackBuilder = fallbackBuilder.or(`name.ilike.%${search}%,breed.ilike.%${search}%`);
+      next = next.or(`name.ilike.%${search}%,breed.ilike.%${search}%`);
     }
+    return next;
+  };
 
-    const fallback = await fallbackBuilder.range(from, to);
-    data =
-      fallback.data?.map((row) => ({
-        ...row,
-        photo_thumb_path: null,
-        photo_storage_path: null,
-      })) ?? null;
-    error = fallback.error;
-    count = fallback.count;
-  }
+  const result = await resolvePaginatedRange({
+    page: safePage,
+    pageSize,
+    loadErrorMessage,
+    fetchPage: async () => {
+      const pageBuilder = applyFilters(
+        supabase
+          .from("pets")
+          .select(
+            "id, name, species, breed, birth_date, created_at, customer_id, photo_thumb_path, photo_storage_path, customers!inner(name)",
+            { count: "exact" },
+          )
+          .eq("company_id", companyId)
+          .order("name", { ascending: true }),
+      );
 
-  if (error) {
-    return buildPaginatedResult([], 0, safePage, pageSize);
-  }
+      let { data, error, count } = await pageBuilder.range(from, to);
+
+      if (error && isMissingSchemaError(error)) {
+        const fallbackBuilder = applyFilters(
+          supabase
+            .from("pets")
+            .select(
+              "id, name, species, breed, birth_date, created_at, customer_id, customers!inner(name)",
+              { count: "exact" },
+            )
+            .eq("company_id", companyId)
+            .order("name", { ascending: true }),
+        );
+        const fallback = await fallbackBuilder.range(from, to);
+        data =
+          fallback.data?.map((row) => ({
+            ...row,
+            photo_thumb_path: null,
+            photo_storage_path: null,
+          })) ?? null;
+        error = fallback.error;
+        count = fallback.count;
+      }
+
+      return { data, count, error };
+    },
+    fetchCount: async () => {
+      const countBuilder = applyFilters(
+        supabase
+          .from("pets")
+          .select("id, customers!inner(name)", { count: "exact", head: true })
+          .eq("company_id", companyId),
+      );
+      let { count, error } = await countBuilder;
+
+      if (error && isMissingSchemaError(error)) {
+        const fallbackCount = applyFilters(
+          supabase
+            .from("pets")
+            .select("id, customers!inner(name)", { count: "exact", head: true })
+            .eq("company_id", companyId),
+        );
+        const fallback = await fallbackCount;
+        count = fallback.count;
+        error = fallback.error;
+      }
+
+      return { count, error };
+    },
+  });
 
   const thumbMap = await buildPetPhotoThumbMap(
     companyId,
-    (data ?? []).map((row) => ({
+    result.data.map((row) => ({
       id: row.id,
       photo_thumb_path: row.photo_thumb_path as string | null | undefined,
       photo_storage_path: row.photo_storage_path as string | null | undefined,
     })),
   );
 
-  const rows =
-    data?.map((row) => ({
+  return {
+    ...result,
+    data: result.data.map((row) => ({
       id: row.id,
       name: row.name,
       species: row.species,
@@ -128,9 +157,8 @@ export async function getPets({
       customerName:
         (row.customers as { name: string } | null)?.name ?? "Tutor não encontrado",
       photoThumbUrl: thumbMap.get(row.id) ?? null,
-    })) ?? [];
-
-  return buildPaginatedResult(rows, count ?? 0, safePage, pageSize);
+    })),
+  };
 }
 
 export async function getPetById(

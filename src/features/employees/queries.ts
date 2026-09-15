@@ -16,6 +16,7 @@ import {
   getPaginationRange,
   type PaginatedResult,
   parsePageParam,
+  resolvePaginatedRange,
   sanitizeSearchTerm,
 } from "@/lib/pagination";
 import { isValidUuid } from "@/lib/security/uuid";
@@ -95,54 +96,76 @@ export async function getEmployees({
   const safePage = parsePageParam(String(page));
   const { from, to } = getPaginationRange(safePage, pageSize);
   const search = sanitizeSearchTerm(query);
+  const loadErrorMessage = "Não foi possível carregar os funcionários.";
 
-  let builder = supabase
-    .from("employees")
-    .select(
-      "id, name, phone, email, job_title, active, can_be_scheduled, created_at",
-      { count: "exact" },
-    )
-    .eq("company_id", companyId)
-    .order("name", { ascending: true });
+  const applyFilters = <
+    T extends {
+      is: (column: string, value: null) => T;
+      eq: (column: string, value: boolean) => T;
+      or: (filters: string) => T;
+    },
+  >(
+    builder: T,
+  ): T => {
+    let next = builder;
+    if (!includeArchived) {
+      next = next.is("deleted_at", null);
+    }
+    if (status === "active") {
+      next = next.eq("active", true);
+    } else if (status === "inactive") {
+      next = next.eq("active", false);
+    }
+    if (schedulable === "yes") {
+      next = next.eq("can_be_scheduled", true);
+    } else if (schedulable === "no") {
+      next = next.eq("can_be_scheduled", false);
+    }
+    if (search) {
+      next = next.or(
+        `name.ilike.%${search}%,job_title.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`,
+      );
+    }
+    return next;
+  };
 
-  if (!includeArchived) {
-    builder = builder.is("deleted_at", null);
-  }
-
-  if (status === "active") {
-    builder = builder.eq("active", true);
-  } else if (status === "inactive") {
-    builder = builder.eq("active", false);
-  }
-
-  if (schedulable === "yes") {
-    builder = builder.eq("can_be_scheduled", true);
-  } else if (schedulable === "no") {
-    builder = builder.eq("can_be_scheduled", false);
-  }
-
-  if (search) {
-    builder = builder.or(
-      `name.ilike.%${search}%,job_title.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`,
-    );
-  }
-
-  const { data, error, count } = await builder.range(from, to);
-
-  if (error) {
-    throw new Error("Não foi possível carregar os funcionários.");
-  }
-
-  const baseEmployees = data ?? [];
-  const employeeIds = baseEmployees.map((employee) => employee.id);
-  const servicesMap = await loadServicesForEmployees(companyId, employeeIds);
-
-  return buildPaginatedResult(
-    attachServices(baseEmployees, servicesMap),
-    count ?? 0,
-    safePage,
+  const result = await resolvePaginatedRange<Omit<EmployeeListItem, "services">>({
+    page: safePage,
     pageSize,
+    loadErrorMessage,
+    fetchPage: async () => {
+      const { data, error, count } = await applyFilters(
+        supabase
+          .from("employees")
+          .select(
+            "id, name, phone, email, job_title, active, can_be_scheduled, created_at",
+            { count: "exact" },
+          )
+          .eq("company_id", companyId)
+          .order("name", { ascending: true }),
+      ).range(from, to);
+      return { data, count, error };
+    },
+    fetchCount: async () => {
+      const { count, error } = await applyFilters(
+        supabase
+          .from("employees")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", companyId),
+      );
+      return { count, error };
+    },
+  });
+
+  const servicesMap = await loadServicesForEmployees(
+    companyId,
+    result.data.map((employee) => employee.id),
   );
+
+  return {
+    ...result,
+    data: attachServices(result.data, servicesMap),
+  };
 }
 
 export async function getEmployeeById(

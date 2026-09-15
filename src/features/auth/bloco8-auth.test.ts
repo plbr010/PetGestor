@@ -128,6 +128,25 @@ describe("BLOCO 8 auth actions", () => {
     await expect(signUpAction({}, form)).rejects.toThrow(/REDIRECT:\/dashboard/);
   });
 
+  it("cadastro sem sessão (confirmação de e-mail ligada) vai para /verifique-email", async () => {
+    signUpMock.mockResolvedValue({
+      data: { session: null, user: { id: "u1" } },
+      error: null,
+    });
+
+    const { signUpAction } = await import("@/features/auth/actions");
+    const form = new FormData();
+    form.set("fullName", "Ana Silva");
+    form.set("companyName", "Pet Shop Ana");
+    form.set("phone", "(32) 99999-9999");
+    form.set("email", "ana@example.com");
+    form.set("password", "senha1234");
+    form.set("confirmPassword", "senha1234");
+
+    await expect(signUpAction({}, form)).rejects.toThrow(/REDIRECT:\/verifique-email$/);
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
   it("login inválido é genérico", async () => {
     signInMock.mockResolvedValue({ error: { message: "Invalid login credentials" } });
     const { signInAction } = await import("@/features/auth/actions");
@@ -174,6 +193,57 @@ describe("BLOCO 8 auth actions", () => {
   it("recovery com erro real do provider não finge sucesso", async () => {
     resetPasswordMock.mockResolvedValue({
       error: { message: "smtp down", status: 500, code: "unexpected_failure" },
+    });
+    const { passwordRecoveryAction } = await import("@/features/auth/actions");
+    const { PROVIDER_UNAVAILABLE_MESSAGE } = await import("@/features/auth/messages");
+    const form = new FormData();
+    form.set("email", "ana@example.com");
+    const result = await passwordRecoveryAction({}, form);
+    expect(result.error).toBe(PROVIDER_UNAVAILABLE_MESSAGE);
+    expect(result.success).toBeUndefined();
+  });
+
+  it("recovery com e-mail inexistente no provider usa a mesma mensagem anti-enumeração", async () => {
+    resetPasswordMock
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({
+        error: { status: 404, code: "user_not_found", message: "User not found" },
+      })
+      .mockResolvedValueOnce({
+        error: {
+          status: 400,
+          code: "email_address_invalid",
+          message: "Unable to validate email address: invalid",
+        },
+      });
+
+    const { passwordRecoveryAction } = await import("@/features/auth/actions");
+    const { RECOVERY_GENERIC_MESSAGE, PROVIDER_UNAVAILABLE_MESSAGE } = await import(
+      "@/features/auth/messages"
+    );
+
+    const existing = new FormData();
+    existing.set("email", "existe@example.com");
+    const missing = new FormData();
+    missing.set("email", "naoexiste@example.com");
+    const invalidTld = new FormData();
+    invalidTld.set("email", "nao.existe@example.com");
+
+    expect(await passwordRecoveryAction({}, existing)).toEqual({
+      success: RECOVERY_GENERIC_MESSAGE,
+    });
+    expect(await passwordRecoveryAction({}, missing)).toEqual({
+      success: RECOVERY_GENERIC_MESSAGE,
+    });
+    expect(await passwordRecoveryAction({}, invalidTld)).toEqual({
+      success: RECOVERY_GENERIC_MESSAGE,
+    });
+    expect(PROVIDER_UNAVAILABLE_MESSAGE).not.toEqual(RECOVERY_GENERIC_MESSAGE);
+  });
+
+  it("recovery com redirect URL recusada não finge sucesso", async () => {
+    resetPasswordMock.mockResolvedValue({
+      error: { status: 400, message: "Redirect URL not allowed" },
     });
     const { passwordRecoveryAction } = await import("@/features/auth/actions");
     const { PROVIDER_UNAVAILABLE_MESSAGE } = await import("@/features/auth/messages");

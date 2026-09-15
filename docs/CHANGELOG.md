@@ -1,3 +1,16 @@
+## [0.52.3] — 2026-09-14
+
+### Corrigido — pós-reteste #76 (recovery + paginação)
+
+- Recuperação de senha: e-mail inexistente / inválido no GoTrue deixa de devolver “Serviço temporariamente indisponível” (enumerável). Passa a usar a mensagem genérica anti-enumeração. SMTP, 5xx, secret ausente e redirect URL recusada **continuam** fail-closed.
+- `AUTH_RECOVERY_SECRET` documentado na tabela da Vercel (obrigatório em Production). Sem esse valor o recovery **não** envia e-mail — isso não se corrige no código.
+- Confirmação de e-mail: o app já segue a sessão real do Auth. A regra de produto (cadastro → confirmar → só então entrar) **depende** de Authentication → Providers → Email → **Confirm email = ON**. `/verifique-email` com título e copy alinhados.
+- Paginação de tutores, pets, serviços e funcionários: `PGRST103` (página além do total) deixa de crashar o dashboard e deixa de zerar o total de pets. Helper compartilhado + redirect para a última página válida.
+
+**Não alterado:** agenda, financeiro, billing/Mercado Pago, isolamento A×B, preço por porte.
+
+**Migration nova: NENHUMA.**
+
 ## [0.52.2] — 2026-09-14
 
 ### Relatório — reteste ponta a ponta pós-merge (#71–#75)

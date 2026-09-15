@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { EmployeeFilters } from "@/features/employees/components/employee-filters";
@@ -11,7 +12,7 @@ import {
 } from "@/features/employees/utils";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
 import { formatPhoneDisplay } from "@/lib/phone";
-import { parsePageParam } from "@/lib/pagination";
+import { outOfRangeListHref, parsePageParam } from "@/lib/pagination";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
   ClearSearchLink,
@@ -55,6 +56,15 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     status,
     schedulable,
   });
+
+  const outOfRangeHref = outOfRangeListHref(page, result.totalPages, "/dashboard/funcionarios", {
+    q: query || undefined,
+    status: status === "all" ? undefined : status,
+    schedulable: schedulable === "all" ? undefined : schedulable,
+  });
+  if (outOfRangeHref) {
+    redirect(outOfRangeHref);
+  }
 
   return (
     <>

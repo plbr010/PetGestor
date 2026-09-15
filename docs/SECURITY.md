@@ -147,7 +147,9 @@ Operações mutáveis usam **Server Actions** ou Route Handlers POST/GET apropri
 
 Limites nativos do Supabase Auth **e** rate limit dedicado no Postgres (`private.auth_rate_limit_buckets` + `consume_auth_rate_limit(p_action, p_bucket_key)`). A primitive é **server-only** (`GRANT` só a `service_role`; o app usa o admin client). Chave hasheada (ação + sujeito + IP). Sem senha e sem e-mail em claro. Atomicidade via advisory lock + UPSERT. Limit/janela/relógio **não** vêm do cliente — `private.auth_rate_limit_policy` + `now()`. Em production, RPC ausente, service-role ausente ou resposta inválida falha fechado (não chama Auth). Development/test pode falhar aberto de propósito. Buckets com `updated_at` > 2h são removidos na própria RPC.
 
-Recuperação de senha: ticket HMAC só com `AUTH_RECOVERY_SECRET` (≥ 32 bytes). Marker one-time: cookie opaco + hash em `private.password_recovery_markers`; consumo atômico. Sem `AUTH_RECOVERY_SECRET` o fluxo falha fechado. Sessão normal não basta para `/nova-senha`.
+Recuperação de senha: ticket HMAC só com `AUTH_RECOVERY_SECRET` (≥ 32 bytes). Marker one-time: cookie opaco + hash em `private.password_recovery_markers`; consumo atômico. Sem `AUTH_RECOVERY_SECRET` o fluxo falha fechado. Sessão normal não basta para `/nova-senha`. E-mail inexistente ou rejeitado pelo GoTrue (`user_not_found` / e-mail inválido) usa a **mesma** mensagem genérica de sucesso; pane SMTP/5xx/redirect não allowlisted **não** é mascarada.
+
+Confirmação de e-mail: regra de produto exige **Confirm email = ON** no painel Supabase (Authentication → Providers → Email). O app não descarta sessão no cliente para fingir o toggle.
 
 ## Variáveis de ambiente
 

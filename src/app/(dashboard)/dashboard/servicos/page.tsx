@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { ServiceStatusFilterNav } from "@/features/services/components/service-status-filter";
@@ -10,7 +11,7 @@ import {
   PRICING_MODE_LABELS,
 } from "@/features/services/utils";
 import { requireCompanyContext } from "@/lib/auth/require-company-context";
-import { parsePageParam } from "@/lib/pagination";
+import { outOfRangeListHref, parsePageParam } from "@/lib/pagination";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
   ClearSearchLink,
@@ -51,6 +52,14 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
     query,
     status,
   });
+
+  const outOfRangeHref = outOfRangeListHref(page, result.totalPages, "/dashboard/servicos", {
+    q: query || undefined,
+    status: status === "all" ? undefined : status,
+  });
+  if (outOfRangeHref) {
+    redirect(outOfRangeHref);
+  }
 
   return (
     <>

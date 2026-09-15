@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ButtonLink } from "@/components/ui/button-link";
+import { buildListHref } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
 type PaginationNavProps = {
@@ -10,27 +11,6 @@ type PaginationNavProps = {
   searchParams?: Record<string, string | undefined>;
   className?: string;
 };
-
-function buildHref(
-  basePath: string,
-  page: number,
-  searchParams?: Record<string, string | undefined>,
-): string {
-  const params = new URLSearchParams();
-
-  if (page > 1) {
-    params.set("page", String(page));
-  }
-
-  for (const [key, value] of Object.entries(searchParams ?? {})) {
-    if (value) {
-      params.set(key, value);
-    }
-  }
-
-  const query = params.toString();
-  return query ? `${basePath}?${query}` : basePath;
-}
 
 export function PaginationNav({
   page,
@@ -56,7 +36,7 @@ export function PaginationNav({
       </p>
       <div className="flex items-center gap-2">
         {page > 1 ? (
-          <ButtonLink href={buildHref(basePath, prevPage, searchParams)} variant="outline" size="sm">
+          <ButtonLink href={buildListHref(basePath, prevPage, searchParams)} variant="outline" size="sm">
             Anterior
           </ButtonLink>
         ) : (
@@ -65,7 +45,7 @@ export function PaginationNav({
           </span>
         )}
         {page < totalPages ? (
-          <ButtonLink href={buildHref(basePath, nextPage, searchParams)} variant="outline" size="sm">
+          <ButtonLink href={buildListHref(basePath, nextPage, searchParams)} variant="outline" size="sm">
             Próxima
           </ButtonLink>
         ) : (

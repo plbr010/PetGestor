@@ -30,6 +30,7 @@ Legenda:
 | `APP_URL` | Não | Não | Sim (billing/auth redirects) | Obrigatória (URL HTTPS da Vercel) | Recomendada (URL do deploy Preview) | Opcional (`http://localhost:3000`) |
 | `NEXT_PUBLIC_APP_URL` | Sim | Não* | Fallback de `APP_URL` | Opcional se `APP_URL` estiver setada | Opcional | Opcional |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Não** | Não | Sim (webhook / sync admin / convite de funcionário) | Obrigatória (billing + e-mail de convite) | Obrigatória para testar billing/convite | Obrigatória para testar billing/convite |
+| `AUTH_RECOVERY_SECRET` | **Não** | Não | Sim (`/recuperar-senha`) | **Obrigatória** (≥ 32 bytes; `openssl rand -base64 32`) | Obrigatória para testar recovery | Obrigatória para testar recovery |
 | `MERCADO_PAGO_ACCESS_TOKEN` | **Não** | Não | Sim (checkout/sync) | Obrigatória para cobrança | Obrigatória em sandbox | Obrigatória em sandbox |
 | `MERCADO_PAGO_WEBHOOK_SECRET` | **Não** | Não | Sim (só `/api/webhooks/mercado-pago`) | Obrigatória para webhooks | Obrigatória para webhooks | Obrigatória para webhooks |
 | `MERCADO_PAGO_ENVIRONMENT` | **Não** | Não | Sim | `production` | `test` | `test` |
@@ -75,9 +76,23 @@ No painel do projeto Supabase (Production):
 | Campo | Valor |
 |---|---|
 | **Site URL** | `https://pet-gestor-sepia.vercel.app` |
-| **Redirect URLs** | incluir pelo menos: `https://pet-gestor-sepia.vercel.app/**` (ou as rotas `/auth/confirm**`, `/auth/callback**`, `/convite`) |
+| **Redirect URLs** | `https://pet-gestor-sepia.vercel.app/**` e, no mínimo, `/auth/confirm**`, `/auth/callback**`, `/verifique-email`, `/nova-senha`, `/convite` |
 
-Sem Site URL / Redirect URLs corretos, o Supabase pode reescrever links de e-mail para o valor antigo (ex.: `http://localhost:3000`), mesmo com `redirectTo` certo no app.
+Sem Site URL / Redirect URLs corretos, o Supabase pode reescrever links de e-mail para o valor antigo (ex.: `http://localhost:3000`) ou recusar `resetPasswordForEmail` (recovery cai em “Serviço temporariamente indisponível”).
+
+### Supabase → Authentication → Providers → Email
+
+| Opção | Valor esperado |
+|---|---|
+| **Confirm email** | **ON** |
+
+Regra de produto: cadastro → e-mail de confirmação → clique no link → só então dashboard/onboarding. O app **não** descarta a sessão no frontend se o Auth devolver sessão imediata; ligar o toggle no painel é a correção.
+
+Template Confirm signup:
+
+```text
+{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard
+```
 
 ### O que NÃO é necessário no build
 
@@ -87,6 +102,7 @@ Estas secrets **não** precisam existir para o `next build` concluir. Continuam 
 - `MERCADO_PAGO_WEBHOOK_SECRET`
 - `MERCADO_PAGO_TEST_PAYER_EMAIL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `AUTH_RECOVERY_SECRET` (recuperar senha; ≥ 32 bytes)
 - `APP_URL` (fallback local só em desenvolvimento)
 - Variáveis WhatsApp (`WHATSAPP_*`, `META_*`, `CRON_SECRET`)
 
